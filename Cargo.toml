@@ -1,0 +1,11 @@
+[package]
+name = "feanor_la"
+version = "0.1.0"
+authors = ["Simon Pohmann <simon@pohmann.de>"]
+edition = "2018"
+
+[lib]
+crate-type = ["rlib"]
+bench = true
+
+[dependencies]
