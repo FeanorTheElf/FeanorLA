@@ -1,8 +1,8 @@
-use super::arith::*;
+use super::alg::*;
 use super::indexed::{Indexed, IndexedMut};
 use std::mem::swap;
 use std::ops::{
-    Add, AddAssign, Div, Index, IndexMut, Mul, MulAssign, Neg, RangeBounds, Bound, Range,
+    Add, AddAssign, Index, IndexMut, Mul, MulAssign, Neg, RangeBounds, Bound, Range,
     Sub, SubAssign,
 };
 use super::vector::*;
@@ -371,16 +371,7 @@ where
 
 impl<T> Matrix<T>
 where
-    T: Clone
-        + PartialEq<T>
-        + AddAssign<T>
-        + MulAssign<T>
-        + Neg<Output = T>
-        + Zero
-        + One
-        + Div<T, Output = T>
-        + Mul<T, Output = T>,
-    <T as Div<T>>::Output: Clone,
+    T: Clone + Field
 {
     ///
     /// Calculates the inverse of this matrix. Use only for small matrices, this
@@ -394,16 +385,7 @@ where
 
 impl<'a, T> MatrixRef<'a, T>
 where
-    T: Clone
-        + PartialEq<T>
-        + AddAssign<T>
-        + MulAssign<T>
-        + Neg<Output = T>
-        + Zero
-        + One
-        + Div<T, Output = T>
-        + Mul<T, Output = T>,
-    <T as Div<T>>::Output: Clone,
+    T: Clone + Field
 {
     ///
     /// Calculates the inverse of this matrix. Use only for small matrices, this
@@ -453,16 +435,7 @@ where
 
 impl<'a, T> MatrixRefMut<'a, T>
 where
-    T: Clone
-        + PartialEq<T>
-        + AddAssign<T>
-        + MulAssign<T>
-        + Neg<Output = T>
-        + Zero
-        + One
-        + Div<T, Output = T>
-        + Mul<T, Output = T>,
-    <T as Div<T>>::Output: Clone,
+    T: Clone + Field
 {
     ///
     /// Calculates the inverse of this matrix. Use only for small matrices, this
@@ -502,6 +475,12 @@ impl<'a, T> MatrixRefMut<'a, T> {
             for row in 0..self.rows() {
                 self[row].swap(fst, snd);
             }
+        }
+    }
+
+    pub fn assign(&mut self, rhs: Matrix<T>) {
+        for (value, row, col) in rhs.into_iter() {
+            self[row][col] = value;
         }
     }
 }
@@ -964,6 +943,22 @@ impl<I> ExactSizeIterator for MatrixIter<I>
 {
 }
 
+impl<T> IntoIterator for Matrix<T> {
+    type Item = (T, usize, usize);
+    type IntoIter = MatrixIter<std::vec::IntoIter<T>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let cols = self.cols();
+        MatrixIter {
+            data: self.data.into_vec().into_iter(),
+            row: 0,
+            col: 0,
+            cols: cols,
+            skip: 0
+        }
+    }
+}
+
 impl<'a, T> IntoIterator for MatrixRef<'a, T> {
     type Item = (&'a T, usize, usize);
     type IntoIter = MatrixIter<std::slice::Iter<'a, T>>;
@@ -1028,8 +1023,40 @@ impl<'a, T, M> PartialEq<M> for MatrixRefMut<'a, T>
     }
 }
 
-#[cfg(test)]
-use super::macros::ApproxEq;
+impl<T, M> MulAssign<M> for Matrix<T> 
+    where T: Add<T, Output = T> + Clone + Mul<T, Output = T>, M: MatrixView<T>
+{
+    fn mul_assign(&mut self, rhs: M) {
+        self.as_mut().mul_assign(rhs);
+    }
+}
+
+impl<'a, T, M> MulAssign<M> for MatrixRefMut<'a, T> 
+    where T: Add<T, Output = T> + Clone + Mul<T, Output = T>, M: MatrixView<T>
+{
+    fn mul_assign(&mut self, rhs: M) {
+        self.assign(self.as_const() * rhs);
+    }
+}
+
+macro_rules! matlab {
+    ($($($expr:expr),*);*) => {
+        Matrix::from_array([$([$($expr),*]),*])
+    };
+    ($($($expr:expr)*);*) => {
+        Matrix::from_array([$([$($expr),*]),*])
+    };
+}
+
+#[test]
+fn test_matlab_macro() {
+    let m = matlab![1, 2, 3; 4, 5, 6];
+    assert_eq!(1, m[0][0]);
+    assert_eq!(5, m[1][1]);
+    let m2 = matlab![1 2 3; 4 5 6];
+    assert_eq!(1, m2[0][0]);
+    assert_eq!(5, m2[1][1]);
+}
 
 #[test]
 fn test_matrix_index() {

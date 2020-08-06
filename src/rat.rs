@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-use super::arith::{One, Zero};
+use super::alg::{One, Zero, Semiring, Ring, Field, CommutativeRing};
 
 use std::cmp::{Ord, Ordering, PartialEq, PartialOrd};
 use std::convert::From;
@@ -31,14 +31,17 @@ pub const NAN: r64 = r64 {
     numerator: 0,
     denominator: 0,
 };
+
 pub const INFINITY: r64 = r64 {
     numerator: 1,
     denominator: 0,
 };
+
 pub const ZERO: r64 = r64 {
     numerator: 0,
     denominator: 1,
 };
+
 pub const ONE: r64 = r64 {
     numerator: 1,
     denominator: 1,
@@ -304,6 +307,11 @@ impl Div<Self> for r64 {
         return self;
     }
 }
+
+impl Semiring for r64 {}
+impl Ring for r64 {}
+impl CommutativeRing for r64 {}
+impl Field for r64 {}
 
 impl Debug for r64 {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {

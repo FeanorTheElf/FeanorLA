@@ -1,4 +1,4 @@
-use super::arith::*;
+use super::alg::*;
 use super::indexed::{Indexed, IndexedMut};
 use std::ops::{
     Add, AddAssign, Index, IndexMut, Neg, RangeBounds, Bound, MulAssign, Mul,

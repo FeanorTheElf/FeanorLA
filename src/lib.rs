@@ -11,10 +11,11 @@ extern crate test;
 #[macro_use]
 mod macros;
 
-pub mod arith;
+pub mod alg;
 pub mod diophantine;
 pub mod indexed;
 pub mod vector;
+#[macro_use]
 pub mod matrix;
 pub mod prelude;
 pub mod rat;
