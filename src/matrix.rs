@@ -1086,6 +1086,7 @@ impl<'a, T, M> MulAssign<M> for MatrixRefMut<'a, T>
     }
 }
 
+#[allow(unused)]
 macro_rules! matlab {
     ($($($expr:expr),*);*) => {
         Matrix::from_array([$([$($expr),*]),*])

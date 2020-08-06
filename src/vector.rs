@@ -518,7 +518,7 @@ impl<'a, T> IndexMut<usize> for VectorRefMut<'a, T> {
     }
 }
 
-fn get_lower_index<R: RangeBounds<usize>>(range: &R, size: usize) -> usize {
+fn get_lower_index<R: RangeBounds<usize>>(range: &R, _: usize) -> usize {
     match range.start_bound() {
         Bound::Excluded(i) => *i + 1,
         Bound::Included(i) => *i,
