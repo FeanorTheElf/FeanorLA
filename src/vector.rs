@@ -112,6 +112,16 @@ impl<T> Vector<T>
     }
 }
 
+impl<T> Vector<T> 
+    where T: Clone
+{
+    pub fn copy_of<V>(rhs: V) -> Vector<T>
+        where V: VectorView<T>
+    {
+        Vector::new((0..rhs.len()).map(|i| rhs.at(i).clone()).collect::<Vec<T>>().into_boxed_slice())
+    }
+}
+
 impl<T> Vector<T>
     where T: Mul<Output = T> + AddAssign + Clone
 {
