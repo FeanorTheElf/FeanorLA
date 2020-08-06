@@ -152,6 +152,22 @@ impl One for f64 {
     }
 }
 
+pub trait Root {
+    fn sqrt(self) -> Self;
+}
+
+impl Root for f32 {
+    fn sqrt(self) -> f32 {
+        self.sqrt()
+    }
+}
+
+impl Root for f64 {
+    fn sqrt(self) -> f64 {
+        self.sqrt()
+    }
+}
+
 pub trait Semiring: Sized + Add<Output = Self> + Mul<Output = Self> + AddAssign + MulAssign + PartialEq + Zero + One {}
 
 pub trait Ring: Semiring + Neg<Output = Self> + Sub<Output = Self> + SubAssign {}

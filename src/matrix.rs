@@ -296,6 +296,53 @@ impl<T> Matrix<T>
     }
 }
 
+impl<T> Matrix<T>
+    where T: Clone + AddAssign + Mul<Output = T>
+{
+    pub fn frobenius_square(&self) -> T {
+        self.as_ref().frobenius_square()
+    }
+}
+
+impl<T> Matrix<T>
+    where T: Clone + MulAssign
+{
+    pub fn scal(&mut self, scal: T) {
+        self.as_mut().scal(scal);
+    }
+}
+
+impl<'a, T> MatrixRef<'a, T>
+    where T: Clone + AddAssign + Mul<Output = T>
+{
+    pub fn frobenius_square(&self) -> T {
+        let mut it = self.into_iter().map(|(x, _, _)| x.clone() * x.clone());
+        let mut result = it.next().unwrap();
+        for x in it {
+            result += x;
+        }
+        return result;
+    }
+}
+
+impl<'a, T> MatrixRefMut<'a, T>
+    where T: Clone + AddAssign + Mul<Output = T>
+{
+    pub fn frobenius_square(&self) -> T {
+        self.as_const().frobenius_square()
+    }
+}
+
+impl<'a, T> MatrixRefMut<'a, T>
+    where T: Clone + MulAssign
+{
+    pub fn scal(&mut self, scal: T) {
+        for (x, _, _) in self.get_mut((.., ..)).into_iter() {
+            *x *= scal.clone();
+        }
+    }
+}
+
 impl<'a, T> MatrixRefMut<'a, T> {
     pub fn into_const(self) -> MatrixRef<'a, T> {
         MatrixRef {
@@ -598,7 +645,7 @@ impl<'a, 'b, T: 'b, R: RangeBounds<usize>, S: RangeBounds<usize>> Indexed<'b, (R
             rows_begin: get_lower_index(&rows, self.rows()) + self.rows.start,
             rows_end: get_upper_index(&rows, self.rows()) + self.rows.start,
             cols_begin: get_lower_index(&cols, self.cols()) + self.cols.start,
-            cols_end: get_upper_index(&cols, self.cols()) + self.cols.end,
+            cols_end: get_upper_index(&cols, self.cols()) + self.cols.start,
             matrix: self.matrix
         }
     }
@@ -965,7 +1012,7 @@ impl<'a, T> IntoIterator for MatrixRef<'a, T> {
 
     fn into_iter(self) -> Self::IntoIter {
         MatrixIter {
-            data: self.matrix.data[(self.rows_begin + self.cols_begin * self.matrix.cols)..(self.rows_end + self.cols_end * self.matrix.cols)].iter(),
+            data: self.matrix.data[(self.cols_begin + self.rows_begin * self.matrix.cols)..(self.cols_end + (self.rows_end - 1) * self.matrix.cols)].iter(),
             row: 0,
             col: 0,
             cols: self.cols(),
@@ -982,7 +1029,7 @@ impl<'a, T> IntoIterator for MatrixRefMut<'a, T> {
         let cols = self.cols();
         let parent_cols = self.matrix.cols();
         MatrixIter {
-            data: self.matrix.data[(self.cols.start + self.rows.start * parent_cols)..(self.cols.end + self.rows.end * parent_cols)].iter_mut(),
+            data: self.matrix.data[(self.cols.start + self.rows.start * parent_cols)..(self.cols.end + (self.rows.end - 1) * parent_cols)].iter_mut(),
             row: 0,
             col: 0,
             cols: cols,

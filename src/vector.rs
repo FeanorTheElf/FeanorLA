@@ -19,7 +19,7 @@ pub struct Vector<T> {
     data: Box<[T]>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct VectorRef<'a, T> {
     pub data: &'a [T],
 }
@@ -27,6 +27,14 @@ pub struct VectorRef<'a, T> {
 #[derive(Debug)]
 pub struct VectorRefMut<'a, T> {
     pub data: &'a mut [T],
+}
+
+impl<'a, T> Copy for VectorRef<'a, T> {}
+
+impl<'a, T> Clone for VectorRef<'a, T> {
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl<T> VectorView<T> for Vector<T> {
@@ -105,6 +113,16 @@ impl<T> Vector<T>
 }
 
 impl<T> Vector<T>
+    where T: Mul<Output = T> + AddAssign + Clone
+{
+    pub fn inner_product<V>(&self, rhs: V) -> T 
+        where V: VectorView<T>
+    {
+        self.as_ref().inner_product(rhs)
+    }
+}
+
+impl<T> Vector<T>
     where T: Zero 
 {
     pub fn zero(len: usize) -> Vector<T> {
@@ -116,6 +134,21 @@ impl<'a, T> VectorRef<'a, T> {
 
     pub fn create(data: &'a [T]) -> VectorRef<T> {
         VectorRef { data }
+    }
+}
+
+impl<'a, T> VectorRef<'a, T>
+    where T: Mul<Output = T> + AddAssign + Clone
+{
+    pub fn inner_product<V>(&self, rhs: V) -> T 
+        where V: VectorView<T>
+    {
+        assert_eq!(self.len(), rhs.len(), "Expected lengths of inner product vectors to match, but {} != {}", self.len(), rhs.len());
+        let mut result = self.at(0).clone() * rhs.at(0).clone();
+        for i in 1..self.len() {
+            result += self.at(i).clone() * rhs.at(i).clone();
+        }
+        return result;
     }
 }
 
@@ -164,6 +197,16 @@ impl<'a, T> VectorRefMut<'a, T>
         for i in 0..self.len() {
             *self.at_mut(i) += rhs.at(i).clone() * factor.clone();
         }
+    }
+}
+
+impl<'a, T> VectorRefMut<'a, T>
+    where T: Mul<Output = T> + AddAssign + Clone
+{
+    pub fn inner_product<V>(&self, rhs: V) -> T 
+        where V: VectorView<T>
+    {
+        self.as_const().inner_product(rhs)
     }
 }
 
