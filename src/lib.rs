@@ -1,6 +1,8 @@
 #![feature(test)]
 #![allow(non_snake_case)]
+#![feature(array_value_iter)]
 #![feature(const_generics)]
+#![feature(const_generic_impls_guard)]
 
 #[cfg(test)]
 extern crate test;

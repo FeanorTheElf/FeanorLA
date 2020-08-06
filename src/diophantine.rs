@@ -1,9 +1,10 @@
 use super::indexed::*;
-use super::matrix::{MatRef, MatRefMut, Matrix, Vector};
+use super::matrix::{Matrix, MatrixRef, MatrixRefMut, MatrixView};
+use super::vector::{Vector, VectorRef, VectorView};
 use std::mem::swap;
 
 type Item = i32;
-type Mat<'a> = MatRefMut<'a, Item>;
+type Mat<'a> = MatrixRefMut<'a, Item>;
 
 fn eea(fst: i32, snd: i32) -> (i32, i32) {
     let (mut a, mut b) = if fst > snd { (fst, snd) } else { (snd, fst) };
@@ -25,30 +26,30 @@ fn gcd(a: i32, b: i32) -> i32 {
     return s * a + t * b;
 }
 
-pub fn diophantine_solve<'a>(A: MatRef<'a, Item>, b: &Vector<Item>) -> Option<Vector<Item>> {
-    let mut smith_A = A.to_owned();
+pub fn diophantine_solve<'a>(A: MatrixRef<'a, Item>, b: VectorRef<Item>) -> Option<Vector<Item>> {
+    let mut smith_A = Matrix::copy_of(A);
     let mut iL = Matrix::<Item>::identity(A.rows());
     let mut iR = Matrix::<Item>::identity(A.cols());
     smith(
-        &mut smith_A.get_mut((.., ..)),
-        &mut iL.get_mut((.., ..)),
-        &mut iR.get_mut((.., ..)),
+        &mut smith_A.as_mut(),
+        &mut iL.as_mut(),
+        &mut iR.as_mut(),
         0,
     );
     // x is solution of (L * smith_A) x = b, get result through r := R^-1 * x
     let mut x = Vector::<Item>::zero(A.cols());
-    let c = iL.get((.., ..)) * b.get(..);
+    let c: Matrix<i32> = iL * b;
     for i in 0..usize::min(x.len(), A.rows()) {
         let entry = smith_A[i][i];
-        if entry == 0 && c[i] != 0 {
+        if entry == 0 && c[i][0] != 0 {
             return None;
-        } else if entry != 0 && c[i] % entry != 0 {
+        } else if entry != 0 && c[i][0] % entry != 0 {
             return None;
         } else if entry != 0 {
-            x[i] = c[i] / entry;
+            x[i] = c[i][0] / entry;
         }
     }
-    return Some(iR.get((.., ..)) * x.get(..));
+    return Some((iR * x).into_column_vector());
 }
 
 ///
@@ -214,63 +215,63 @@ fn test_eea_neg() {
 
 #[test]
 fn test_diophantine() {
-    let A = Matrix::new(Box::new([15, 10, 6, 7]), 2);
+    let A = Matrix::from_array([[15, 10], [6, 7]]);
     let b = Vector::new(Box::new([195, 87]));
-    let x = diophantine_solve(A.get((.., ..)), &b);
-    assert_eq!(&[11, 3], x.unwrap().data());
+    let x = diophantine_solve(A.as_ref(), b.as_ref());
+    assert_eq!(Matrix::from_array([[11], [3]]), x.unwrap());
 }
 
 #[test]
 fn test_diophantine_no_solution() {
-    let A = Matrix::new(Box::new([2, -2]), 1);
+    let A = Matrix::from_array([[2, -2]]);
     let b = Vector::new(Box::new([1]));
-    let x = diophantine_solve(A.get((.., ..)), &b);
+    let x = diophantine_solve(A.as_ref(), b.as_ref());
     assert!(x.is_none());
 }
 
 #[test]
 fn test_diophantine_no_solution_three_dim() {
     #[rustfmt::skip]
-    let A = Matrix::new(Box::new([1, 2, 0, 
-                                  1, 0, 2]), 2);
+    let A = Matrix::from_array([[1, 2, 0], 
+                                [1, 0, 2]]);
 
     let b = Vector::new(Box::new([2, 1]));
-    let x = diophantine_solve(A.get((.., ..)), &b);
+    let x = diophantine_solve(A.as_ref(), b.as_ref());
     assert!(x.is_none());
 }
 
 #[test]
 fn test_diophantine_three_dim() {
     #[rustfmt::skip]
-    let A = Matrix::new(Box::new([1, 2, 0, 
-                                  1, 0, 2]), 2);
+    let A = Matrix::from_array([[1, 2, 0], 
+                                [1, 0, 2]]);
 
     let b = Vector::new(Box::new([2, 4]));
-    let x = diophantine_solve(A.get((.., ..)), &b);
-    assert_eq!(&[4, -1, 0], x.unwrap().data());
+    let x = diophantine_solve(A.get((.., ..)), b.as_ref());
+    assert_eq!(Matrix::from_array([[4], [-1], [0]]), x.unwrap());
 }
 
 #[test]
 fn test_diophantine_unnecessary_conditions() {
     #[rustfmt::skip]
-    let A = Matrix::new(Box::new([1, 2, 0, 
-                                  1, 2, 0, 
-                                  1, 2, 0, 
-                                  1, 0, 2]), 4);
+    let A = Matrix::from_array([[1, 2, 0], 
+                                [1, 2, 0], 
+                                [1, 2, 0], 
+                                [1, 0, 2]]);
 
     let b = Vector::new(Box::new([2, 2, 2, 4]));
-    let x = diophantine_solve(A.get((.., ..)), &b);
-    assert_eq!(&[4, -1, 0], x.unwrap().data());
+    let x = diophantine_solve(A.as_ref(), b.as_ref());
+    assert_eq!(Matrix::from_array([[4], [-1], [0]]), x.unwrap());
 }
 
 #[test]
 fn test_diophantine_no_rational_solutions() {
     #[rustfmt::skip]
-    let A = Matrix::new(Box::new([1, 2, 0, 
-                                  1, 2, 0, 
-                                  1, 0, 2]), 3);
+    let A = Matrix::from_array([[1, 2, 0], 
+                                [1, 2, 0], 
+                                [1, 0, 2]]);
 
     let b = Vector::new(Box::new([2, 3, 4]));
-    let x = diophantine_solve(A.get((.., ..)), &b);
+    let x = diophantine_solve(A.as_ref(), b.as_ref());
     assert!(x.is_none());
 }

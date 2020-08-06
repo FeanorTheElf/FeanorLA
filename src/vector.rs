@@ -1,7 +1,7 @@
 use super::arith::*;
 use super::indexed::{Indexed, IndexedMut};
 use std::ops::{
-    Add, AddAssign, Index, IndexMut, Neg, RangeBounds, Bound,
+    Add, AddAssign, Index, IndexMut, Neg, RangeBounds, Bound, MulAssign, Mul,
     Sub, SubAssign,
 };
 
@@ -21,12 +21,12 @@ pub struct Vector<T> {
 
 #[derive(Debug, Clone, Copy)]
 pub struct VectorRef<'a, T> {
-    data: &'a [T],
+    pub data: &'a [T],
 }
 
 #[derive(Debug)]
 pub struct VectorRefMut<'a, T> {
-    data: &'a mut [T],
+    pub data: &'a mut [T],
 }
 
 impl<T> VectorView<T> for Vector<T> {
@@ -138,8 +138,9 @@ impl<'a, T> VectorRefMut<'a, T> {
     }
 
     pub fn into_subrange<R: RangeBounds<usize>>(self, range: R) -> VectorRefMut<'a, T> {
+        let len = self.len();
         VectorRefMut {
-            data: &mut self.data[get_lower_index(&range, self.len())..get_upper_index(&range, self.len())]
+            data: &mut self.data[get_lower_index(&range, len)..get_upper_index(&range, len)]
         }
     }
 
@@ -148,10 +149,26 @@ impl<'a, T> VectorRefMut<'a, T> {
     }
 }
 
-// ================== Arithmetic operations ==================
+impl<'a, T> VectorRefMut<'a, T> 
+{
+    pub fn add_product<V, R, S>(&mut self, rhs: V, factor: S) 
+        where V: VectorView<R>, R: Mul<S> + Clone, S: Clone, T: AddAssign<R::Output>
+    {
+        assert_eq!(
+            self.len(),
+            rhs.len(),
+            "Expected the lengths of summed vectors to be equal, but got {} and {}",
+            self.len(),
+            rhs.len()
+        );
+        for i in 0..self.len() {
+            *self.at_mut(i) += rhs.at(i).clone() * factor.clone();
+        }
+    }
+}
 
 impl<T, V> Add<V> for Vector<T> 
-    where T: for<'b> AddAssign<&'b T> + Clone, V: VectorView<T>
+    where T: AddAssign<T> + Clone, V: VectorView<T>
 {
     type Output = Vector<T>;
 
@@ -190,7 +207,7 @@ impl<'a, T, V> Add<V> for VectorRefMut<'a, T>
 }
 
 impl<T, V> Sub<V> for Vector<T> 
-    where T: for<'b> SubAssign<&'b T> + Clone, V: VectorView<T>
+    where T: SubAssign<T> + Clone, V: VectorView<T>
 {
     type Output = Vector<T>;
 
@@ -258,6 +275,37 @@ impl<'a, T> Neg for VectorRefMut<'a, T>
     }
 }
 
+impl<R, S> Mul<S> for Vector<R> 
+    where R: MulAssign<S>, S: Clone
+{
+    type Output = Vector<R>;
+
+    fn mul(mut self, rhs: S) -> Self::Output {
+        self *= rhs;
+        return self;
+    }
+}
+
+impl<'a, R, S> Mul<S> for VectorRef<'a, R> 
+    where R: Mul<S> + Clone, S: Clone
+{
+    type Output = Vector<R::Output>;
+
+    fn mul(self, rhs: S) -> Self::Output {
+        Vector::new((0..self.len()).map(|i| self.at(i).clone() * rhs.clone()).collect::<Vec<R::Output>>().into_boxed_slice())
+    }
+}
+
+impl<'a, R, S> Mul<S> for VectorRefMut<'a, R> 
+    where R: Mul<S> + Clone, S: Clone
+{
+    type Output = Vector<R::Output>;
+
+    fn mul(self, rhs: S) -> Self::Output {
+        self.as_const() * rhs
+    }
+}
+
 impl<'a, T> IntoIterator for VectorRef<'a, T> {
     type Item = &'a T;
     type IntoIter = std::slice::Iter<'a, T>;
@@ -278,7 +326,7 @@ impl<'a, T> IntoIterator for VectorRefMut<'a, T> {
 
 impl<T, V> AddAssign<V> for Vector<T>
 where
-    T: for<'b> AddAssign<&'b T>, V: VectorView<T>
+    T: AddAssign<T> + Clone, V: VectorView<T>
 {
     fn add_assign(&mut self, rhs: V) {
         self.as_mut().add_assign(rhs);
@@ -287,7 +335,7 @@ where
 
 impl<'a, T, V> AddAssign<V> for VectorRefMut<'a, T>
 where
-    T: for<'b> AddAssign<&'b T>, V: VectorView<T>
+    T: AddAssign<T> + Clone, V: VectorView<T>
 {
     fn add_assign(&mut self, rhs: V) {
         assert_eq!(
@@ -298,14 +346,14 @@ where
             rhs.len()
         );
         for i in 0..self.len() {
-            (*self.at_mut(i)).add_assign(rhs.at(i));
+            (*self.at_mut(i)).add_assign(rhs.at(i).clone());
         }
     }
 }
 
 impl<T, V> SubAssign<V> for Vector<T>
 where
-    T: for<'b> SubAssign<&'b T>, V: VectorView<T>
+    T: SubAssign<T> + Clone, V: VectorView<T>
 {
     fn sub_assign(&mut self, rhs: V) {
         self.as_mut().sub_assign(rhs)
@@ -314,7 +362,7 @@ where
 
 impl<'a, T, V> SubAssign<V> for VectorRefMut<'a, T>
 where
-    T: for<'b> SubAssign<&'b T>, V: VectorView<T>
+    T: SubAssign<T> + Clone, V: VectorView<T>
 {
     fn sub_assign(&mut self, rhs: V) {
         assert_eq!(
@@ -325,7 +373,27 @@ where
             rhs.len()
         );
         for i in 0..self.len() {
-            (*self.at_mut(i)).sub_assign(rhs.at(i));
+            (*self.at_mut(i)).sub_assign(rhs.at(i).clone());
+        }
+    }
+}
+
+impl<R, S> MulAssign<S> for Vector<R>
+where
+    R: MulAssign<S>, S: Clone
+{
+    fn mul_assign(&mut self, rhs: S) {
+        self.as_mut().mul_assign(rhs)
+    }
+}
+
+impl<'a, R, S> MulAssign<S> for VectorRefMut<'a, R>
+where
+    R: MulAssign<S>, S: Clone
+{
+    fn mul_assign(&mut self, rhs: S) {
+        for i in 0..self.len() {
+            (*self.at_mut(i)).mul_assign(rhs.clone());
         }
     }
 }
@@ -433,7 +501,9 @@ impl<'b, T: 'b, R: RangeBounds<usize>> Indexed<'b, R> for Vector<T> {
     type Output = VectorRef<'b, T>;
 
     fn get(&'b self, index: R) -> Self::Output {
-        self.as_ref().get(index)
+        VectorRef {
+            data: &self.data[get_lower_index(&index, self.len())..get_upper_index(&index, self.len())]
+        }
     }
 }
 
@@ -451,7 +521,9 @@ impl<'a, 'b, T: 'b, R: RangeBounds<usize>> Indexed<'b, R> for VectorRefMut<'a, T
     type Output = VectorRef<'b, T>;
 
     fn get(&'b self, index: R) -> Self::Output {
-        self.into_const().get(index)
+        VectorRef {
+            data: &self.data[get_lower_index(&index, self.len())..get_upper_index(&index, self.len())]
+        }
     }
 }
 
@@ -459,7 +531,10 @@ impl<'a, 'b, T: 'b, R: RangeBounds<usize>> IndexedMut<'b, R> for Vector<T> {
     type Output = VectorRefMut<'b, T>;
 
     fn get_mut(&'b mut self, index: R) -> Self::Output {
-        self.as_mut().get_mut(index)
+        let len = self.len();
+        VectorRefMut {
+            data: &mut self.data[get_lower_index(&index, len)..get_upper_index(&index, len)]
+        }
     }
 }
 
@@ -467,8 +542,9 @@ impl<'a, 'b, T: 'b, R: RangeBounds<usize>> IndexedMut<'b, R> for VectorRefMut<'a
     type Output = VectorRefMut<'b, T>;
 
     fn get_mut(&'b mut self, index: R) -> Self::Output {
+        let len = self.len();
         VectorRefMut {
-            data: &mut self.data[get_lower_index(&index, self.len())..get_upper_index(&index, self.len())]
+            data: &mut self.data[get_lower_index(&index, len)..get_upper_index(&index, len)]
         }
     }
 }

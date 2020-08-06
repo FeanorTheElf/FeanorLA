@@ -1,22 +1,37 @@
+use super::matrix::MatrixView;
 
 #[cfg(test)]
-fn approx_eq(lhs: &[f64], rhs: &[f64], delta: f64) -> bool {
-    lhs.iter()
-        .zip(rhs.iter())
-        .map(|(a, b)| a - b)
-        .map(f64::abs)
-        .all(|a| a < delta)
+pub trait ApproxEq {
+    fn approx_eq(&self, rhs: &Self, delta: f64) -> bool;
+}
+
+#[cfg(test)]
+impl ApproxEq for f64 {
+    fn approx_eq(&self, rhs: &Self, delta: f64) -> bool {
+        (self - rhs).abs() < delta
+    }
+}
+
+#[cfg(test)]
+impl<M> ApproxEq for M
+    where M: MatrixView<f64>
+{
+    fn approx_eq(&self, rhs: &Self, delta: f64) -> bool {
+        for row in 0..self.rows() {
+            for col in 0..self.cols() {
+                if !self.at(row, col).approx_eq(rhs.at(row, col), delta) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 }
 
 #[cfg(test)]
 macro_rules! assert_approx_eq {
     ($left:expr, $right:expr, $delta:expr) => {
-        if !($left)
-            .iter()
-            .zip(($right).iter())
-            .map(|(a, b)| a - b)
-            .map(f64::abs)
-            .all(|a| a < $delta)
+        if !($left).approx_eq(($right), ($delta))
         {
             panic!(
                 r#"assertion failed: `(left == right +-{:?})`

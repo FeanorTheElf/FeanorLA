@@ -1,5 +1,5 @@
 use super::indexed::*;
-use super::matrix::Matrix;
+use super::matrix::{Matrix, MatrixView};
 use std::ops::MulAssign;
 use std::vec::Vec;
 
@@ -159,21 +159,24 @@ fn add_artificials(table: &Tableau) -> (Tableau, BasicVars) {
     return (result, basic_vars);
 }
 
+#[cfg(test)]
+use super::macros::ApproxEq;
+
 #[test]
 fn test_simplex_no_artificials() {
     let mut basic_vars: Box<[usize]> = Box::new([2, 3]);
 
     #[rustfmt::skip]
-	let mut m = Matrix::new(Box::new([3.0, 4.0, 0.0, 0.0, 0.0,  2.0,
-	                                  2.0, 1.0, 1.0, 0.0, 10.0, 3.0,
-                                      5.0, 3.0, 0.0, 1.0, 15.0, 2.0]), 3);
+	let mut m = Matrix::from_array([[3.0, 4.0, 0.0, 0.0, 0.0,  2.0],
+	                                [2.0, 1.0, 1.0, 0.0, 10.0, 3.0],
+                                    [5.0, 3.0, 0.0, 1.0, 15.0, 2.0]]);
 
     assert_eq!(Ok(()), simplex(&mut m, &mut basic_vars));
 
     #[rustfmt::skip]
-	assert_approx_eq!(&[-3.6666, 0.0, 0.0, -1.3333, -20.0, -0.6666,
-	                    0.3333,  0.0, 1.0, -0.3333, 5.0,   2.3333, 
-                        1.6666,  1.0, 0.0, 0.3333,  5.0,   0.6666], m.data(), 0.001);
+	assert_approx_eq!(&Matrix::from_array([[-3.6666, 0.0, 0.0, -1.3333, -20.0, -0.6666],
+	                                       [0.3333,  0.0, 1.0, -0.3333, 5.0,   2.3333 ], 
+                                           [1.6666,  1.0, 0.0, 0.3333,  5.0,   0.6666 ]]), &m, 0.001);
 
     assert_eq!(&[2, 1], &*basic_vars);
 }
@@ -181,9 +184,9 @@ fn test_simplex_no_artificials() {
 #[test]
 fn test_extract_solution() {
     #[rustfmt::skip]
-	let m = Matrix::new(Box::new([-11.0, 0.0, 0.0, -4.0, -60.0, -2.0,  
-	                              1.0,   0.0, 1.0, -1.0, 15.0,  7.0,  
-				                  5.0,   1.0, 0.0, 1.0,  10.0,  2.0]), 3);
+	let m = Matrix::from_array([[-11.0, 0.0, 0.0, -4.0, -60.0, -2.0],  
+	                            [1.0,   0.0, 1.0, -1.0, 15.0,  7.0],  
+				                [5.0,   1.0, 0.0, 1.0,  10.0,  2.0]]);
     let basic_vars: Box<[usize]> = Box::new([2, 1]);
     let solution = extract_solution(&m, &basic_vars);
     assert_eq!(&[5.0, 1.0, 0.0, 0.0, 0.0, 11.0], &*solution);
@@ -192,14 +195,14 @@ fn test_extract_solution() {
 #[test]
 fn test_is_solution() {
     #[rustfmt::skip]
-	let m = Matrix::new(Box::new([1.0, 0.0, 1.0, -1.0, 15.0,  7.0,  
-				                  5.0, 1.0, 0.0, 1.0,  10.0,  2.0]), 2);
+	let m = Matrix::from_array([[1.0, 0.0, 1.0, -1.0, 15.0,  7.0],  
+				                [5.0, 1.0, 0.0, 1.0,  10.0,  2.0]]);
     assert_eq!(true, is_solution(&[5.0, 1.0, 0.0, 0.0, 0.0], &m));
 
     #[rustfmt::skip]
-	let m = Matrix::new(Box::new([9.0, 3.0, 0.0, 0.0, 0.0,  2.0,
-	                              2.0, 1.0, 1.0, 0.0, 10.0, 3.0,
-							      5.0, 3.0, 0.0, 1.0, 15.0, 2.0]), 3);
+	let m = Matrix::from_array([[9.0, 3.0, 0.0, 0.0, 0.0,  2.0],
+	                            [2.0, 1.0, 1.0, 0.0, 10.0, 3.0],
+							    [5.0, 3.0, 0.0, 1.0, 15.0, 2.0]]);
     assert_eq!(true, is_solution(&[3.0, -1.0, -4.0, 0.0, 0.0], &m));
     assert_eq!(false, is_solution(&[4.0, -1.0, -4.0, 0.0, 0.0], &m));
 }
@@ -207,25 +210,25 @@ fn test_is_solution() {
 #[test]
 fn test_add_artificials() {
     #[rustfmt::skip]
-	let m = Matrix::new(Box::new([6.0,  5.0,  4.0, 
-								  -9.0, 8.0,  7.0, 
-								  12.0, 11.0, 10.0]), 3);
+	let m = Matrix::from_array([[6.0,  5.0,  4.0], 
+								[-9.0, 8.0,  7.0], 
+								[12.0, 11.0, 10.0]]);
     let (result, basic_vars) = add_artificials(&m);
 
     #[rustfmt::skip]
-	assert_eq!(&[0.0,  8.0,  7.0,  0.0, 0.0, 0.0, 
-	             6.0,  5.0,  4.0,  1.0, 0.0, 0.0, 
-				 9.0,  -8.0, -7.0, 0.0, 1.0, 0.0, 
-				 12.0, 11.0, 10.0, 0.0, 0.0, 1.0, ], result.data());
+	assert_eq!(&Matrix::from_array([[0.0,  8.0,  7.0,  0.0, 0.0, 0.0], 
+	                                [6.0,  5.0,  4.0,  1.0, 0.0, 0.0], 
+				                    [9.0,  -8.0, -7.0, 0.0, 1.0, 0.0], 
+				                    [12.0, 11.0, 10.0, 0.0, 0.0, 1.0]]), &result);
     assert_eq!(&[3, 4, 5], &*basic_vars);
 }
 
 #[test]
 fn test_solve() {
     #[rustfmt::skip]
-	let m = Matrix::new(Box::new([-1.0, -1.0, 0.0,  1.0, 0.0, 0.0, 
-								  4.0,  1.0,  1.0,  0.0, 1.0, 0.0, 
-								  0.0,  1.0,  -1.0, 0.0, 0.0, 1.0]), 3);
+	let m = Matrix::from_array([[-1.0, -1.0, 0.0,  1.0, 0.0, 0.0], 
+								[4.0,  1.0,  1.0,  0.0, 1.0, 0.0], 
+								[0.0,  1.0,  -1.0, 0.0, 0.0, 1.0]]);
     let solution = solve(&m);
     assert!(is_solution(&solution.unwrap()[0..5], &m));
 }
@@ -233,15 +236,15 @@ fn test_solve() {
 #[test]
 fn test_solve_zero_vec_solution() {
     #[rustfmt::skip]
-	let m = Matrix::new(Box::new([0.0, 1.0, 1.0, -1.0, 0.0,
-	                              0.0, 1.0, 0.0, -1.0, -1.0]), 2);
+	let m = Matrix::from_array([[0.0, 1.0, 1.0, -1.0, 0.0],
+	                            [0.0, 1.0, 0.0, -1.0, -1.0]]);
     assert_eq!(&[0.0, 0.0, 0.0, 0.0], &*solve(&m).unwrap());
 }
 
 #[test]
 fn test_impossible_system_solve() {
     #[rustfmt::skip]
-	let m = Matrix::new(Box::new([1.0, 1.0,  -1.0,
-	                              1.0, -1.0, 1.0]), 2);
+	let m = Matrix::from_array([[1.0, 1.0,  -1.0],
+	                            [1.0, -1.0, 1.0]]);
     assert_eq!(None, solve(&m));
 }
