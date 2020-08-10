@@ -323,7 +323,19 @@ impl Display for r64 {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         let mut reduced: r64 = *self;
         reduced.reduce();
-        return write!(f, "({}/{})", reduced.numerator, reduced.denominator);
+        if reduced.denominator == 1 {
+            write!(f, "{}", reduced.numerator)
+        } else if reduced.denominator == 0 {
+            if reduced.numerator == 0 {
+                write!(f, "NaN")
+            } else if reduced.numerator < 0 {
+                write!(f, "-Inf")
+            } else {
+                write!(f, "Inf")
+            }
+        } else {
+            write!(f, "({}/{})", reduced.numerator, reduced.denominator)
+        }
     }
 }
 
