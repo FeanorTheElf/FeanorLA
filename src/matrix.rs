@@ -208,7 +208,6 @@ impl<T> Matrix<T> {
     }
 
     pub fn from_array<const R: usize, const C: usize>(array: [[T; C]; R]) -> Matrix<T> 
-        where [T; C]: std::array::LengthAtMost32, [[T; C]; R]: std::array::LengthAtMost32
     {
         let data = std::array::IntoIter::new(array).flat_map(|row| std::array::IntoIter::new(row)).collect::<Vec<T>>().into_boxed_slice();
         Self::from_data(data, C)
@@ -1248,16 +1247,4 @@ fn test_invert() {
     #[rustfmt::skip]
     assert_eq!(&Matrix::from_array([[0.,  0.5],
                                     [0.5, -0.25]]), &a_inv);
-}
-
-#[cfg(test)]
-use super::rat::*;
-
-#[test]
-fn experiment() {
-    let A: Matrix<r64> = Matrix::from_nocopy(Matrix::from_array([[1, 2, 0], [2, 6, 0], [0, 3, 3]]));
-    println!("{}", A);
-    println!("{}", A.invert().unwrap());
-    println!("{}", A.invert().unwrap() * A);
-    assert!(false);
 }
