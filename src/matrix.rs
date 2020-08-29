@@ -208,7 +208,6 @@ impl<T> Matrix<T> {
     }
 
     pub fn from_array<const R: usize, const C: usize>(array: [[T; C]; R]) -> Matrix<T> 
-        where [T; C]: std::array::LengthAtMost32, [[T; C]; R]: std::array::LengthAtMost32
     {
         let data = std::array::IntoIter::new(array).flat_map(|row| std::array::IntoIter::new(row)).collect::<Vec<T>>().into_boxed_slice();
         Self::from_data(data, C)
@@ -389,27 +388,16 @@ where
 
 impl<'a, T, U: 'a> From<MatrixRef<'a, U>> for Matrix<T>
 where
-    T: From<&'a U>,
+    T: for<'b> From<&'b U>,
 {
     fn from(value: MatrixRef<'a, U>) -> Self {
-        let value_ref = &value;
-        let data: Vec<T> = (value.rows_begin..value.rows_end)
-            .flat_map(|row| {
-                (value.cols_begin..value.cols_end)
-                    .map(move |col| value_ref.matrix.at(row, col))
-                    .map(|d| T::from(d))
-            })
-            .collect();
-        return Matrix {
-            data: data.into_boxed_slice(),
-            cols: value.cols(),
-        };
+        Matrix::from_func(value.rows(), value.cols(), |row, col| T::from(value.at(row, col)))
     }
 }
 
 impl<'a, T, U: 'a> From<MatrixRefMut<'a, U>> for Matrix<T>
 where
-    T: From<&'a U>,
+    T: for<'b> From<&'b U>,
 {
     fn from(value: MatrixRefMut<'a, U>) -> Self {
         Matrix::from(value.into_const())
@@ -1083,6 +1071,36 @@ impl<'a, T, M> MulAssign<M> for MatrixRefMut<'a, T>
 {
     fn mul_assign(&mut self, rhs: M) {
         self.assign(self.as_const() * rhs);
+    }
+}
+
+impl<T> std::fmt::Display for Matrix<T>
+    where T: std::fmt::Display
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.as_ref())
+    }
+}
+
+impl<'a, T> std::fmt::Display for MatrixRef<'a, T>
+    where T: std::fmt::Display
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        for row in 0..self.rows() {
+            for col in 0..(self.cols() - 1) {
+                write!(f, "{}, ", self.at(row, col))?;
+            }
+            writeln!(f, "{};", self.at(row, self.cols() - 1))?;
+        }
+        return Ok(());
+    }
+}
+
+impl<'a, T> std::fmt::Display for MatrixRefMut<'a, T>
+    where T: std::fmt::Display
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.as_const())
     }
 }
 
