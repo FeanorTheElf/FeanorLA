@@ -207,10 +207,32 @@ impl CommutativeRing for f64 {}
 impl Field for f32 {}
 impl Field for f64 {}
 
-pub trait Integer: Add + Sub + Mul + Neg + Rem + AddAssign + MulAssign + SubAssign + RemAssign {}
+pub trait Integer: Sized + Clone + Rem<Output = Self> + RemAssign + Eq + Ord + Ring + /* truncating division */ Div<Output = Self> + DivAssign {
+    fn div_euclid(self, rhs: Self) -> Self;
+}
 
-impl Integer for i8 {}
-impl Integer for i16 {}
-impl Integer for i32 {}
-impl Integer for i64 {}
-impl Integer for i128 {}
+impl Integer for i8 {
+    fn div_euclid(self, rhs: Self) -> Self {
+        self.div_euclid(rhs)
+    }
+}
+impl Integer for i16 {
+    fn div_euclid(self, rhs: Self) -> Self {
+        self.div_euclid(rhs)
+    }
+}
+impl Integer for i32 {
+    fn div_euclid(self, rhs: Self) -> Self {
+        self.div_euclid(rhs)
+    }
+}
+impl Integer for i64 {
+    fn div_euclid(self, rhs: Self) -> Self {
+        self.div_euclid(rhs)
+    }
+}
+impl Integer for i128 {
+    fn div_euclid(self, rhs: Self) -> Self {
+        self.div_euclid(rhs)
+    }
+}

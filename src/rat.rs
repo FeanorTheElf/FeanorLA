@@ -166,24 +166,24 @@ impl AddAssign<r64> for r64 {
         }
         assign_or_reduce_on_failure!(self.numerator.checked_mul(rhs.denominator) => self.numerator; self.reduce(); rhs.reduce());
         assign_or_reduce_on_failure!(self.denominator.checked_mul(rhs.numerator) => rhs.numerator; self.reduce(); {
-            let ggT = r64::ggT(rhs.denominator, rhs.numerator);
+            let ggT = gcd(rhs.denominator, rhs.numerator);
             rhs.denominator /= ggT;
             rhs.numerator /= ggT;
             self.numerator /= ggT;
         });
         assign_or_reduce_on_failure!(self.numerator.checked_add(rhs.numerator) => self.numerator; {
-            let ggT = r64::ggT(self.denominator, self.numerator);
+            let ggT = gcd(self.denominator, self.numerator);
             self.denominator /= ggT;
             self.numerator /= ggT;
             rhs.numerator /= ggT;
         }; {
-            let ggT = r64::ggT(rhs.denominator, rhs.numerator);
+            let ggT = gcd(rhs.denominator, rhs.numerator);
             rhs.denominator /= ggT;
             rhs.numerator /= ggT;
             self.numerator /= ggT;
         });
         assign_or_reduce_on_failure!(self.denominator.checked_mul(rhs.denominator) => self.denominator; self.reduce(); {
-            let ggT = r64::ggT(self.numerator, rhs.denominator);
+            let ggT = gcd(self.numerator, rhs.denominator);
             self.numerator /= ggT;
             rhs.denominator /= ggT;
         });
@@ -194,7 +194,7 @@ impl MulAssign<r64> for r64 {
     fn mul_assign(&mut self, mut rhs: r64) {
         assign_or_reduce_on_failure!(self.numerator.checked_mul(rhs.numerator) => self.numerator; self.reduce(); rhs.reduce());
         assign_or_reduce_on_failure!(self.denominator.checked_mul(rhs.denominator) => self.denominator; self.reduce(); {
-            let ggT = r64::ggT(rhs.numerator, rhs.denominator);
+            let ggT = gcd(rhs.numerator, rhs.denominator);
             rhs.denominator /= ggT;
             self.numerator /= ggT;
         });
@@ -321,25 +321,6 @@ impl Display for r64 {
     }
 }
 
-#[test]
-fn test_ggT() {
-    assert_eq!(3, r64::ggT(15, 6));
-    assert_eq!(3, r64::ggT(6, 15));
-
-    assert_eq!(7, r64::ggT(0, 7));
-    assert_eq!(7, r64::ggT(7, 0));
-    assert_eq!(1, r64::ggT(0, 0));
-
-    assert_eq!(1, r64::ggT(9, 1));
-    assert_eq!(1, r64::ggT(1, 9));
-
-    assert_eq!(1, r64::ggT(13, 300));
-    assert_eq!(1, r64::ggT(300, 13));
-
-    assert_eq!(-3, r64::ggT(-15, 6));
-    assert_eq!(3, r64::ggT(6, -15));
-    assert_eq!(-3, r64::ggT(-6, -15));
-}
 
 #[test]
 fn test_add_assign() {

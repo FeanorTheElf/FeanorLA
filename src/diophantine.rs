@@ -86,7 +86,7 @@ fn transform_pivot_gcd_col<'a>(A: &mut Mat<'a>, iL: &mut Mat<'a>, pivot: usize) 
     }
     while current != 0 {
         let (a, b) = (A[pivot_row][pivot_col], A[pivot_row + current][pivot_col]);
-        let (s, t) = eea(a, b);
+        let (s, t, _) = eea(a, b);
         let gcd = s * a + t * b;
         let transform = [s, t, -b / gcd, a / gcd];
         A.transform_two_dims_left(pivot_row, pivot_row + current, &transform);
@@ -107,7 +107,7 @@ fn transform_pivot_gcd_row<'a>(A: &mut Mat<'a>, iR: &mut Mat<'a>, pivot: usize) 
     }
     while current != 0 {
         let (a, b) = (A[pivot_row][pivot_col], A[pivot_row][pivot_col + current]);
-        let (s, t) = eea(a, b);
+        let (s, t, _) = eea(a, b);
         let gcd = s * a + t * b;
         let transform = [s, -b / gcd, t, a / gcd];
         A.transform_two_dims_right(pivot_col, pivot_col + current, &transform);
@@ -173,25 +173,6 @@ fn find_not_zero<'a>(mat: &mut Mat<'a>) -> Option<(usize, usize)> {
         }
     }
     return None;
-}
-
-#[test]
-fn test_eea() {
-    assert_eq!((-1, 1), eea(6, 8));
-    assert_eq!((-2, 3), eea(16, 11));
-    assert_eq!((1, -2), eea(10, 4));
-    assert_eq!((0, 1), eea(0, 42));
-    assert_eq!((1, 0), eea(42, 42));
-}
-
-#[test]
-fn test_eea_neg() {
-    assert_eq!((-1, 1), eea(-6, -8));
-    assert_eq!((2, 1), eea(15, -27));
-    assert_eq!((2, 1), eea(-15, 27));
-    assert_eq!((2, -1), eea(-15, -27));
-    assert_eq!((1, 0), eea(-15, 0));
-    assert_eq!((0, 1), eea(0, -15));
 }
 
 #[test]
