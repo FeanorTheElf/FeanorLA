@@ -12,6 +12,7 @@ extern crate test;
 mod macros;
 
 pub mod alg;
+pub mod eea;
 pub mod indexed;
 pub mod vector;
 #[macro_use]

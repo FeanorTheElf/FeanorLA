@@ -1,4 +1,4 @@
-use std::ops::{ Add, Mul, Sub, Neg, Div, AddAssign, MulAssign, DivAssign, SubAssign };
+use std::ops::{ Add, Mul, Sub, Neg, Div, Rem, AddAssign, MulAssign, DivAssign, SubAssign, RemAssign };
 
 pub trait Zero {
     fn zero() -> Self;
@@ -206,3 +206,11 @@ impl CommutativeRing for f32 {}
 impl CommutativeRing for f64 {}
 impl Field for f32 {}
 impl Field for f64 {}
+
+pub trait Integer: Add + Sub + Mul + Neg + Rem + AddAssign + MulAssign + SubAssign + RemAssign {}
+
+impl Integer for i8 {}
+impl Integer for i16 {}
+impl Integer for i32 {}
+impl Integer for i64 {}
+impl Integer for i128 {}

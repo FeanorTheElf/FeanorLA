@@ -1,30 +1,11 @@
 use super::indexed::*;
 use super::matrix::{Matrix, MatrixRef, MatrixRefMut, MatrixView};
 use super::vector::{Vector, VectorRef, VectorView};
-use std::mem::swap;
+use super::eea::{eea, gcd};
 
 type Item = i32;
 type Mat<'a> = MatrixRefMut<'a, Item>;
 
-fn eea(fst: i32, snd: i32) -> (i32, i32) {
-    let (mut a, mut b) = if fst > snd { (fst, snd) } else { (snd, fst) };
-    let (mut sa, mut ta) = (1, 0);
-    let (mut sb, mut tb) = (0, 1);
-    while b != 0 {
-        ta -= a / b * tb;
-        sa -= a / b * sb;
-        a = a % b;
-        swap(&mut a, &mut b);
-        swap(&mut sa, &mut sb);
-        swap(&mut ta, &mut tb);
-    }
-    return if fst > snd { (sa, ta) } else { (ta, sa) };
-}
-
-fn gcd(a: i32, b: i32) -> i32 {
-    let (s, t) = eea(a, b);
-    return s * a + t * b;
-}
 
 pub fn diophantine_solve<'a>(A: MatrixRef<'a, Item>, b: VectorRef<Item>) -> Option<Vector<Item>> {
     let mut smith_A = Matrix::copy_of(A);

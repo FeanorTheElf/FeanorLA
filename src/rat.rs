@@ -7,6 +7,8 @@ use std::convert::From;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
+use super::eea::gcd;
+
 ///
 /// Overflow contract: r64 may overflow, if the naive formulas for the
 /// computations would cause an overflow, given all participating fractions
@@ -55,28 +57,8 @@ impl r64 {
         }
     }
 
-    // a < 0 => ggT(a, b) < 0
-    // a > 0 => ggT(a, b) > 0
-    // sign of b is irrelevant
-    // ggT(0, 0) = 1
-    fn ggT(mut a: i64, mut b: i64) -> i64 {
-        while b != 0 {
-            let c = a % b;
-            if c == 0 {
-                return if (a ^ b) & i64::min_value() != 0 {
-                    -b
-                } else {
-                    b
-                };
-            }
-            b = b % c;
-            a = c;
-        }
-        return if a == 0 { 1 } else { a };
-    }
-
     pub fn reduce(&mut self) {
-        let ggT: i64 = r64::ggT(self.denominator, self.numerator);
+        let ggT: i64 = gcd(self.denominator, self.numerator);
         self.denominator /= ggT;
         self.numerator /= ggT;
     }
