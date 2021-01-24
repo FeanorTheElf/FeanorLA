@@ -168,56 +168,59 @@ impl Root for f64 {
     }
 }
 
-pub trait Semiring: Sized + Add<Output = Self> + Mul<Output = Self> + AddAssign + MulAssign + PartialEq + Zero + One {}
+pub trait Ring: Sized + Add<Output = Self> + Mul<Output = Self> + AddAssign + PartialEq + Zero + One + Neg<Output = Self> + Sub<Output = Self> + SubAssign {}
 
-pub trait Ring: Semiring + Neg<Output = Self> + Sub<Output = Self> + SubAssign {}
+pub trait EuclideanRing : Ring + Rem<Output = Self> + RemAssign {}
 
-pub trait CommutativeRing: Ring {}
+pub trait Field: Ring + MulAssign + Div<Output = Self> + DivAssign {}
 
-pub trait EuclideanRing : CommutativeRing + Rem<Output = Self> + RemAssign {}
-
-pub trait Field: CommutativeRing + Div<Output = Self> + DivAssign {}
-
-impl Semiring for u8 {}
-impl Semiring for u16 {}
-impl Semiring for u32 {}
-impl Semiring for u64 {}
-impl Semiring for u128 {}
-
-impl Semiring for i8 {}
-impl Semiring for i16 {}
-impl Semiring for i32 {}
-impl Semiring for i64 {}
-impl Semiring for i128 {}
 impl Ring for i8 {}
 impl Ring for i16 {}
 impl Ring for i32 {}
 impl Ring for i64 {}
 impl Ring for i128 {}
-impl CommutativeRing for i8 {}
-impl CommutativeRing for i16 {}
-impl CommutativeRing for i32 {}
-impl CommutativeRing for i64 {}
-impl CommutativeRing for i128 {}
 impl EuclideanRing for i8 {}
 impl EuclideanRing for i16 {}
 impl EuclideanRing for i32 {}
 impl EuclideanRing for i64 {}
 impl EuclideanRing for i128 {}
 
-impl Semiring for f32 {}
-impl Semiring for f64 {}
 impl Ring for f32 {}
 impl Ring for f64 {}
-impl CommutativeRing for f32 {}
-impl CommutativeRing for f64 {}
 impl Field for f32 {}
 impl Field for f64 {}
 
-pub trait Integer: Sized + Clone + Eq + Ord + EuclideanRing + /* truncating division */ Div<Output = Self> + DivAssign {}
+pub trait Integer: Clone + Eq + Ord + EuclideanRing + /* truncating division */ Div<Output = Self> + DivAssign {}
 
 impl Integer for i8 {}
 impl Integer for i16 {}
 impl Integer for i32 {}
 impl Integer for i64 {}
 impl Integer for i128 {}
+
+pub trait Float: Clone + PartialEq + PartialOrd + Field {
+
+    ///
+    /// This function should yield a non-negative floating point value that gives an estimate
+    /// for the size of the float. Namely, it should hold that for any float type F have
+    /// 0_F.stability_abs() == 0 and if |a| >> |b| (much bigger), then a.stability_abs() > b.stability_abs()
+    /// 
+    /// This can be used by algorithms to optimize numerical stability
+    /// 
+    fn stability_abs(&self) -> f32;
+
+}
+
+impl Float for f32 {
+    
+    fn stability_abs(&self) -> f32 {
+        self.abs()
+    }
+}
+
+impl Float for f64 {
+    
+    fn stability_abs(&self) -> f32 {
+        (*self as f32).abs()
+    }
+}

@@ -26,6 +26,11 @@ impl<T> MatrixViewMut<T> for MatrixOwned<T> {
     fn at_mut(&mut self, row: usize, col: usize) -> &mut T {
         &mut self.data[row * self.cols + col]
     }
+
+    fn swap(&mut self, fst: (usize, usize), snd: (usize, usize)) {
+        assert!(fst != snd);
+        self.data.swap(fst.1 + fst.0 * self.cols, snd.1 + snd.0 * self.cols);
+    }
 }
 
 

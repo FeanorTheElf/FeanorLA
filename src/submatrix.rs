@@ -26,6 +26,34 @@ pub struct MatrixRefMut<'a, M, T>
     element: PhantomData<T>
 }
 
+impl<'a, M, T> MatrixRef<'a, M, T>
+    where M: MatrixView<T>
+{
+    pub fn new(rows_begin: usize, rows_end: usize, cols_begin: usize, cols_end: usize, matrix: &'a M) -> Self {
+        assert!(rows_begin < rows_end);
+        assert!(cols_begin < cols_end);
+        assert!(rows_end <= matrix.row_count());
+        assert!(cols_end <= matrix.col_count());
+        MatrixRef {
+            rows_begin, rows_end, cols_end, cols_begin, matrix, element: PhantomData
+        }
+    }
+}
+
+impl<'a, M, T> MatrixRefMut<'a, M, T>
+    where M: MatrixViewMut<T>
+{
+    pub fn new(rows_begin: usize, rows_end: usize, cols_begin: usize, cols_end: usize, matrix: &'a mut M) -> Self {
+        assert!(rows_begin < rows_end);
+        assert!(cols_begin < cols_end);
+        assert!(rows_end <= matrix.row_count());
+        assert!(cols_end <= matrix.col_count());
+        MatrixRefMut {
+            rows_begin, rows_end, cols_end, cols_begin, matrix, element: PhantomData
+        }
+    }
+}
+
 impl<'a, M, T> MatrixView<T> for MatrixRef<'a, M, T>
     where M: MatrixView<T>
 {
@@ -63,6 +91,14 @@ impl<'a, M, T> MatrixViewMut<T> for MatrixRefMut<'a, M, T>
 {
     fn at_mut(&mut self, row: usize, col: usize) -> &mut T {
         self.matrix.at_mut(row + self.rows_begin, col + self.rows_end)
+    }
+    
+    fn swap(&mut self, fst: (usize, usize), snd: (usize, usize)) {
+        self.assert_row_in_range(fst.0);
+        self.assert_row_in_range(snd.0);
+        self.assert_col_in_range(fst.1);
+        self.assert_col_in_range(snd.1);
+        self.matrix.swap((fst.0 + self.rows_begin, fst.1 + self.cols_begin), (snd.0 + self.rows_begin, snd.1 + self.cols_begin))
     }
 }
 

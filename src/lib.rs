@@ -12,12 +12,16 @@ mod macros;
 
 pub mod alg;
 pub mod eea;
-pub mod indexed;
+
 pub mod vector_view;
 pub mod vector;
 pub mod matrix_view;
 pub mod submatrix;
 pub mod matrix_owned;
+pub mod matrix_vector;
+
+pub mod mat;
+
 // pub mod prelude;
 // pub mod rat;
 // pub mod simplex;

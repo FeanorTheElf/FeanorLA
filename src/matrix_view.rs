@@ -110,6 +110,7 @@ pub trait FromFnCreateable<T> : MatrixView<T> {
 pub trait MatrixViewMut<T>: MatrixView<T> {
 
     fn at_mut(&mut self, row: usize, col: usize) -> &mut T;
+    fn swap(&mut self, fst: (usize, usize), snd: (usize, usize));
 }
 
 pub trait LifetimeMatrixMutRowIter<'a, T>: MatrixViewMut<T> {
