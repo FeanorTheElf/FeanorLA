@@ -1,5 +1,6 @@
 use super::matrix_view::*;
 use super::vector_view::*;
+use super::vector::*;
 use std::marker::PhantomData;
 
 #[derive(Debug)]
@@ -77,35 +78,6 @@ impl<'a, M, T> Clone for MatrixRef<'a, M, T>
 impl<'a, M, T> Copy for MatrixRef<'a, M, T> 
     where M: MatrixView<T> {}
 
-#[derive(Debug)]
-pub struct MatrixRefMutRowRef<'a, M, T>
-    where M: LifetimeMatrixMutRowIter<'a, T>
-{
-    base: M::RowRef,
-    from_col: usize,
-    to_col: usize
-}
-
-impl<'a, M, T> VectorView<T> for MatrixRefMutRowRef<'a, M, T>
-    where M: LifetimeMatrixMutRowIter<'a, T>
-{
-    fn len(&self) -> usize {
-        self.to_col - self.from_col
-    }
-
-    fn at(&self, i: usize) -> &T {
-        self.base.at(i + self.from_col)
-    }
-}
-
-impl<'a, M, T> VectorViewMut<T> for MatrixRefMutRowRef<'a, M, T>
-    where M: LifetimeMatrixMutRowIter<'a, T>
-{
-    fn at_mut(&mut self, i: usize) -> &mut T {
-        self.base.at_mut(i + self.from_col)
-    }
-}
-
 pub struct MatrixRefMutRowIter<'a, M, T>
     where M: LifetimeMatrixMutRowIter<'a, T>
 {
@@ -118,18 +90,14 @@ pub struct MatrixRefMutRowIter<'a, M, T>
 impl<'a, M, T> Iterator for MatrixRefMutRowIter<'a, M, T>
     where M: LifetimeMatrixMutRowIter<'a, T>
 {
-    type Item = MatrixRefMutRowRef<'a, M, T>;
+    type Item = VectorRestriction<M::RowRef, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.to_yield == 0 {
             return None;
         } else {
             self.to_yield -= 1;
-            return self.current.next().map(|r| MatrixRefMutRowRef {
-                base: r,
-                from_col: self.from_col,
-                to_col: self.to_col
-            });
+            return self.current.next().map(|r| VectorRestriction::restrict(r, self.from_col, self.to_col));
         }
     }
 }
@@ -137,7 +105,7 @@ impl<'a, M, T> Iterator for MatrixRefMutRowIter<'a, M, T>
 impl<'a, 'b, M: 'a, T: 'a> LifetimeMatrixMutRowIter<'a, T> for MatrixRefMut<'b, M, T> 
     where M: LifetimeMatrixMutRowIter<'a, T>
 {
-    type RowRef = MatrixRefMutRowRef<'a, M, T>;
+    type RowRef = VectorRestriction<M::RowRef, T>;
     type RowIter = MatrixRefMutRowIter<'a, M, T>;
 
     fn rows_mut(&'a mut self) -> Self::RowIter {
@@ -155,11 +123,7 @@ impl<'a, 'b, M: 'a, T: 'a> LifetimeMatrixMutRowIter<'a, T> for MatrixRefMut<'b, 
 
     fn get_row_mut(&'a mut self, i: usize) -> Self::RowRef {
         self.assert_row_in_range(i);
-        MatrixRefMutRowRef {
-            from_col: self.cols_begin,
-            to_col: self.cols_end,
-            base: self.matrix.get_row_mut(self.rows_begin + i)
-        }
+        VectorRestriction::restrict(self.matrix.get_row_mut(i + self.rows_begin), self.cols_begin, self.cols_end)
     }
 }
 
@@ -188,4 +152,35 @@ fn test_row_iter() {
     assert_eq!(13, *r1.at(1));
     assert_eq!(10, *r2.at(0));
     assert_eq!(14, *r2.at(1));
+
+    assert_eq!(3, *a.get_row(3).at(0));
+}
+
+#[test]
+fn test_row_iter_mut() {
+    let mut a = MatrixOwned::from_fn(4, 4, |i, j| i + 4 * j);
+    let mut b = MatrixRefMut {
+        rows_begin: 1,
+        rows_end: 3,
+        cols_begin: 2,
+        cols_end: 4,
+        element: PhantomData,
+        matrix: &mut a
+    };
+    let mut it = b.rows_mut();
+    let mut r1 = it.next().unwrap();
+    let mut r2 = it.next().unwrap();
+    assert!(it.next().is_none());
+
+    assert_eq!(2, r1.len());
+    assert_eq!(9, *r1.at(0));
+    assert_eq!(13, *r1.at(1));
+    assert_eq!(14, *r2.at(1));
+    assert_eq!(9, *r1.at_mut(0));
+    assert_eq!(14, *r2.at_mut(1));
+
+    *r1.at_mut(1) = 20;
+    *a.get_row_mut(3).at_mut(2) = 21;
+    assert_eq!(20, *a.at(1, 3));
+    assert_eq!(21, *a.at(3, 2));
 }

@@ -104,3 +104,51 @@ impl<T> VectorOwned<T>
         VectorOwned::new((0..len).map(|i| if i == index { T::one() } else { T::zero() }).collect::<Vec<T>>().into_boxed_slice())
     }
 }
+
+
+#[derive(Debug)]
+pub struct VectorRestriction<V, T>
+    where V: VectorView<T>
+{
+    base: V,
+    from: usize,
+    to: usize,
+    element: PhantomData<T>
+}
+
+
+impl<V, T> VectorRestriction<V, T>
+    where V: VectorView<T>
+{
+    pub fn restrict(vector: V, from: usize, to: usize) -> Self {
+        vector.assert_in_range(from);
+        assert!(to <= vector.len());
+        assert!(from < to);
+        VectorRestriction {
+            base: vector,
+            from: from,
+            to: to,
+            element: PhantomData
+        }
+    }
+}
+
+impl<V, T> VectorView<T> for VectorRestriction<V, T>
+    where V: VectorView<T>
+{
+    fn len(&self) -> usize {
+        self.to - self.from
+    }
+
+    fn at(&self, i: usize) -> &T {
+        self.base.at(i + self.from)
+    }
+}
+
+impl<V, T> VectorViewMut<T> for VectorRestriction<V, T>
+    where V: VectorViewMut<T>
+{
+    fn at_mut(&mut self, i: usize) -> &mut T {
+        self.base.at_mut(i + self.from)
+    }
+}
