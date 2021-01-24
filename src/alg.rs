@@ -174,6 +174,8 @@ pub trait Ring: Semiring + Neg<Output = Self> + Sub<Output = Self> + SubAssign {
 
 pub trait CommutativeRing: Ring {}
 
+pub trait EuclideanRing : CommutativeRing + Rem<Output = Self> + RemAssign {}
+
 pub trait Field: CommutativeRing + Div<Output = Self> + DivAssign {}
 
 impl Semiring for u8 {}
@@ -197,6 +199,11 @@ impl CommutativeRing for i16 {}
 impl CommutativeRing for i32 {}
 impl CommutativeRing for i64 {}
 impl CommutativeRing for i128 {}
+impl EuclideanRing for i8 {}
+impl EuclideanRing for i16 {}
+impl EuclideanRing for i32 {}
+impl EuclideanRing for i64 {}
+impl EuclideanRing for i128 {}
 
 impl Semiring for f32 {}
 impl Semiring for f64 {}
@@ -207,32 +214,10 @@ impl CommutativeRing for f64 {}
 impl Field for f32 {}
 impl Field for f64 {}
 
-pub trait Integer: Sized + Clone + Rem<Output = Self> + RemAssign + Eq + Ord + Ring + /* truncating division */ Div<Output = Self> + DivAssign {
-    fn div_euclid(self, rhs: Self) -> Self;
-}
+pub trait Integer: Sized + Clone + Eq + Ord + EuclideanRing + /* truncating division */ Div<Output = Self> + DivAssign {}
 
-impl Integer for i8 {
-    fn div_euclid(self, rhs: Self) -> Self {
-        self.div_euclid(rhs)
-    }
-}
-impl Integer for i16 {
-    fn div_euclid(self, rhs: Self) -> Self {
-        self.div_euclid(rhs)
-    }
-}
-impl Integer for i32 {
-    fn div_euclid(self, rhs: Self) -> Self {
-        self.div_euclid(rhs)
-    }
-}
-impl Integer for i64 {
-    fn div_euclid(self, rhs: Self) -> Self {
-        self.div_euclid(rhs)
-    }
-}
-impl Integer for i128 {
-    fn div_euclid(self, rhs: Self) -> Self {
-        self.div_euclid(rhs)
-    }
-}
+impl Integer for i8 {}
+impl Integer for i16 {}
+impl Integer for i32 {}
+impl Integer for i64 {}
+impl Integer for i128 {}

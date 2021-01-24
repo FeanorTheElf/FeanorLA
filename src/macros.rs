@@ -1,4 +1,4 @@
-use super::matrix::MatrixView;
+use super::matrix_view::MatrixView;
 
 #[cfg(test)]
 pub trait ApproxEq {
@@ -17,8 +17,8 @@ impl<M> ApproxEq for M
     where M: MatrixView<f64>
 {
     fn approx_eq(&self, rhs: &Self, delta: f64) -> bool {
-        for row in 0..self.rows() {
-            for col in 0..self.cols() {
+        for row in 0..self.row_count() {
+            for col in 0..self.col_count() {
                 if !self.at(row, col).approx_eq(rhs.at(row, col), delta) {
                     return false;
                 }
