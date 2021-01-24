@@ -1,5 +1,3 @@
-use super::alg::*;
-use std::marker::PhantomData;
 
 pub trait VectorView<T> {
     fn len(&self) -> usize;

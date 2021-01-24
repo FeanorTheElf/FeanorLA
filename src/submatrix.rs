@@ -1,5 +1,4 @@
 use super::matrix_view::*;
-use super::vector_view::*;
 use super::vector::*;
 use std::marker::PhantomData;
 
@@ -129,6 +128,8 @@ impl<'a, 'b, M: 'a, T: 'a> LifetimeMatrixMutRowIter<'a, T> for MatrixRefMut<'b, 
 
 #[cfg(test)]
 use super::matrix_owned::MatrixOwned;
+#[cfg(test)]
+use super::vector_view::*;
 
 #[test]
 fn test_row_iter() {
