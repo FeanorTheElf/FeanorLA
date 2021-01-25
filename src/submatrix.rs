@@ -173,32 +173,6 @@ use super::matrix_owned::MatrixOwned;
 use super::vector_view::*;
 
 #[test]
-fn test_row_iter() {
-    let a = MatrixOwned::from_fn(4, 4, |i, j| i + 4 * j);
-    let b = MatrixRef {
-        rows_begin: 1,
-        rows_end: 3,
-        cols_begin: 2,
-        cols_end: 4,
-        element: PhantomData,
-        matrix: &a
-    };
-    let mut it = b.rows();
-    let r1 = it.next().unwrap();
-    let r2 = it.next().unwrap();
-    assert!(it.next().is_none());
-
-    assert_eq!(2, r1.len());
-    assert_eq!(2, r2.len());
-    assert_eq!(9, *r1.at(0));
-    assert_eq!(13, *r1.at(1));
-    assert_eq!(10, *r2.at(0));
-    assert_eq!(14, *r2.at(1));
-
-    assert_eq!(3, *a.get_row(3).at(0));
-}
-
-#[test]
 fn test_row_iter_mut() {
     let mut a = MatrixOwned::from_fn(4, 4, |i, j| i + 4 * j);
     let mut b = MatrixRefMut {

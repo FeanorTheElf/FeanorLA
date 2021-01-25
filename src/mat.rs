@@ -5,6 +5,7 @@ use super::vector::*;
 use super::submatrix::*;
 use super::matrix_owned::*;
 use super::matrix_vector::*;
+use super::matrix_row_col::*;
 use super::alg::*;
 
 use std::marker::PhantomData;
@@ -70,20 +71,22 @@ impl<M, T> Matrix<M, T>
         Matrix::new(MatrixRef::new(rows_begin, rows_end, cols_begin, cols_end, &self.data))
     }
 
-    pub fn row<'a>(&'a self, i: usize) -> Vector<MatrixRow<'a, T, M>, T> {
-        Vector::new(self.data.get_row(i))
+    pub fn rows(&self) -> MatrixRowIter<T, M> {
+        MatrixRowIter::new(&self.data)
     }
 
-    pub fn rows<'a>(&'a self) -> impl Iterator<Item = Vector<MatrixRow<'a, T, M>, T>> {
-        self.data.rows().map(|r| Vector::new(r))
+    pub fn row(&self, row: usize) -> Vector<MatrixRow<T, M>, T> {
+        self.data.assert_row_in_range(row);
+        Vector::new(MatrixRow::new(&self.data, row))
     }
 
-    pub fn col<'a>(&'a self, i: usize) -> Vector<MatrixCol<'a, T, M>, T> {
-        Vector::new(self.data.get_col(i))
+    pub fn cols(&self) -> MatrixColIter<T, M> {
+        MatrixColIter::new(&self.data)
     }
 
-    pub fn cols<'a>(&'a self) -> impl Iterator<Item = Vector<MatrixCol<'a, T, M>, T>> {
-        self.data.cols().map(|r| Vector::new(r))
+    pub fn col(&self, col: usize) -> Vector<MatrixCol<T, M>, T> {
+        self.data.assert_col_in_range(col);
+        Vector::new(MatrixCol::new(&self.data, col))
     }
 }
 
@@ -494,4 +497,23 @@ fn test_invert_matrix() {
     assert_eq!(-0.25, *b_inv.at(1, 1));
     assert_eq!(-1., *b_inv.at(0, 0));
     assert_eq!(0.5, *b_inv.at(0, 1));
+}
+
+#[test]
+fn test_row_iter() {
+    let a = Matrix::from_fn(4, 4, |i, j| i + 4 * j);
+    let b = a.submatrix(1..3, 2..4);
+    let mut it = b.rows();
+    let r1 = it.next().unwrap();
+    let r2 = it.next().unwrap();
+    assert!(it.next().is_none());
+
+    assert_eq!(2, r1.len());
+    assert_eq!(2, r2.len());
+    assert_eq!(9, *r1.at(0));
+    assert_eq!(13, *r1.at(1));
+    assert_eq!(10, *r2.at(0));
+    assert_eq!(14, *r2.at(1));
+
+    assert_eq!(3, *a.row(3).at(0));
 }

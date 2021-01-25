@@ -15,12 +15,13 @@ pub mod eea;
 
 pub mod vector_view;
 pub mod vector;
-pub mod vec;
 pub mod matrix_view;
+pub mod matrix_row_col;
 pub mod submatrix;
 pub mod matrix_owned;
 pub mod matrix_vector;
 
+pub mod vec;
 pub mod mat;
 
 pub mod prelude;
