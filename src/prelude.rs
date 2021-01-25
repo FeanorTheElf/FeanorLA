@@ -4,3 +4,4 @@ pub use super::vec::*;
 pub use super::matrix_view::*;
 pub use super::vector_view::*;
 pub use super::matrix_owned::*;
+pub use super::vector::*;

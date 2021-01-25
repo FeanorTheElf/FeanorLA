@@ -1,18 +1,19 @@
 use super::matrix_view::*;
 use super::vector_view::*;
+use super::vec::*;
 use std::marker::PhantomData;
 
 pub struct ColumnVector<V, T>
     where V: VectorView<T>
 {
-    base: V,
+    base: Vector<V, T>,
     element: PhantomData<T>
 }
 
 impl<V, T> ColumnVector<V, T>
     where V: VectorView<T>
 {
-    pub fn new(vector: V) -> Self {
+    pub fn new(vector: Vector<V, T>) -> Self {
         ColumnVector {
             base: vector,
             element: PhantomData

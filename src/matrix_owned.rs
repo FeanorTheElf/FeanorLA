@@ -32,7 +32,13 @@ impl<T> MatrixViewMut<T> for MatrixOwned<T> {
     }
 
     fn swap(&mut self, fst: (usize, usize), snd: (usize, usize)) {
-        assert!(fst != snd);
+        self.assert_row_in_range(fst.0);
+        self.assert_row_in_range(snd.0);
+        self.assert_col_in_range(fst.1);
+        self.assert_col_in_range(snd.1);
+        if fst == snd {
+            return;
+        }
         self.data.swap(fst.1 + fst.0 * self.cols, snd.1 + snd.0 * self.cols);
     }
 }

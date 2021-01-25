@@ -58,6 +58,9 @@ impl<T> VectorViewMut<T> for VectorOwned<T> {
     fn swap(&mut self, i: usize, j: usize) {
         self.assert_in_range(i);
         self.assert_in_range(j);
+        if i == j {
+            return;
+        }
         self.data.swap(i, j);
     }
 }
@@ -66,7 +69,7 @@ impl<'a, V, T> VectorView<T> for VectorRef<'a, V, T>
     where V: VectorView<T>
 {
     fn len(&self) -> usize {
-        self.from - self.to
+        self.to - self.from
     }
 
     fn at(&self, index: usize) -> &T {
@@ -79,7 +82,7 @@ impl<'a, V, T> VectorView<T> for VectorRefMut<'a, V, T>
 {
 
     fn len(&self) -> usize {
-        self.from - self.to
+        self.to - self.from
     }
 
     fn at(&self, index: usize) -> &T {
@@ -141,6 +144,18 @@ impl<T> VectorOwned<T> {
         where F: FnMut(usize) -> T
     {
         Self::new((0..len).map(|i| f(i)).collect::<Vec<_>>().into_boxed_slice())
+    }
+
+    pub fn from_array<const L: usize>(data: [T; L]) -> Self {
+        VectorOwned::new(std::array::IntoIter::new(data).collect::<Vec<_>>().into_boxed_slice())
+    }
+}
+
+impl<T> VectorOwned<T>
+    where T: Zero 
+{
+    pub fn zero(len: usize) -> VectorOwned<T> {
+        VectorOwned::new((0..len).map(|_| T::zero()).collect::<Vec<T>>().into_boxed_slice())
     }
 }
 

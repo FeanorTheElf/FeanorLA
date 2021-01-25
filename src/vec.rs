@@ -80,6 +80,42 @@ impl<V, T> Vector<V, T>
     }
 }
 
+impl<V, W, T, U> PartialEq<Vector<W, U>> for Vector<V, T>
+    where V: VectorView<T>, W: VectorView<U>, T: PartialEq<U>
+{
+    fn eq(&self, rhs: &Vector<W, U>) -> bool {
+        for i in 0..self.len() {
+            if self.at(i) != rhs.at(i) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
+impl<V, T> Eq for Vector<V, T>
+    where V: VectorView<T>, T: Eq
+{}
+
+impl<V, T> Vector<V, T>
+    where V: VectorView<T>, T: Clone
+{
+    pub fn to_owned(&self) -> Vector<VectorOwned<T>, T> {
+        Vector::new(
+            VectorOwned::from_fn(self.len(), |i| self.at(i).clone())
+        )
+    }
+}
+
+impl<T> Vector<VectorOwned<T>, T> {
+    
+    pub fn from_array<const L: usize>(data: [T; L]) -> Self {
+        Vector::new(
+            VectorOwned::from_array(data)
+        )
+    }
+}
+
 impl<V, T> Vector<V, T>
     where V: VectorViewMut<T>
 {
@@ -133,5 +169,21 @@ impl<V, T, U> Mul<U> for Vector<V, T>
         Vector::new(
             VectorOwned::from_fn(self.len(), |i| self.at(i).clone() * rhs.clone())
         )
+    }
+}
+
+impl<T> Vector<VectorOwned<T>, T>
+    where T: Zero
+{
+    pub fn zero(len: usize) -> Self {
+        Vector::new(VectorOwned::zero(len))
+    }
+}
+
+impl<T> Vector<VectorOwned<T>, T>
+    where T: Zero + One
+{
+    pub fn unit_vector(i: usize, len: usize) -> Self {
+        Vector::new(VectorOwned::unit_vector(i, len))
     }
 }

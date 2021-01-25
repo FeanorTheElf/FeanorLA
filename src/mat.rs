@@ -1,13 +1,14 @@
 use super::matrix_view::*;
 use super::vector_view::*;
 use super::vec::*;
+use super::vector::*;
 use super::submatrix::*;
 use super::matrix_owned::*;
 use super::matrix_vector::*;
 use super::alg::*;
 
 use std::marker::PhantomData;
-use std::ops::{AddAssign, Add, Mul, RangeBounds, Bound};
+use std::ops::{AddAssign, Add, Mul, RangeBounds, Bound, MulAssign};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Matrix<M, T>
@@ -43,8 +44,8 @@ impl<M, T> Matrix<M, T>
         self.submatrix(.., ..)
     }
 
-    pub fn submatrix<'a, R>(&'a self, rows: R, cols: R) -> Matrix<MatrixRef<'a, M, T>, T> 
-        where R: RangeBounds<usize>
+    pub fn submatrix<'a, R, S>(&'a self, rows: R, cols: S) -> Matrix<MatrixRef<'a, M, T>, T> 
+        where R: RangeBounds<usize>, S: RangeBounds<usize>
     {
         let rows_begin = match rows.start_bound() {
             Bound::Included(x) => *x,
@@ -76,12 +77,20 @@ impl<M, T> Matrix<M, T>
     pub fn rows<'a>(&'a self) -> impl Iterator<Item = Vector<MatrixRow<'a, T, M>, T>> {
         self.data.rows().map(|r| Vector::new(r))
     }
+
+    pub fn col<'a>(&'a self, i: usize) -> Vector<MatrixCol<'a, T, M>, T> {
+        Vector::new(self.data.get_col(i))
+    }
+
+    pub fn cols<'a>(&'a self) -> impl Iterator<Item = Vector<MatrixCol<'a, T, M>, T>> {
+        self.data.cols().map(|r| Vector::new(r))
+    }
 }
 
 impl<V, T> Matrix<ColumnVector<V, T>, T>
     where V: VectorView<T>
 {
-    pub fn col_vec(vector: V) -> Self {
+    pub fn col_vec(vector: Vector<V, T>) -> Self {
         Matrix::new(ColumnVector::new(vector))
     }
 }
@@ -106,6 +115,9 @@ impl<M, T> Matrix<M, T>
     pub fn swap_rows(&mut self, fst: usize, snd: usize) {
         self.data.assert_row_in_range(fst);
         self.data.assert_row_in_range(snd);
+        if fst == snd {
+            return;
+        }
         for col in 0..self.col_count() {
             self.data.swap((fst, col), (snd, col));
         }
@@ -114,6 +126,9 @@ impl<M, T> Matrix<M, T>
     pub fn swap_cols(&mut self, fst: usize, snd: usize) {
         self.data.assert_col_in_range(fst);
         self.data.assert_col_in_range(snd);
+        if fst == snd {
+            return;
+        }
         for row in 0..self.row_count() {
             self.data.swap((row, fst), (row, snd));
         }
@@ -123,8 +138,8 @@ impl<M, T> Matrix<M, T>
         self.submatrix_mut(.., ..)
     }
 
-    pub fn submatrix_mut<'a, R>(&'a mut self, rows: R, cols: R) -> Matrix<MatrixRefMut<'a, M, T>, T> 
-        where R: RangeBounds<usize>
+    pub fn submatrix_mut<'a, R, S>(&'a mut self, rows: R, cols: S) -> Matrix<MatrixRefMut<'a, M, T>, T> 
+        where R: RangeBounds<usize>, S: RangeBounds<usize>
     {
         let rows_begin = match rows.start_bound() {
             Bound::Included(x) => *x,
@@ -148,6 +163,16 @@ impl<M, T> Matrix<M, T>
         };
         Matrix::new(MatrixRefMut::new(rows_begin, rows_end, cols_begin, cols_end, &mut self.data))
     }
+
+    pub fn scale<U>(&mut self, rhs: U) 
+        where T: MulAssign<U>, U: Clone
+    {
+        for i in 0..self.row_count() {
+            for j in 0..self.col_count() {
+                *self.at_mut(i, j) *= rhs.clone();
+            }
+        }
+    }
 }
 
 impl<M, T> Matrix<M, T>
@@ -169,6 +194,15 @@ impl<M, T> Matrix<M, T>
         Matrix::new(
             MatrixOwned::from_fn(self.row_count(), self.col_count(), |i, j| self.at(i, j).clone())
         )
+    }
+
+    pub fn copy_vec(&self) -> Vector<VectorOwned<T>, T> {
+        assert!(self.col_count() == 1 || self.row_count() == 1);
+        if self.col_count() == 1 {
+            self.col(0).to_owned()
+        } else {
+            self.row(0).to_owned()
+        }
     }
 }
 
@@ -206,6 +240,16 @@ impl<M, T> Matrix<M, T>
             *self.at_mut(row, fst) = self.at(row, fst).clone() * transform[0].clone() + self.at(row, snd).clone() * transform[2].clone();
             *self.at_mut(row, snd) = b * transform[1].clone() + self.at(row, snd).clone() * transform[3].clone();
         }
+    }
+}
+
+impl<M, T> Matrix<M, T> 
+    where M: MatrixView<T>, T: Ring + Clone
+{
+    pub fn frobenius_square(&self) -> T {
+        let mut it = self.rows().flat_map(|r| (0..r.len()).map(move |i| r.at(i).clone() * r.at(i).clone()));
+        let initial = it.next().unwrap();
+        it.fold(initial, |a, b| a + b)
     }
 }
 

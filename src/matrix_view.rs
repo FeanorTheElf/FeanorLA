@@ -1,8 +1,6 @@
 use super::vector_view::*;
 use std::marker::PhantomData;
 
-// Traits
-
 pub struct MatrixRow<'a, T, M>
     where M: MatrixView<T> 
 {
@@ -68,6 +66,71 @@ impl<'a, T, M> Clone for MatrixRowIter<'a, T, M>
     }
 }
 
+pub struct MatrixCol<'a, T, M>
+    where M: MatrixView<T> 
+{
+    col: usize,
+    matrix: &'a M,
+    item: PhantomData<T>
+}
+
+impl<'a, T, M> Copy for MatrixCol<'a, T, M> 
+    where M: MatrixView<T> {}
+
+impl<'a, T, M> Clone for MatrixCol<'a, T, M>
+    where M: MatrixView<T> 
+{
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<'a, T, M> VectorView<T> for MatrixCol<'a, T, M> 
+    where M: MatrixView<T>
+{
+    fn len(&self) -> usize {
+        self.matrix.row_count()
+    }
+
+    fn at(&self, i: usize) -> &T {
+        self.assert_in_range(i);
+        self.matrix.at(i, self.col)
+    }
+}
+
+pub struct MatrixColIter<'a, T, M>
+    where M: MatrixView<T> 
+{
+    current: MatrixCol<'a, T, M>
+}
+
+impl<'a, T, M> Iterator for MatrixColIter<'a, T, M> 
+    where M: MatrixView<T>
+{
+    type Item = MatrixCol<'a, T, M>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = self.current;
+        if result.col < result.matrix.col_count() {
+            self.current.col += 1;
+            return Some(result);
+        } else {
+            return None;
+        }
+    }
+}
+
+impl<'a, T, M> Copy for MatrixColIter<'a, T, M> 
+    where M: MatrixView<T> {}
+
+impl<'a, T, M> Clone for MatrixColIter<'a, T, M>
+    where M: MatrixView<T> 
+{
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
 pub trait MatrixView<T>: Sized {
 
     fn row_count(&self) -> usize;
@@ -96,6 +159,25 @@ pub trait MatrixView<T>: Sized {
         self.assert_row_in_range(row);
         MatrixRow {
             row: row,
+            matrix: self,
+            item: PhantomData
+        }
+    }
+
+    fn cols(&self) -> MatrixColIter<T, Self> {
+        MatrixColIter {
+            current: MatrixCol {
+                col: 0,
+                matrix: self,
+                item: PhantomData
+            }
+        }
+    }
+
+    fn get_col(&self, i: usize) -> MatrixCol<T, Self> {
+        self.assert_col_in_range(i);
+        MatrixCol {
+            col: 0,
             matrix: self,
             item: PhantomData
         }

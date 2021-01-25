@@ -26,5 +26,5 @@ pub mod mat;
 pub mod prelude;
 pub mod rat;
 pub mod simplex;
-// pub mod diophantine;
-// pub mod qr;
+pub mod diophantine;
+pub mod qr;

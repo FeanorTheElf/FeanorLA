@@ -1,36 +1,34 @@
-use super::indexed::*;
-use super::matrix::{Matrix, MatrixRef, MatrixRefMut, MatrixView};
-use super::vector::{Vector, VectorRef, VectorView};
+use super::prelude::*;
 use super::eea::{eea, gcd};
 
 type Item = i32;
-type Mat<'a> = MatrixRefMut<'a, Item>;
 
-
-pub fn diophantine_solve<'a>(A: MatrixRef<'a, Item>, b: VectorRef<Item>) -> Option<Vector<Item>> {
-    let mut smith_A = Matrix::copy_of(A);
-    let mut iL = Matrix::<Item>::identity(A.rows());
-    let mut iR = Matrix::<Item>::identity(A.cols());
+pub fn diophantine_solve<M, V>(A: Matrix<M, Item>, b: Vector<V, Item>) -> Option<Vector<VectorOwned<Item>, Item>> 
+    where M: MatrixView<Item>, V: VectorView<Item>
+{
+    let mut smith_A = A.to_owned();
+    let mut iL = Matrix::identity(A.row_count(), A.row_count());
+    let mut iR = Matrix::identity(A.col_count(), A.col_count());
     smith(
-        &mut smith_A.as_mut(),
-        &mut iL.as_mut(),
-        &mut iR.as_mut(),
+        smith_A.as_mut(),
+        iL.as_mut(),
+        iR.as_mut(),
         0,
     );
     // x is solution of (L * smith_A) x = b, get result through r := R^-1 * x
-    let mut x = Vector::<Item>::zero(A.cols());
-    let c: Matrix<i32> = iL * b;
-    for i in 0..usize::min(x.len(), A.rows()) {
-        let entry = smith_A[i][i];
-        if entry == 0 && c[i][0] != 0 {
+    let mut x = Vector::zero(A.col_count());
+    let c = iL * Matrix::col_vec(b);
+    for i in 0..usize::min(x.len(), A.row_count()) {
+        let entry = *smith_A.at(i, i);
+        if entry == 0 && *c.at(i, 0) != 0 {
             return None;
-        } else if entry != 0 && c[i][0] % entry != 0 {
+        } else if entry != 0 && *c.at(i, 0) % entry != 0 {
             return None;
         } else if entry != 0 {
-            x[i] = c[i][0] / entry;
+            *x.at_mut(i) = *c.at(i, 0) / entry;
         }
     }
-    return Some((iR * x).into_column_vector());
+    return Some((iR * Matrix::col_vec(x)).copy_vec());
 }
 
 ///
@@ -40,11 +38,13 @@ pub fn diophantine_solve<'a>(A: MatrixRef<'a, Item>, b: VectorRef<Item>) -> Opti
 /// Instead of L and R, this function works on their
 /// inverses iL and iR.
 ///
-pub fn smith<'a>(A: &mut Mat<'a>, iL: &mut Mat<'a>, iR: &mut Mat<'a>, pivot: usize) {
-    if pivot == A.rows() || pivot == A.cols() {
+pub fn smith<M, N, K>(mut A: Matrix<M, Item>, mut iL: Matrix<N, Item>, mut iR: Matrix<K, Item>, pivot: usize) 
+    where M: MatrixViewMut<Item>, N: MatrixViewMut<Item>, K: MatrixViewMut<Item>
+{
+    if pivot == A.row_count() || pivot == A.col_count() {
         return;
     }
-    let is_zero_matrix = swap_pivot_entry_if_zero(A, iL, iR, pivot);
+    let is_zero_matrix = swap_pivot_entry_if_zero(A.as_mut(), iL.as_mut(), iR.as_mut(), pivot);
     // pivot must be != 0
     if is_zero_matrix {
         return;
@@ -52,68 +52,76 @@ pub fn smith<'a>(A: &mut Mat<'a>, iL: &mut Mat<'a>, iR: &mut Mat<'a>, pivot: usi
     // pivot must divide all entries on pivot row and pivot column
     let mut changed = true;
     while changed {
-        changed = transform_pivot_gcd_col(A, iL, pivot) || transform_pivot_gcd_row(A, iR, pivot);
+        changed = transform_pivot_gcd_col(A.as_mut(), iL.as_mut(), pivot) || transform_pivot_gcd_row(A.as_mut(), iR.as_mut(), pivot);
     }
     // eliminate the entries on pivot row and pivot column
-    eliminate_col(A, iL, pivot);
-    eliminate_row(A, iR, pivot);
+    eliminate_col(A.as_mut(), iL.as_mut(), pivot);
+    eliminate_row(A.as_mut(), iR.as_mut(), pivot);
     smith(A, iL, iR, pivot + 1);
 }
 
-fn eliminate_col<'a>(A: &mut Mat<'a>, iL: &mut Mat<'a>, pivot: usize) {
-    for row in (pivot + 1)..A.rows() {
-        let transform = [1, 0, -A[row][pivot] / A[pivot][pivot], 1];
+fn eliminate_col<M, N>(mut A: Matrix<M, Item>, mut iL: Matrix<N, Item>, pivot: usize)
+    where M: MatrixViewMut<Item>, N: MatrixViewMut<Item>
+{
+    for row in (pivot + 1)..A.row_count() {
+        let transform = [1, 0, -A.at(row, pivot) / A.at(pivot, pivot), 1];
         A.transform_two_dims_left(pivot, row, &transform);
         iL.transform_two_dims_left(pivot, row, &transform);
     }
 }
 
-fn eliminate_row<'a>(A: &mut Mat<'a>, iR: &mut Mat<'a>, pivot: usize) {
-    for col in (pivot + 1)..A.cols() {
-        let transform = [1, -A[pivot][col] / A[pivot][pivot], 0, 1];
+fn eliminate_row<M, N>(mut A: Matrix<M, Item>, mut iR: Matrix<N, Item>, pivot: usize)
+    where M: MatrixViewMut<Item>, N: MatrixViewMut<Item>
+{
+    for col in (pivot + 1)..A.col_count() {
+        let transform = [1, -A.at(pivot, col) / A.at(pivot, pivot), 0, 1];
         A.transform_two_dims_right(pivot, col, &transform);
         iR.transform_two_dims_left(pivot, col, &transform);
     }
 }
 
-fn transform_pivot_gcd_col<'a>(A: &mut Mat<'a>, iL: &mut Mat<'a>, pivot: usize) -> bool {
+fn transform_pivot_gcd_col<M, N>(mut A: Matrix<M, Item>, mut iL: Matrix<N, Item>, pivot: usize) -> bool
+    where M: MatrixViewMut<Item>, N: MatrixViewMut<Item>
+{
     let pivot_row = pivot;
     let pivot_col = pivot;
     let mut current =
-        find_smallest_gcd_entry_in_pivot_col(&A.get_mut((pivot..A.rows(), pivot..A.cols())));
+        find_smallest_gcd_entry_in_pivot_col(A.submatrix_mut(pivot..A.row_count(), pivot..A.col_count()));
     if current == 0 {
         return false;
     }
     while current != 0 {
-        let (a, b) = (A[pivot_row][pivot_col], A[pivot_row + current][pivot_col]);
+        let (a, b) = (*A.at(pivot_row, pivot_col), *A.at(pivot_row + current, pivot_col));
         let (s, t, _) = eea(a, b);
         let gcd = s * a + t * b;
         let transform = [s, t, -b / gcd, a / gcd];
         A.transform_two_dims_left(pivot_row, pivot_row + current, &transform);
         iL.transform_two_dims_left(pivot_row, pivot_row + current, &transform);
         current =
-            find_smallest_gcd_entry_in_pivot_col(&A.get_mut((pivot..A.rows(), pivot..A.cols())));
+            find_smallest_gcd_entry_in_pivot_col(A.submatrix_mut(pivot..A.row_count(), pivot..A.col_count()));
     }
     return true;
 }
 
-fn transform_pivot_gcd_row<'a>(A: &mut Mat<'a>, iR: &mut Mat<'a>, pivot: usize) -> bool {
+fn transform_pivot_gcd_row<M, N>(mut A: Matrix<M, Item>, mut iR: Matrix<N, Item>, pivot: usize) -> bool 
+    where M: MatrixViewMut<Item>, N: MatrixViewMut<Item>
+{
     let pivot_row = pivot;
     let pivot_col = pivot;
     let mut current =
-        find_smallest_gcd_entry_in_pivot_row(&A.get_mut((pivot..A.rows(), pivot..A.cols())));
+        find_smallest_gcd_entry_in_pivot_row(A.submatrix_mut(pivot..A.row_count(), pivot..A.col_count()));
     if current == 0 {
         return false;
     }
     while current != 0 {
-        let (a, b) = (A[pivot_row][pivot_col], A[pivot_row][pivot_col + current]);
+        let (a, b) = (*A.at(pivot_row, pivot_col), *A.at(pivot_row, pivot_col + current));
         let (s, t, _) = eea(a, b);
         let gcd = s * a + t * b;
         let transform = [s, -b / gcd, t, a / gcd];
         A.transform_two_dims_right(pivot_col, pivot_col + current, &transform);
         iR.transform_two_dims_left(pivot_col, pivot_col + current, &transform);
         current =
-            find_smallest_gcd_entry_in_pivot_row(&A.get_mut((pivot..A.rows(), pivot..A.cols())));
+            find_smallest_gcd_entry_in_pivot_row(A.submatrix_mut(pivot..A.row_count(), pivot..A.col_count()));
     }
     return true;
 }
@@ -135,24 +143,30 @@ where
     return Some(result);
 }
 
-fn find_smallest_gcd_entry_in_pivot_row<'a>(A: &Mat<'a>) -> usize {
-    find_min(0..A.cols(), |col: &usize| gcd(A[0][0], A[0][*col])).unwrap()
+fn find_smallest_gcd_entry_in_pivot_row<M>(A: Matrix<M, Item>) -> usize 
+    where M: MatrixViewMut<Item>
+{
+    find_min(0..A.col_count(), |col: &usize| gcd(*A.at(0, 0), *A.at(0, *col))).unwrap()
 }
 
-fn find_smallest_gcd_entry_in_pivot_col<'a>(A: &Mat<'a>) -> usize {
-    find_min(0..A.rows(), |row: &usize| gcd(A[0][0], A[*row][0])).unwrap()
+fn find_smallest_gcd_entry_in_pivot_col<M>(A: Matrix<M, Item>) -> usize
+    where M: MatrixViewMut<Item>
+{
+    find_min(0..A.row_count(), |row: &usize| gcd(*A.at(0, 0), *A.at(*row, 0))).unwrap()
 }
 
-fn swap_pivot_entry_if_zero<'a>(
-    A: &mut Mat<'a>,
-    iL: &mut Mat<'a>,
-    iR: &mut Mat<'a>,
+fn swap_pivot_entry_if_zero<M, N, K>(
+    mut A: Matrix<M, Item>,
+    mut iL: Matrix<N, Item>,
+    mut iR: Matrix<K, Item>,
     pivot: usize,
-) -> bool {
+) -> bool 
+    where M: MatrixViewMut<Item>, N: MatrixViewMut<Item>, K: MatrixViewMut<Item>
+{
     let pivot_row = pivot;
     let pivot_col = pivot;
     if let Some((row, col)) =
-        find_not_zero(&mut A.get_mut((pivot_row..A.rows(), pivot_col..A.cols())))
+        find_not_zero(A.submatrix_mut(pivot_row.., pivot_col..))
     {
         A.swap_rows(pivot_row, row + pivot_row);
         iL.swap_rows(pivot_row, row + pivot_row);
@@ -164,10 +178,12 @@ fn swap_pivot_entry_if_zero<'a>(
     }
 }
 
-fn find_not_zero<'a>(mat: &mut Mat<'a>) -> Option<(usize, usize)> {
-    for row in 0..mat.rows() {
-        for col in 0..mat.cols() {
-            if mat[row][col] != 0 {
+fn find_not_zero<M>(mat: Matrix<M, Item>) -> Option<(usize, usize)> 
+    where M: MatrixView<Item>
+{
+    for row in 0..mat.row_count() {
+        for col in 0..mat.col_count() {
+            if *mat.at(row, col) != 0 {
                 return Some((row, col));
             }
         }
@@ -178,15 +194,15 @@ fn find_not_zero<'a>(mat: &mut Mat<'a>) -> Option<(usize, usize)> {
 #[test]
 fn test_diophantine() {
     let A = Matrix::from_array([[15, 10], [6, 7]]);
-    let b = Vector::new(Box::new([195, 87]));
+    let b = Vector::from_array([195, 87]);
     let x = diophantine_solve(A.as_ref(), b.as_ref());
-    assert_eq!(Matrix::from_array([[11], [3]]), x.unwrap());
+    assert_eq!(Vector::from_array([11, 3]), x.unwrap());
 }
 
 #[test]
 fn test_diophantine_no_solution() {
     let A = Matrix::from_array([[2, -2]]);
-    let b = Vector::new(Box::new([1]));
+    let b = Vector::from_array([1]);
     let x = diophantine_solve(A.as_ref(), b.as_ref());
     assert!(x.is_none());
 }
@@ -197,7 +213,7 @@ fn test_diophantine_no_solution_three_dim() {
     let A = Matrix::from_array([[1, 2, 0], 
                                 [1, 0, 2]]);
 
-    let b = Vector::new(Box::new([2, 1]));
+    let b = Vector::from_array([2, 1]);
     let x = diophantine_solve(A.as_ref(), b.as_ref());
     assert!(x.is_none());
 }
@@ -208,9 +224,9 @@ fn test_diophantine_three_dim() {
     let A = Matrix::from_array([[1, 2, 0], 
                                 [1, 0, 2]]);
 
-    let b = Vector::new(Box::new([2, 4]));
-    let x = diophantine_solve(A.get((.., ..)), b.as_ref());
-    assert_eq!(Matrix::from_array([[4], [-1], [0]]), x.unwrap());
+    let b = Vector::from_array([2, 4]);
+    let x = diophantine_solve(A.as_ref(), b.as_ref());
+    assert_eq!(Vector::from_array([4, -1, 0]), x.unwrap());
 }
 
 #[test]
@@ -221,9 +237,9 @@ fn test_diophantine_unnecessary_conditions() {
                                 [1, 2, 0], 
                                 [1, 0, 2]]);
 
-    let b = Vector::new(Box::new([2, 2, 2, 4]));
+    let b = Vector::from_array([2, 2, 2, 4]);
     let x = diophantine_solve(A.as_ref(), b.as_ref());
-    assert_eq!(Matrix::from_array([[4], [-1], [0]]), x.unwrap());
+    assert_eq!(Vector::from_array([4, -1, 0]), x.unwrap());
 }
 
 #[test]
@@ -233,7 +249,7 @@ fn test_diophantine_no_rational_solutions() {
                                 [1, 2, 0], 
                                 [1, 0, 2]]);
 
-    let b = Vector::new(Box::new([2, 3, 4]));
+    let b = Vector::from_array([2, 3, 4]);
     let x = diophantine_solve(A.as_ref(), b.as_ref());
     assert!(x.is_none());
 }

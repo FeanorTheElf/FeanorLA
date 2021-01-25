@@ -94,6 +94,7 @@ impl<'a, M, T> MatrixViewMut<T> for MatrixRefMut<'a, M, T>
     }
     
     fn swap(&mut self, fst: (usize, usize), snd: (usize, usize)) {
+        assert!(fst != snd);
         self.assert_row_in_range(fst.0);
         self.assert_row_in_range(snd.0);
         self.assert_col_in_range(fst.1);

@@ -9,34 +9,34 @@ fn two<T>() -> T
     two
 }
 
-fn householder_left<T>(y: VectorRef<T>, mut A: MatrixRefMut<T>)
-    where T: Field + Clone + std::fmt::Debug
+fn householder_left<V, M, T>(y: Vector<V, T>, mut A: Matrix<M, T>)
+    where V: VectorView<T>, M: MatrixViewMut<T>, T: Field + Clone
 {
-    assert_eq!(y.len(), A.rows());
-    let mut yyTA = Matrix::from_func(A.rows(), A.cols(), |row, col| {
-        let mut yTA = y[0].clone() * A[0][col].clone();
+    assert_eq!(y.len(), A.row_count());
+    let mut yyTA = Matrix::from_fn(A.row_count(), A.col_count(), |row, col| {
+        let mut yTA = y.at(0).clone() * A.at(0, col).clone();
         for k in 1..y.len() {
-            yTA += y[k].clone() * A[k][col].clone();
+            yTA += y.at(k).clone() * A.at(k, col).clone();
         }
-        return yTA * y[row].clone();
+        return yTA * y.at(row).clone();
     });
-    yyTA.scal(two());
-    A -= yyTA;
+    yyTA.scale(-two::<T>());
+    A += yyTA;
 }
 
-fn householder_right<T>(y: VectorRef<T>, mut A: MatrixRefMut<T>)
-    where T: Field + Clone
+fn householder_right<V, M, T>(y: Vector<V, T>, mut A: Matrix<M, T>)
+    where V: VectorView<T>, M: MatrixViewMut<T>, T: Field + Clone
 {
-    assert_eq!(y.len(), A.cols());
-    let mut AyyT = Matrix::from_func(A.rows(), A.cols(), |row, col| {
-        let mut yTA = y[0].clone() * A[row][0].clone();
+    assert_eq!(y.len(), A.col_count());
+    let mut AyyT = Matrix::from_fn(A.row_count(), A.col_count(), |row, col| {
+        let mut yTA = y.at(0).clone() * A.at(row, 0).clone();
         for k in 1..y.len() {
-            yTA += y[k].clone() * A[row][k].clone();
+            yTA += y.at(k).clone() * A.at(row, k).clone();
         }
-        return yTA * y[col].clone();
+        return yTA * y.at(col).clone();
     });
-    AyyT.scal(two());
-    A -= AyyT;
+    AyyT.scale(-two::<T>());
+    A += AyyT;
 }
 
 fn abs<T>(val: T) -> T
@@ -59,25 +59,24 @@ fn sgn<T>(val: &T) -> T
     }
 }
 
-pub fn qr_decompose<T>(mut A: MatrixRefMut<T>) -> Matrix<T>
-    where T: Field + Root + Clone + PartialOrd + std::fmt::Debug
+pub fn qr_decompose<M, T>(mut A: Matrix<M, T>) -> Matrix<MatrixOwned<T>, T>
+    where M: MatrixViewMut<T>, T: Field + Root + Clone + PartialOrd
 {
-    let mut Q = Matrix::identity(A.rows());
-    let mut y_base: Vector<T> = Vector::zero(A.rows());
-    let two = T::one() + T::one();
-    let half = T::one() / two.clone();
-    for k in 0..(A.cols().min(A.rows()) - 1) {
-        let mut y = y_base.get_mut(k..);
-        let x = A.get((k.., k..=k));
-        let gamma = two.clone() * x.frobenius_square().sqrt();
-        let sgn = sgn(&x[0][0]);
-        let y1 = (half.clone() + abs(x[0][0].clone()) / gamma.clone()).sqrt();
-        y[0] = y1.clone();
+    let mut Q = Matrix::identity(A.row_count(), A.row_count());
+    let mut y_base = Vector::zero(A.row_count());
+    let half = T::one() / two::<T>();
+    for k in 0..(A.col_count().min(A.row_count()) - 1) {
+        let mut y = y_base.subvector_mut(k..);
+        let x = A.submatrix(k.., k..=k);
+        let gamma = two::<T>().clone() * x.frobenius_square().sqrt();
+        let sgn = sgn(x.at(0, 0));
+        let y1 = (half.clone() + abs(x.at(0, 0).clone()) / gamma.clone()).sqrt();
+        *y.at_mut(0) = y1.clone();
         for i in 1..y.len() {
-            y[i] = sgn.clone() * x[i][0].clone() / (gamma.clone() * y1.clone());
+            *y.at_mut(i) = sgn.clone() * x.at(i, 0).clone() / (gamma.clone() * y1.clone());
         }
-        householder_left(y.as_const(), A.get_mut((k.., k..)));
-        householder_right(y.as_const(), Q.get_mut((.., k..)));
+        householder_left(y.as_ref(), A.submatrix_mut(k.., k..));
+        householder_right(y.as_ref(), Q.submatrix_mut(.., k..));
     }
     return Q;
 }
@@ -87,9 +86,9 @@ use super::macros::ApproxEq;
 
 #[test]
 fn test_qr() {
-    let mut m = matlab![1., 0., 1.; 1., 1., 1.; 0., 2., 2.];
-    let q = matlab![-0.707, 0.236, 0.667; -0.707, -0.236, -0.667; 0., -0.943, 0.333];
-    let r = matlab![-1.414, -0.707, -1.414; 0., -2.121, -1.886; 0., 0., 0.667];
+    let mut m = Matrix::from_array([[1., 0., 1.], [1., 1., 1.], [0., 2., 2.]]);
+    let q = Matrix::from_array([[-0.707, 0.236, 0.667], [-0.707, -0.236, -0.667], [0., -0.943, 0.333]]);
+    let r = Matrix::from_array([[-1.414, -0.707, -1.414], [0., -2.121, -1.886], [0., 0., 0.667]]);
     let actual_q = qr_decompose(m.as_mut());
     assert_approx_eq!(q, &actual_q, 0.005);
     assert_approx_eq!(r, &m, 0.005);
