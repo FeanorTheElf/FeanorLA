@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-use super::alg::{One, Zero, Semiring, Ring, Field, CommutativeRing};
+use super::alg::{One, Zero, Ring, Field, Float};
 
 use std::cmp::{Ord, Ordering, PartialEq, PartialOrd};
 use std::convert::From;
@@ -290,10 +290,14 @@ impl Div<Self> for r64 {
     }
 }
 
-impl Semiring for r64 {}
 impl Ring for r64 {}
-impl CommutativeRing for r64 {}
 impl Field for r64 {}
+impl Float for r64 {
+
+    fn stability_abs(&self) -> f32 {
+        std::cmp::max(self.denominator.abs(), self.numerator.abs()) as f32
+    }
+}
 
 impl Debug for r64 {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {

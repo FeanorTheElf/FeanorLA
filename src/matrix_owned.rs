@@ -18,12 +18,16 @@ impl<T> MatrixView<T> for MatrixOwned<T> {
     }
 
     fn at(&self, row: usize, col: usize) -> &T {
+        self.assert_col_in_range(col);
+        self.assert_row_in_range(row);
         &self.data[row * self.cols + col]
     }
 }
 
 impl<T> MatrixViewMut<T> for MatrixOwned<T> {
     fn at_mut(&mut self, row: usize, col: usize) -> &mut T {
+        self.assert_col_in_range(col);
+        self.assert_row_in_range(row);
         &mut self.data[row * self.cols + col]
     }
 

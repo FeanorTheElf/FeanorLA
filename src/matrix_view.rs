@@ -30,6 +30,7 @@ impl<'a, T, M> VectorView<T> for MatrixRow<'a, T, M>
     }
 
     fn at(&self, i: usize) -> &T {
+        self.assert_in_range(i);
         self.matrix.at(self.row, i)
     }
 }
@@ -115,8 +116,8 @@ pub trait MatrixViewMut<T>: MatrixView<T> {
 
 pub trait LifetimeMatrixMutRowIter<'a, T>: MatrixViewMut<T> {
 
-    type RowRef: 'a + VectorViewMut<T>;
-    type RowIter: 'a + Iterator<Item = Self::RowRef>;
+    type RowRef: VectorViewMut<T>;
+    type RowIter: Iterator<Item = Self::RowRef>;
 
     fn rows_mut(&'a mut self) -> Self::RowIter;
 

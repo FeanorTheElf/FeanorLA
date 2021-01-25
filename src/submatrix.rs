@@ -82,7 +82,7 @@ impl<'a, M, T> MatrixView<T> for MatrixRefMut<'a, M, T>
     }
 
     fn at(&self, row: usize, col: usize) -> &T {
-        self.matrix.at(row + self.rows_begin, col + self.rows_end)
+        self.matrix.at(row + self.rows_begin, col + self.cols_begin)
     }
 }
 
@@ -90,7 +90,7 @@ impl<'a, M, T> MatrixViewMut<T> for MatrixRefMut<'a, M, T>
     where M: MatrixViewMut<T>
 {
     fn at_mut(&mut self, row: usize, col: usize) -> &mut T {
-        self.matrix.at_mut(row + self.rows_begin, col + self.rows_end)
+        self.matrix.at_mut(row + self.rows_begin, col + self.cols_begin)
     }
     
     fn swap(&mut self, fst: (usize, usize), snd: (usize, usize)) {
@@ -137,7 +137,7 @@ impl<'a, M, T> Iterator for MatrixRefMutRowIter<'a, M, T>
     }
 }
 
-impl<'a, 'b, M: 'a, T: 'a> LifetimeMatrixMutRowIter<'a, T> for MatrixRefMut<'b, M, T> 
+impl<'a, 'b, M, T: 'a> LifetimeMatrixMutRowIter<'a, T> for MatrixRefMut<'b, M, T> 
     where M: LifetimeMatrixMutRowIter<'a, T>
 {
     type RowRef = VectorRestriction<M::RowRef, T>;
@@ -161,6 +161,10 @@ impl<'a, 'b, M: 'a, T: 'a> LifetimeMatrixMutRowIter<'a, T> for MatrixRefMut<'b, 
         VectorRestriction::restrict(self.matrix.get_row_mut(i + self.rows_begin), self.cols_begin, self.cols_end)
     }
 }
+
+impl<'b, M, T: 'static> MatrixMutRowIter<T> for MatrixRefMut<'b, M, T> 
+    where M: MatrixMutRowIter<T>
+{}
 
 #[cfg(test)]
 use super::matrix_owned::MatrixOwned;

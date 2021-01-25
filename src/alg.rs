@@ -1,6 +1,6 @@
 use std::ops::{ Add, Mul, Sub, Neg, Div, Rem, AddAssign, MulAssign, DivAssign, SubAssign, RemAssign };
 
-pub trait Zero {
+pub trait Zero: Sized + Add<Self, Output = Self> {
     fn zero() -> Self;
 }
 
@@ -76,7 +76,7 @@ impl Zero for f64 {
     }
 }
 
-pub trait One {
+pub trait One: Sized + Mul<Self, Output = Self> {
     fn one() -> Self;
 }
 

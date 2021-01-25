@@ -9,10 +9,20 @@ pub struct ColumnVector<V, T>
     element: PhantomData<T>
 }
 
+impl<V, T> ColumnVector<V, T>
+    where V: VectorView<T>
+{
+    pub fn new(vector: V) -> Self {
+        ColumnVector {
+            base: vector,
+            element: PhantomData
+        }
+    }
+}
+
 impl<V, T> MatrixView<T> for ColumnVector<V, T>
     where V: VectorView<T>
 {
-
     fn row_count(&self) -> usize {
         self.base.len()
     }

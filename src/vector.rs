@@ -101,10 +101,46 @@ impl<'a, V, T> VectorViewMut<T> for VectorRefMut<'a, V, T>
     }
 }
 
+impl<'a, V, T> VectorRef<'a, V, T> 
+    where V: VectorView<T>
+{
+    pub fn new(from: usize, to: usize, vector: &'a V) -> Self {
+        assert!(from < to);
+        assert!(to <= vector.len());
+        VectorRef {
+            from: from,
+            to: to,
+            view: vector,
+            element: PhantomData
+        }
+    }
+}
+
+impl<'a, V, T> VectorRefMut<'a, V, T> 
+    where V: VectorViewMut<T>
+{
+    pub fn new(from: usize, to: usize, vector: &'a mut V) -> Self {
+        assert!(from < to);
+        assert!(to <= vector.len());
+        VectorRefMut {
+            from: from,
+            to: to,
+            view: vector,
+            element: PhantomData
+        }
+    }
+}
+
 impl<T> VectorOwned<T> {
 
     pub fn new(data: Box<[T]>) -> VectorOwned<T> {
         VectorOwned { data }
+    }
+
+    pub fn from_fn<F>(len: usize, mut f: F) -> Self
+        where F: FnMut(usize) -> T
+    {
+        Self::new((0..len).map(|i| f(i)).collect::<Vec<_>>().into_boxed_slice())
     }
 }
 

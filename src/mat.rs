@@ -1,6 +1,9 @@
 use super::matrix_view::*;
+use super::vector_view::*;
+use super::vec::*;
 use super::submatrix::*;
 use super::matrix_owned::*;
+use super::matrix_vector::*;
 use super::alg::*;
 
 use std::marker::PhantomData;
@@ -65,6 +68,36 @@ impl<M, T> Matrix<M, T>
         };
         Matrix::new(MatrixRef::new(rows_begin, rows_end, cols_begin, cols_end, &self.data))
     }
+
+    pub fn row<'a>(&'a self, i: usize) -> Vector<MatrixRow<'a, T, M>, T> {
+        Vector::new(self.data.get_row(i))
+    }
+
+    pub fn rows<'a>(&'a self) -> impl Iterator<Item = Vector<MatrixRow<'a, T, M>, T>> {
+        self.data.rows().map(|r| Vector::new(r))
+    }
+}
+
+impl<V, T> Matrix<ColumnVector<V, T>, T>
+    where V: VectorView<T>
+{
+    pub fn col_vec(vector: V) -> Self {
+        Matrix::new(ColumnVector::new(vector))
+    }
+}
+
+impl<T> Matrix<MatrixOwned<T>, T> {
+
+    pub fn from_fn<F>(rows: usize, cols: usize, f: F) -> Self 
+        where F: FnMut(usize, usize) -> T
+    {
+        Self::new(MatrixOwned::from_fn(rows, cols, f))
+    }
+
+    pub fn from_array<const R: usize, const C: usize>(array: [[T; C]; R]) -> Self 
+    {
+        Self::new(MatrixOwned::from_array(array))
+    }
 }
 
 impl<M, T> Matrix<M, T>
@@ -114,6 +147,18 @@ impl<M, T> Matrix<M, T>
             Bound::Unbounded => self.col_count(),
         };
         Matrix::new(MatrixRefMut::new(rows_begin, rows_end, cols_begin, cols_end, &mut self.data))
+    }
+}
+
+impl<M, T> Matrix<M, T>
+    where M: MatrixMutRowIter<T>
+{
+    pub fn row_mut<'a>(&'a mut self, row: usize) -> Vector<<M as LifetimeMatrixMutRowIter<'a, T>>::RowRef, T> {
+        Vector::new(self.data.get_row_mut(row))
+    }
+
+    pub fn rows_mut<'a>(&'a mut self) -> impl Iterator<Item = Vector<<M as LifetimeMatrixMutRowIter<'a, T>>::RowRef, T>> {
+        self.data.rows_mut().map(|r| Vector::new(r))
     }
 }
 
@@ -171,6 +216,27 @@ impl<M, T> Matrix<M, T>
         self.data.at_mut(row, col)
     }
 }
+
+impl<M, N, T, U> PartialEq<Matrix<N, U>> for Matrix<M, T>
+    where M: MatrixView<T>, N: MatrixView<U>, T: PartialEq<U>
+{
+    fn eq(&self, rhs: &Matrix<N, U>) -> bool {
+        assert_eq!(self.row_count(), rhs.row_count());
+        assert_eq!(self.col_count(), rhs.col_count());
+        for row in 0..self.row_count() {
+            for col in 0..self.col_count() {
+                if self.at(row, col) != rhs.at(row, col) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+}
+
+impl<M, T> Eq for Matrix<M, T>
+    where M: MatrixView<T>, T: Eq
+{}
 
 impl<M, N, T, U> AddAssign<Matrix<N, U>> for Matrix<M, T>
     where M: MatrixViewMut<T>, N: MatrixView<U>, T: AddAssign<U>, U: Clone
@@ -362,8 +428,8 @@ impl<M, T> Matrix<M, T>
 
 #[test]
 fn test_mul_matrix() {
-    let a = Matrix::new(MatrixOwned::from_array([[0, 1], [1, 2]]));
-    let big = Matrix::new(MatrixOwned::from_fn(2, 2, |_, _| a.clone()));
+    let a = Matrix::from_array([[0, 1], [1, 2]]);
+    let big = Matrix::from_fn(2, 2, |_, _| a.clone());
     let res = big.as_ref() * big.as_ref();
 
     assert_eq!(2, *res.at(0, 0).at(0, 0));
@@ -372,11 +438,11 @@ fn test_mul_matrix() {
 
 #[test]
 fn test_invert_matrix() {
-    let mut a = Matrix::new(MatrixOwned::from_array([[1., 2.], [4., 8.]]));
+    let mut a = Matrix::from_array([[1., 2.], [4., 8.]]);
     let mut a_inv = Matrix::identity(2, 2);
     assert!(a.solve_modifying(&mut a_inv).is_err());
 
-    let mut b = Matrix::new(MatrixOwned::from_array([[1., 2.], [4., 4.]]));
+    let mut b = Matrix::from_array([[1., 2.], [4., 4.]]);
     let mut b_inv = Matrix::identity(2, 2);
     b.solve_modifying(&mut b_inv).unwrap();
 
