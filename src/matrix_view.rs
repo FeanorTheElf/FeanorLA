@@ -1,5 +1,4 @@
 use super::vector_view::*;
-use std::marker::PhantomData;
 
 pub trait MatrixView<T>: Sized {
 

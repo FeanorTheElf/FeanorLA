@@ -2,6 +2,7 @@
 #![feature(array_value_iter)]
 #![feature(const_generics)]
 #![feature(unboxed_closures)]
+#![allow(non_snake_case)]
 
 #[cfg(test)]
 extern crate test;
