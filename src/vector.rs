@@ -54,6 +54,12 @@ impl<T> VectorViewMut<T> for VectorOwned<T> {
     fn at_mut(&mut self, index: usize) -> &mut T {
         &mut self.data[index]
     }
+
+    fn swap(&mut self, i: usize, j: usize) {
+        self.assert_in_range(i);
+        self.assert_in_range(j);
+        self.data.swap(i, j);
+    }
 }
 
 impl<'a, V, T> VectorView<T> for VectorRef<'a, V, T> 
@@ -86,6 +92,12 @@ impl<'a, V, T> VectorViewMut<T> for VectorRefMut<'a, V, T>
 {
     fn at_mut(&mut self, index: usize) -> &mut T {
         self.view.at_mut(index + self.from)
+    }
+
+    fn swap(&mut self, i: usize, j: usize) {
+        self.assert_in_range(i);
+        self.assert_in_range(j);
+        self.view.swap(i + self.from, j + self.from);
     }
 }
 
@@ -150,5 +162,11 @@ impl<V, T> VectorViewMut<T> for VectorRestriction<V, T>
 {
     fn at_mut(&mut self, i: usize) -> &mut T {
         self.base.at_mut(i + self.from)
+    }
+
+    fn swap(&mut self, i: usize, j: usize) {
+        self.assert_in_range(i);
+        self.assert_in_range(j);
+        self.base.swap(i + self.from, j + self.from);
     }
 }

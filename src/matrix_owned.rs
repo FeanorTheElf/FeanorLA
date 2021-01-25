@@ -91,6 +91,12 @@ impl<'b, T> VectorViewMut<T> for OwnedMatrixRowMutRef<'b, T> {
     fn at_mut(&mut self, index: usize) -> &mut T {
         &mut self.data[index]
     }
+
+    fn swap(&mut self, i: usize, j: usize) {
+        self.assert_in_range(i);
+        self.assert_in_range(j);
+        self.data.swap(i, j);
+    }
 }
 
 pub struct OwnedMatrixRowMutIter<'b, T> {

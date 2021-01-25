@@ -10,4 +10,5 @@ pub trait VectorView<T> {
 
 pub trait VectorViewMut<T>: VectorView<T> {
     fn at_mut(&mut self, index: usize) -> &mut T;
+    fn swap(&mut self, i: usize, j: usize);
 }

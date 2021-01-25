@@ -225,7 +225,7 @@ impl<T> Matrix<MatrixOwned<T>, T>
 {
     pub fn zero(rows: usize, cols: usize) -> Self {
         Matrix::new(
-            MatrixOwned::from_fn(rows, cols, |i, j| T::zero())
+            MatrixOwned::from_fn(rows, cols, |_, _| T::zero())
         )
     }
 }
