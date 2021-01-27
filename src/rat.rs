@@ -293,12 +293,6 @@ impl Div<Self> for r64 {
 impl Ring for r64 {}
 impl IntegralRing for r64 {}
 impl Field for r64 {}
-impl Float for r64 {
-
-    fn stability_abs(&self) -> f32 {
-        std::cmp::max(self.denominator.abs(), self.numerator.abs()) as f32
-    }
-}
 
 impl Debug for r64 {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {

@@ -1,5 +1,5 @@
 use super::prelude::*;
-use std::ops::{AddAssign, Neg};
+use std::ops::AddAssign;
 
 fn two<T>() -> T
     where T: AddAssign + One
@@ -10,7 +10,7 @@ fn two<T>() -> T
 }
 
 fn householder_left<V, M, T>(y: Vector<V, T>, mut A: Matrix<M, T>)
-    where V: VectorView<T> + std::fmt::Debug, M: MatrixViewMut<T> + std::fmt::Debug, T: Field + Clone + std::fmt::Debug
+    where V: VectorView<T>, M: MatrixViewMut<T>, T: Float + Clone
 {
     assert_eq!(y.len(), A.row_count());
     let yTA = Matrix::row_vec(y.as_ref()) * A.as_ref();
@@ -22,7 +22,7 @@ fn householder_left<V, M, T>(y: Vector<V, T>, mut A: Matrix<M, T>)
 }
 
 fn householder_right<V, M, T>(y: Vector<V, T>, mut A: Matrix<M, T>)
-    where V: VectorView<T>, M: MatrixViewMut<T>, T: Field + Clone
+    where V: VectorView<T>, M: MatrixViewMut<T>, T: Float + Clone
 {
     assert_eq!(y.len(), A.col_count());
     let Ay = A.as_ref() * Matrix::col_vec(y.as_ref());
@@ -34,7 +34,7 @@ fn householder_right<V, M, T>(y: Vector<V, T>, mut A: Matrix<M, T>)
 }
 
 fn abs<T>(val: T) -> T
-    where T: Neg<Output = T> + Zero + PartialOrd
+    where T: Float
 {
     if !(val < T::zero()) {
         val
@@ -44,7 +44,7 @@ fn abs<T>(val: T) -> T
 }
 
 fn sgn<T>(val: &T) -> T
-    where T: Neg<Output = T> + Zero + PartialOrd + One
+    where T: Float
 {
     if !(*val < T::zero()) {
         T::one()
@@ -54,7 +54,7 @@ fn sgn<T>(val: &T) -> T
 }
 
 pub fn qr_decompose<M, T>(mut A: Matrix<M, T>) -> Matrix<MatrixOwned<T>, T>
-    where M: MatrixViewMut<T> + std::fmt::Debug, T: Field + Root + Clone + PartialOrd + std::fmt::Debug
+    where M: MatrixViewMut<T>, T: Float + Root
 {
     let mut Q = Matrix::identity(A.row_count(), A.row_count());
     let mut y_base = Vector::zero(A.row_count());

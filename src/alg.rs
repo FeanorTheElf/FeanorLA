@@ -168,6 +168,9 @@ impl Root for f64 {
     }
 }
 
+///
+/// Multiplication must be commutative
+/// 
 pub trait Ring: Sized + Add<Output = Self> + Mul<Output = Self> + AddAssign + PartialEq + Zero + One + Neg<Output = Self> + Sub<Output = Self> + SubAssign {}
 
 pub trait IntegralRing: Ring {}
@@ -199,7 +202,10 @@ impl IntegralRing for f64 {}
 impl Field for f32 {}
 impl Field for f64 {}
 
-pub trait Integer: Clone + Eq + Ord + EuclideanRing + /* truncating division */ Div<Output = Self> + DivAssign {}
+///
+/// Division means truncating division
+/// 
+pub trait Integer: Clone + Eq + Ord + EuclideanRing + Div<Output = Self> + DivAssign {}
 
 impl Integer for i8 {}
 impl Integer for i16 {}
@@ -207,29 +213,10 @@ impl Integer for i32 {}
 impl Integer for i64 {}
 impl Integer for i128 {}
 
-pub trait Float: Clone + PartialEq + PartialOrd + Field {
+///
+/// For types that may have rounding errors
+/// 
+pub trait Float: Clone + PartialEq + PartialOrd + Field {}
 
-    ///
-    /// This function should yield a non-negative floating point value that gives an estimate
-    /// for the size of the float. Namely, it should hold that for any float type F have
-    /// 0_F.stability_abs() == 0 and if |a| >> |b| (much bigger), then a.stability_abs() > b.stability_abs()
-    /// 
-    /// This can be used by algorithms to optimize numerical stability
-    /// 
-    fn stability_abs(&self) -> f32;
-
-}
-
-impl Float for f32 {
-    
-    fn stability_abs(&self) -> f32 {
-        self.abs()
-    }
-}
-
-impl Float for f64 {
-    
-    fn stability_abs(&self) -> f32 {
-        (*self as f32).abs()
-    }
-}
+impl Float for f32 {}
+impl Float for f64 {}
