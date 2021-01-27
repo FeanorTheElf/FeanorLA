@@ -170,15 +170,22 @@ impl Root for f64 {
 
 pub trait Ring: Sized + Add<Output = Self> + Mul<Output = Self> + AddAssign + PartialEq + Zero + One + Neg<Output = Self> + Sub<Output = Self> + SubAssign {}
 
-pub trait EuclideanRing : Ring + Rem<Output = Self> + RemAssign {}
+pub trait IntegralRing: Ring {}
 
-pub trait Field: Ring + MulAssign + Div<Output = Self> + DivAssign {}
+pub trait EuclideanRing : IntegralRing + Rem<Output = Self> + RemAssign {}
+
+pub trait Field: IntegralRing + MulAssign + Div<Output = Self> + DivAssign {}
 
 impl Ring for i8 {}
 impl Ring for i16 {}
 impl Ring for i32 {}
 impl Ring for i64 {}
 impl Ring for i128 {}
+impl IntegralRing for i8 {}
+impl IntegralRing for i16 {}
+impl IntegralRing for i32 {}
+impl IntegralRing for i64 {}
+impl IntegralRing for i128 {}
 impl EuclideanRing for i8 {}
 impl EuclideanRing for i16 {}
 impl EuclideanRing for i32 {}
@@ -187,6 +194,8 @@ impl EuclideanRing for i128 {}
 
 impl Ring for f32 {}
 impl Ring for f64 {}
+impl IntegralRing for f32 {}
+impl IntegralRing for f64 {}
 impl Field for f32 {}
 impl Field for f64 {}
 

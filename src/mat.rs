@@ -98,6 +98,14 @@ impl<V, T> Matrix<ColumnVector<V, T>, T>
     }
 }
 
+impl<V, T> Matrix<RowVector<V, T>, T>
+    where V: VectorView<T>
+{
+    pub fn row_vec(vector: Vector<V, T>) -> Self {
+        Matrix::new(RowVector::new(vector))
+    }
+}
+
 impl<T> Matrix<MatrixOwned<T>, T> {
 
     pub fn from_fn<F>(rows: usize, cols: usize, f: F) -> Self 
@@ -477,28 +485,6 @@ impl<M, T> Matrix<M, T>
     }
 
     ///
-    /// Calculates the determinant of this matrix
-    /// 
-    /// Use not for types that have rounding errors, as the algorithm
-    /// can be numerically unstable
-    /// 
-    /// Complexity O(n^3) where self is nxn and rhs is nxm
-    /// 
-    pub fn det(&self) -> T
-    {
-        let mut copy = self.to_owned();
-        // current determinant value, if it must be negated
-        let mut state: (T, bool) = (T::one(), false);
-        if copy.gaussion_elimination_half(|_, f, d| d.0 /= f, move |i, j, d| if i != j { d.1 = !d.1 }, |_, _, _, _| {}, &mut state).is_err() {
-            return T::zero();
-        } else if state.1 {
-            return -state.0;
-        } else {
-            return state.0;
-        }
-    }
-
-    ///
     /// Inverts a square matrix. If the matrix is singular, instead
     /// returns as error the smallest integer i such that the first
     /// i columns of A are linearly dependent.
@@ -543,15 +529,6 @@ fn test_invert_matrix() {
 }
 
 #[test]
-fn test_det() {
-    let a = Matrix::from_array([[1., 2.], [3., 6.]]);
-    assert_eq!(0., a.det());
-
-    let b = Matrix::from_array([[1., 2.], [3., 7.]]);
-    assert_eq!(1., b.det());
-}
-
-#[test]
 fn test_row_iter() {
     let a = Matrix::from_fn(4, 4, |i, j| i + 4 * j);
     let b = a.submatrix(1..3, 2..4);
@@ -568,4 +545,13 @@ fn test_row_iter() {
     assert_eq!(14, *r2.at(1));
 
     assert_eq!(3, *a.row(3).at(0));
+}
+
+#[test]
+fn test_mul() {
+    let a = Matrix::from_array([[1, 2], [0, 1]]);
+    let b = Matrix::from_array([[0, 2, 1], [2, 0, 1]]);
+    let c = Matrix::from_array([[4, 2, 3], [2, 0, 1]]);
+
+    assert_eq!(c, a * b);
 }

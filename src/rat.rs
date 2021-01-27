@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-use super::alg::{One, Zero, Ring, Field, Float};
+use super::alg::{One, Zero, Ring, Field, Float, IntegralRing};
 
 use std::cmp::{Ord, Ordering, PartialEq, PartialOrd};
 use std::convert::From;
@@ -291,6 +291,7 @@ impl Div<Self> for r64 {
 }
 
 impl Ring for r64 {}
+impl IntegralRing for r64 {}
 impl Field for r64 {}
 impl Float for r64 {
 

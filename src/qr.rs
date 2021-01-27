@@ -10,33 +10,27 @@ fn two<T>() -> T
 }
 
 fn householder_left<V, M, T>(y: Vector<V, T>, mut A: Matrix<M, T>)
-    where V: VectorView<T>, M: MatrixViewMut<T>, T: Field + Clone
+    where V: VectorView<T> + std::fmt::Debug, M: MatrixViewMut<T> + std::fmt::Debug, T: Field + Clone + std::fmt::Debug
 {
     assert_eq!(y.len(), A.row_count());
-    let mut yyTA = Matrix::from_fn(A.row_count(), A.col_count(), |row, col| {
-        let mut yTA = y.at(0).clone() * A.at(0, col).clone();
-        for k in 1..y.len() {
-            yTA += y.at(k).clone() * A.at(k, col).clone();
+    let yTA = Matrix::row_vec(y.as_ref()) * A.as_ref();
+    for i in 0..A.row_count() {
+        for j in 0..A.col_count() {
+            *A.at_mut(i, j) -= two::<T>() * y.at(i).clone() * yTA.at(0, j).clone();
         }
-        return yTA * y.at(row).clone();
-    });
-    yyTA.scale(-two::<T>());
-    A += yyTA;
+    }
 }
 
 fn householder_right<V, M, T>(y: Vector<V, T>, mut A: Matrix<M, T>)
     where V: VectorView<T>, M: MatrixViewMut<T>, T: Field + Clone
 {
     assert_eq!(y.len(), A.col_count());
-    let mut AyyT = Matrix::from_fn(A.row_count(), A.col_count(), |row, col| {
-        let mut yTA = y.at(0).clone() * A.at(row, 0).clone();
-        for k in 1..y.len() {
-            yTA += y.at(k).clone() * A.at(row, k).clone();
+    let Ay = A.as_ref() * Matrix::col_vec(y.as_ref());
+    for i in 0..A.row_count() {
+        for j in 0..A.col_count() {
+            *A.at_mut(i, j) -= two::<T>() * Ay.at(i, 0).clone() * y.at(j).clone();
         }
-        return yTA * y.at(col).clone();
-    });
-    AyyT.scale(-two::<T>());
-    A += AyyT;
+    }
 }
 
 fn abs<T>(val: T) -> T
@@ -60,7 +54,7 @@ fn sgn<T>(val: &T) -> T
 }
 
 pub fn qr_decompose<M, T>(mut A: Matrix<M, T>) -> Matrix<MatrixOwned<T>, T>
-    where M: MatrixViewMut<T>, T: Field + Root + Clone + PartialOrd
+    where M: MatrixViewMut<T> + std::fmt::Debug, T: Field + Root + Clone + PartialOrd + std::fmt::Debug
 {
     let mut Q = Matrix::identity(A.row_count(), A.row_count());
     let mut y_base = Vector::zero(A.row_count());
