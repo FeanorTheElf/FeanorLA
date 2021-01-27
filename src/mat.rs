@@ -216,6 +216,8 @@ impl<M, T> Matrix<M, T>
     /// Let T be the identity matrix (mxm where this matrix is mxn), in which the entries
     /// [fst,fst], [fst, snd], [snd, fst], [snd, snd] are replaced by the values in transform.
     /// This function performs the multiplication A' := T * A, where A is this matrix
+    /// 
+    /// Complexity O(n)
     ///
     pub fn transform_two_dims_left(&mut self, fst: usize, snd: usize, transform: &[T; 4]) {
         assert!(fst < snd);
@@ -233,6 +235,8 @@ impl<M, T> Matrix<M, T>
     /// the entries [fst,fst], [fst, snd], [snd, fst], [snd, snd] are replaced by the
     /// values in transform.
     /// This function performs the multiplication A' := A * T, where A is this matrix
+    /// 
+    /// Complexity O(m)
     ///
     pub fn transform_two_dims_right(&mut self, fst: usize, snd: usize, transform: &[T; 4]) {
         assert!(fst < snd);
@@ -366,10 +370,16 @@ impl<M, T> Matrix<M, T>
     /// so that the caller can adjust other data as well (i.e. a potential right-hand side
     /// of a linear equation, or a determinant)
     /// 
+    /// Use not for types that have rounding errors, as the algorithm
+    /// can be numerically unstable
+    /// 
+    /// Complexity O(n^3)
+    /// 
     fn gaussion_elimination_half<F, G, H, S>(&mut self, mut mul_row: F, mut swap_rows: G, mut sub_row: H, state: &mut S) -> Result<(), usize>
         where F: FnMut(usize, T, &mut S), G: FnMut(usize, usize, &mut S), H: FnMut(usize, T, usize, &mut S)
     {
         for i in 0..self.col_count() {
+            // pivot
             if *self.at(i, i) == T::zero() {
                 let mut has_swapped = false;
                 for j in (i + 1)..self.row_count() {
@@ -384,10 +394,12 @@ impl<M, T> Matrix<M, T>
                 }
             }
 
+            // normalize pivot to 1
             let inverse = T::one() / self.at(i, i).clone();
             self.submatrix_mut(i..=i, i..).scale(inverse.clone());
             mul_row(i, inverse, state);
 
+            // eliminate
             for j in (i + 1)..self.row_count() {
                 let transform = [T::one(), T::zero(), -self.at(j, i).clone(), T::one()];
                 sub_row(j, self.at(j, i).clone(), i, state);
@@ -413,6 +425,11 @@ impl<M, T> Matrix<M, T>
     /// unequal to zero. i is returned as part of the error object. Therefore,
     /// i is the smallest integer so that the first i columns are linearly
     /// dependent
+    /// 
+    /// Use not for types that have rounding errors, as the algorithm
+    /// can be numerically unstable
+    /// 
+    /// Complexity O(n^2(n + m)) where self is nxn and rhs is nxm
     /// 
     pub fn solve_modifying<N>(&mut self, rhs: &mut Matrix<N, T>) -> Result<(), usize>
         where N: MatrixViewMut<T>
@@ -448,6 +465,11 @@ impl<M, T> Matrix<M, T>
     /// case, the rhs matrix will be in an unspecified state when
     /// the function terminates.
     /// 
+    /// Use not for types that have rounding errors, as the algorithm
+    /// can be numerically unstable
+    /// 
+    /// Complexity O(n^2(n + m)) where self is nxn and rhs is nxm
+    /// 
     pub fn solve<N>(&self, rhs: &mut Matrix<N, T>) -> Result<(), usize>
         where N: MatrixViewMut<T>
     {
@@ -455,9 +477,36 @@ impl<M, T> Matrix<M, T>
     }
 
     ///
+    /// Calculates the determinant of this matrix
+    /// 
+    /// Use not for types that have rounding errors, as the algorithm
+    /// can be numerically unstable
+    /// 
+    /// Complexity O(n^3) where self is nxn and rhs is nxm
+    /// 
+    pub fn det(&self) -> T
+    {
+        let mut copy = self.to_owned();
+        // current determinant value, if it must be negated
+        let mut state: (T, bool) = (T::one(), false);
+        if copy.gaussion_elimination_half(|_, f, d| d.0 /= f, move |i, j, d| if i != j { d.1 = !d.1 }, |_, _, _, _| {}, &mut state).is_err() {
+            return T::zero();
+        } else if state.1 {
+            return -state.0;
+        } else {
+            return state.0;
+        }
+    }
+
+    ///
     /// Inverts a square matrix. If the matrix is singular, instead
     /// returns as error the smallest integer i such that the first
     /// i columns of A are linearly dependent.
+    /// 
+    /// Use not for types that have rounding errors, as the algorithm
+    /// can be numerically unstable
+    /// 
+    /// Complexity O(n^3)
     /// 
     pub fn invert(&self) -> Result<Matrix<MatrixOwned<T>, T>, usize>
     {
@@ -491,6 +540,15 @@ fn test_invert_matrix() {
     assert_eq!(-0.25, *b_inv.at(1, 1));
     assert_eq!(-1., *b_inv.at(0, 0));
     assert_eq!(0.5, *b_inv.at(0, 1));
+}
+
+#[test]
+fn test_det() {
+    let a = Matrix::from_array([[1., 2.], [3., 6.]]);
+    assert_eq!(0., a.det());
+
+    let b = Matrix::from_array([[1., 2.], [3., 7.]]);
+    assert_eq!(1., b.det());
 }
 
 #[test]
