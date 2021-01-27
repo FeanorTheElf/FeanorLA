@@ -385,9 +385,7 @@ impl<M, T> Matrix<M, T>
             }
 
             let inverse = T::one() / self.at(i, i).clone();
-            for j in i..self.col_count() {
-                *self.at_mut(i, j) *= inverse.clone();
-            }
+            self.submatrix_mut(i..=i, i..).scale(inverse.clone());
             mul_row(i, inverse, state);
 
             for j in (i + 1)..self.row_count() {
@@ -423,11 +421,7 @@ impl<M, T> Matrix<M, T>
         assert_eq!(self.row_count(), rhs.row_count());
         
         self.gaussion_elimination_half(
-            |row, a, rhs| {
-                for c in 0..rhs.col_count() {
-                    *rhs.at_mut(row, c) *= a.clone();
-                }
-            }, 
+            |row, a, rhs| rhs.submatrix_mut(row..=row, 0..).scale(a), 
             |i, j, rhs| rhs.swap_rows(i, j), 
             |dst, a, src, rhs| rhs.transform_two_dims_left(src, dst, &[T::one(), T::zero(), -a, T::one()]), rhs)?;
 

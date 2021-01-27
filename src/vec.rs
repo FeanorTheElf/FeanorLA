@@ -78,6 +78,14 @@ impl<V, T> Vector<V, T>
             VectorRefMut::new(begin, end, &mut self.data)
         )
     }
+    
+    pub fn scale<U>(&mut self, rhs: U) 
+        where T: MulAssign<U>, U: Clone
+    {
+        for i in 0..self.len() {
+            *self.at_mut(i) *= rhs.clone();
+        }
+    }
 }
 
 impl<V, W, T, U> PartialEq<Vector<W, U>> for Vector<V, T>
