@@ -15,6 +15,9 @@ fn div_rem<T>(x: T, y: T) -> (T, T)
     (quot, rem)
 }
 
+const BIG_POWER_TEN_ZEROS: u32 = 19;
+const BIG_POWER_TEN: u64 = 10000000000000000000u64;
+
 impl BigInt {
 
     const ENTRY_BITS: usize = 64;
@@ -126,13 +129,60 @@ impl BigInt {
             return 0;
         }
     }
+
+    fn from_radix<I, E>(data: I, base: u64) -> Result<BigInt, E> 
+        where I: Iterator<Item = Result<u64, E>>
+    {
+        let mut result = Vec::with_capacity(data.size_hint().0);
+        let mut buffer: u64 = 0;
+        for value in data {
+            let val = value?;
+            debug_assert!(val < base);
+            let sum = buffer as u128 * base as u128 + val as u128;
+            let upper_part = sum >> Self::ENTRY_BITS;
+            let lower_part = sum  & ((1 << Self::ENTRY_BITS) - 1);
+            if upper_part != 0 {
+                result.push(lower_part as u64);
+                buffer = upper_part as u64;
+            } else {
+                buffer = lower_part as u64;
+            }
+        }
+        result.push(buffer);
+        return Ok(BigInt {
+            negative: false,
+            data: result
+        });
+    }
+
+    fn from_str_radix(s: &str, base: u32) -> Result<BigInt, BigIntParseError> {
+        assert!(base >= 2);
+        let sign = s.chars().next().unwrap();
+        let (negative, rest): (bool, &[u8]) = if sign == '+' {
+            (true, &<str as AsRef<[u8]>>::as_ref(s)[1..])
+        } else if sign == '-' {
+            (true, &<str as AsRef<[u8]>>::as_ref(s)[1..])
+        } else {
+            (false, <str as AsRef<[u8]>>::as_ref(s))
+        };
+        // we need the -1 in Self::ENTRY_BITS to ensure that base^chunk_size is 
+        // really smaller than 2^64
+        let chunk_size = ((Self::ENTRY_BITS - 1) as f32 / (base as f32).log2()).floor() as usize;
+        let it = rest.rchunks(chunk_size as usize).rev()
+            .map(std::str::from_utf8)
+            .map(|chunk| chunk.map_err(BigIntParseError::from))
+            .map(|chunk| chunk.and_then(|n| u64::from_str_radix(n, base).map_err(BigIntParseError::from)));
+        let mut result = Self::from_radix(it, (base as u64).pow(chunk_size as u32));
+        if let Ok(r) = &mut result {
+            r.negative = negative;
+        }
+        return result;
+    }
 }
 
 impl std::fmt::Display for BigInt {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut copy = self.clone();
-        const BIG_POWER_TEN_ZEROS: u32 = 19;
-        const BIG_POWER_TEN: u64 = 10000000000000000000u64;
         let mut remainders: Vec<u64> = Vec::with_capacity((self.highest_set_block().unwrap_or(0) + 1) * Self::ENTRY_BITS / 3);
         while !copy.is_zero() {
             let rem = copy.truncating_div_small(BIG_POWER_TEN);
@@ -152,11 +202,46 @@ impl std::fmt::Display for BigInt {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum BigIntParseError {
+    ParseIntError(std::num::ParseIntError),
+    Utf8Error(std::str::Utf8Error)
+}
+
+impl From<std::num::ParseIntError> for BigIntParseError {
+    fn from(e: std::num::ParseIntError) -> BigIntParseError {
+        BigIntParseError::ParseIntError(e)
+    }
+}
+
+impl From<std::str::Utf8Error> for BigIntParseError {
+    fn from(e: std::str::Utf8Error) -> BigIntParseError {
+        BigIntParseError::Utf8Error(e)
+    }
+}
+
+impl std::str::FromStr for BigInt {
+    type Err = BigIntParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_str_radix(s, 10)
+    }
+}
+
 #[test]
 fn test_print_power_2() {
     let x = BigInt {
         negative: false,
         data: vec![0, 0, 1]
     };
-    assert_eq!("340282366920938463463374607431768211456".to_owned(), format!("{}", x));
+    assert_eq!("340282366920938463463374607431768211456", format!("{}", x));
+}
+
+#[test]
+fn test_from_str_radix() {
+    let x = BigInt::from_str_radix("Fa3032c0ae8202135", 16).unwrap();
+    assert_eq!("288447441784111374645", format!("{}", x));
+
+    let y = BigInt::from_str_radix("1738495302390560118908327", 10).unwrap();
+    assert_eq!("1738495302390560118908327", format!("{}", y));
 }
