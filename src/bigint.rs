@@ -130,29 +130,62 @@ impl BigInt {
         }
     }
 
+    fn do_multiplication_small(&mut self, factor: u64) {
+        if let Some(d) = self.highest_set_block() {
+            let mut buffer: u64 = 0;
+            for i in 0..=d {
+                let prod = self.data[i] as u128 * factor as u128 + buffer as u128;
+                self.data[i] = (prod & ((1 << Self::ENTRY_BITS) - 1)) as u64;
+                buffer = (prod >> Self::ENTRY_BITS) as u64;
+            }
+            if d + 1 < self.data.len() {
+                self.data[d + 1] = buffer;
+            } else {
+                self.data.push(buffer);
+            }
+        }
+    }
+
+    fn do_addition_small(&mut self, summand: u64) {
+        assert!(!self.negative);
+
+        if self.data.len() > 0 {
+            let (sum, mut buffer) = self.data[0].overflowing_add(summand);
+            self.data[0] = sum;
+            let mut i = 1;
+            while buffer {
+                if self.data.len() <= i {
+                    self.data.push(0);
+                }
+                let (sum, overflow) = self.data[i].overflowing_add(1);
+                buffer = overflow;
+                self.data[i] = sum;
+                i += 1;
+            }
+        } else {
+            self.data.push(summand);
+        }
+    }
+
+    ///
+    /// calculates the number with the given representation w.r.t the given base.
+    /// The passed iterator must yield the "digits" in the order starting with the
+    /// highest significant digit.
+    /// 
     fn from_radix<I, E>(data: I, base: u64) -> Result<BigInt, E> 
         where I: Iterator<Item = Result<u64, E>>
     {
-        let mut result = Vec::with_capacity(data.size_hint().0);
-        let mut buffer: u64 = 0;
+        let mut result = BigInt {
+            data: Vec::with_capacity(data.size_hint().0),
+            negative: false
+        };
         for value in data {
             let val = value?;
             debug_assert!(val < base);
-            let sum = buffer as u128 * base as u128 + val as u128;
-            let upper_part = sum >> Self::ENTRY_BITS;
-            let lower_part = sum  & ((1 << Self::ENTRY_BITS) - 1);
-            if upper_part != 0 {
-                result.push(lower_part as u64);
-                buffer = upper_part as u64;
-            } else {
-                buffer = lower_part as u64;
-            }
+            result.do_multiplication_small(base);
+            result.do_addition_small(val);
         }
-        result.push(buffer);
-        return Ok(BigInt {
-            negative: false,
-            data: result
-        });
+        return Ok(result);
     }
 
     fn from_str_radix(s: &str, base: u32) -> Result<BigInt, BigIntParseError> {
@@ -177,6 +210,33 @@ impl BigInt {
             r.negative = negative;
         }
         return result;
+    }
+}
+
+impl PartialEq for BigInt {
+
+    fn eq(&self, rhs: &BigInt) -> bool {
+        let highest_block = self.highest_set_block();
+        if highest_block != rhs.highest_set_block() {
+            return false;
+        }
+        if let Some(d) = highest_block {
+            for i in 0..d {
+                if self.data[i] != rhs.data[i] {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+}
+
+impl Eq for BigInt {}
+
+impl PartialEq<u64> for BigInt {
+
+    fn eq(&self, rhs: &u64) -> bool {
+        self.highest_set_block() == Some(0) && self.data[0] == *rhs
     }
 }
 
@@ -244,4 +304,43 @@ fn test_from_str_radix() {
 
     let y = BigInt::from_str_radix("1738495302390560118908327", 10).unwrap();
     assert_eq!("1738495302390560118908327", format!("{}", y));
+
+    let u = BigInt::from_str_radix("87112285931760246650091887388390057836920", 10).unwrap();
+    let v = BigInt::from_str_radix("10000000000000000BC0000000000000178", 16).unwrap();
+    assert_eq!(u, v);
+}
+
+#[test]
+fn test_do_subtraction() {
+    let mut x = "923645871236598172365987287530543".parse::<BigInt>().unwrap();
+    let y =      "58430657823473456743684735863478".parse::<BigInt>().unwrap();
+    let z =     "865215213413124715622302551667065".parse::<BigInt>().unwrap();
+    x.do_subtraction(&y);
+    assert_eq!(z, x);
+}
+
+#[test]
+fn test_do_subtraction_carry() {
+    let mut x = BigInt::from_str_radix("1000000000000000000", 16).unwrap();
+    let y =      BigInt::from_str_radix("FFFFFFFFFFFFFFFF00", 16).unwrap();
+    x.do_subtraction(&y);
+    assert_eq!(x, 256);
+}
+
+#[test]
+fn test_do_addition() {
+    let mut x = "923645871236598172365987287530543".parse::<BigInt>().unwrap();
+    let y =      "58430657823473456743684735863478".parse::<BigInt>().unwrap();
+    let z =     "982076529060071629109672023394021".parse::<BigInt>().unwrap();
+    x.do_addition(&y);
+    assert_eq!(z, x);
+}
+
+#[test]
+fn test_do_addition_carry() {
+    let mut x =             BigInt::from_str_radix("1BC00000000000000BC", 16).unwrap();
+    let y =  BigInt::from_str_radix("FFFFFFFFFFFFFFFF0000000000000000BC", 16).unwrap();
+    let z = BigInt::from_str_radix("10000000000000000BC0000000000000178", 16).unwrap();
+    x.do_addition(&y);
+    assert_eq!(z, x);
 }
