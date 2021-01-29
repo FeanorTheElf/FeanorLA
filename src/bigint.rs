@@ -20,25 +20,29 @@ const BIG_POWER_TEN: u64 = 10000000000000000000u64;
 
 impl BigInt {
 
-    const ENTRY_BITS: usize = 64;
+    const BLOCK_BITS: usize = 64;
 
-    fn do_addition(&mut self, rhs: &BigInt) {
+    ///
+    /// Calculate self += rhs * (1 << BLOCK_BITS)^block_offset
+    /// 
+    fn do_addition(&mut self, rhs: &BigInt, block_offset: usize) {
         assert_eq!(self.negative, rhs.negative);
 
         let mut buffer: bool = false;
         let mut i = 0;
         while i < rhs.data.len() || buffer {
             let rhs_val = *rhs.data.get(i).unwrap_or(&0);
-            if i == self.data.len() {
+            let j = i + block_offset;
+            while j >= self.data.len() {
                 self.data.push(0);
             }
-            let (sum, overflow) = self.data[i].overflowing_add(rhs_val);
+            let (sum, overflow) = self.data[j].overflowing_add(rhs_val);
             if buffer {
                 let (carry_sum, carry_overflow) = sum.overflowing_add(1);
-                self.data[i] = carry_sum;
+                self.data[j] = carry_sum;
                 buffer = overflow || carry_overflow;
             } else {
-                self.data[i] = sum;
+                self.data[j] = sum;
                 buffer = overflow;
             }
             i += 1;
@@ -102,6 +106,21 @@ impl BigInt {
         }
     }
 
+    fn do_multiplication(&self, rhs: &BigInt) -> BigInt {
+        let mut result = BigInt {
+            negative: self.negative ^ rhs.negative,
+            data: Vec::with_capacity(self.highest_set_block().unwrap_or(0) + rhs.highest_set_block().unwrap_or(0) + 2)
+        };
+        if let Some(d) = rhs.highest_set_block() {
+            for i in 0..=d {
+                let mut val = self.clone();
+                val.do_multiplication_small(rhs.data[i]);
+                result.do_addition(&val, i);
+            }
+        }
+        return result;
+    }
+
     ///
     /// Calculates self /= divisor and returns the remainder of the division.
     /// This only works for positive numbers, as for negative numbers, as the remainder
@@ -119,7 +138,7 @@ impl BigInt {
             let mut buffer: u128 = self.data[highest_block] as u128;
             self.data[highest_block] = 0;
             for i in (0..highest_block).rev() {
-                buffer = (buffer << Self::ENTRY_BITS) | (self.data[i] as u128);
+                buffer = (buffer << Self::BLOCK_BITS) | (self.data[i] as u128);
                 let (quo, rem) = div_rem(buffer, divisor as u128);
                 self.data[i] = quo as u64;
                 buffer = rem;
@@ -135,8 +154,8 @@ impl BigInt {
             let mut buffer: u64 = 0;
             for i in 0..=d {
                 let prod = self.data[i] as u128 * factor as u128 + buffer as u128;
-                self.data[i] = (prod & ((1 << Self::ENTRY_BITS) - 1)) as u64;
-                buffer = (prod >> Self::ENTRY_BITS) as u64;
+                self.data[i] = (prod & ((1 << Self::BLOCK_BITS) - 1)) as u64;
+                buffer = (prod >> Self::BLOCK_BITS) as u64;
             }
             if d + 1 < self.data.len() {
                 self.data[d + 1] = buffer;
@@ -146,7 +165,10 @@ impl BigInt {
         }
     }
 
-    fn do_addition_small(&mut self, summand: u64) {
+    ///
+    /// Calculates self += summand * (1 << BLOCK_BITS)^block_offset
+    /// 
+    fn do_addition_small(&mut self, summand: u64, block_offset: usize) {
         assert!(!self.negative);
 
         if self.data.len() > 0 {
@@ -183,7 +205,7 @@ impl BigInt {
             let val = value?;
             debug_assert!(val < base);
             result.do_multiplication_small(base);
-            result.do_addition_small(val);
+            result.do_addition_small(val, 0);
         }
         return Ok(result);
     }
@@ -198,9 +220,9 @@ impl BigInt {
         } else {
             (false, <str as AsRef<[u8]>>::as_ref(s))
         };
-        // we need the -1 in Self::ENTRY_BITS to ensure that base^chunk_size is 
+        // we need the -1 in Self::BLOCK_BITS to ensure that base^chunk_size is 
         // really smaller than 2^64
-        let chunk_size = ((Self::ENTRY_BITS - 1) as f32 / (base as f32).log2()).floor() as usize;
+        let chunk_size = ((Self::BLOCK_BITS - 1) as f32 / (base as f32).log2()).floor() as usize;
         let it = rest.rchunks(chunk_size as usize).rev()
             .map(std::str::from_utf8)
             .map(|chunk| chunk.map_err(BigIntParseError::from))
@@ -243,7 +265,7 @@ impl PartialEq<u64> for BigInt {
 impl std::fmt::Display for BigInt {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut copy = self.clone();
-        let mut remainders: Vec<u64> = Vec::with_capacity((self.highest_set_block().unwrap_or(0) + 1) * Self::ENTRY_BITS / 3);
+        let mut remainders: Vec<u64> = Vec::with_capacity((self.highest_set_block().unwrap_or(0) + 1) * Self::BLOCK_BITS / 3);
         while !copy.is_zero() {
             let rem = copy.truncating_div_small(BIG_POWER_TEN);
             remainders.push(rem);
@@ -332,7 +354,7 @@ fn test_do_addition() {
     let mut x = "923645871236598172365987287530543".parse::<BigInt>().unwrap();
     let y =      "58430657823473456743684735863478".parse::<BigInt>().unwrap();
     let z =     "982076529060071629109672023394021".parse::<BigInt>().unwrap();
-    x.do_addition(&y);
+    x.do_addition(&y, 0);
     assert_eq!(z, x);
 }
 
@@ -341,6 +363,14 @@ fn test_do_addition_carry() {
     let mut x =             BigInt::from_str_radix("1BC00000000000000BC", 16).unwrap();
     let y =  BigInt::from_str_radix("FFFFFFFFFFFFFFFF0000000000000000BC", 16).unwrap();
     let z = BigInt::from_str_radix("10000000000000000BC0000000000000178", 16).unwrap();
-    x.do_addition(&y);
+    x.do_addition(&y, 0);
     assert_eq!(z, x);
+}
+
+#[test]
+fn test_do_multiplication() {
+    let x = BigInt::from_str_radix("57873674586797895671345345", 10).unwrap();
+    let y = BigInt::from_str_radix("21308561789045691782534873921650342768903561413264128756389247568729346542359871235465", 10).unwrap();
+    let z = BigInt::from_str_radix("1233204770891906354921751949503652431220138020953161094405729272872607166072371117664593787957056214903826660425", 10).unwrap();
+    assert_eq!(z, x.do_multiplication(&y));
 }
