@@ -173,10 +173,15 @@ impl BigInt {
         assert!(self.data[self_high] != 0);
         assert!(rhs.data[rhs_high] != 0);
 
-            // the best approximation of the quotient we get through self_high_blocks / (rhs_high_blocks + 1)
-            // the +1 is required to ensure that the quotient is smaller than the real quotient
-            // one can prove that this quotient is at most 2 away from the actual quotient
-            
+        // the best approximation of the quotient we get through self_high_blocks / (rhs_high_blocks + 1)
+        // the +1 is required to ensure that the quotient is smaller than the real quotient
+        // one can prove that subtracting this is at most 2 * rhs away from the actual remainder
+        
+        // Therefore, the upper bits may not be completely cleared. Therefore, perform the division again
+        // with the one block shifted rhs. Here, we only use the upper 64 bits of rhs as otherwise, the truncating
+        // division will only yield 0, 1 or 2 and we will get smaller than rhs * shift, but may still have upper bits
+        // uncleared (as rhs may have upper bits uncleared)
+
         let mut result_upper = 0;
         let mut result_lower = 0;
 
