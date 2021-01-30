@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::ops::*;
+use super::alg::*;
 
 #[derive(Debug, Clone)]
 struct BigInt {
@@ -119,8 +120,10 @@ impl BigInt {
     }
 
     fn do_multiplication(&self, rhs: &BigInt) -> BigInt {
+        assert!(!self.negative);
+        assert!(!rhs.negative);
         let mut result = BigInt {
-            negative: self.negative ^ rhs.negative,
+            negative: false,
             data: Vec::with_capacity(self.highest_set_block().unwrap_or(0) + rhs.highest_set_block().unwrap_or(0) + 2)
         };
         if let Some(d) = rhs.highest_set_block() {
@@ -144,7 +147,12 @@ impl BigInt {
         let rhs_high_blocks: u128 = ((rhs.data[d] as u128) << Self::BLOCK_BITS) | (rhs.data[d - 1] as u128);
 
         if rhs_high_blocks == u128::MAX {
-            return 0;
+            if self.abs_cmp(&rhs) != Ordering::Less {
+                self.do_subtraction(rhs, 0);
+                return 1;
+            } else {
+                return 0;
+            }
         } else {
             let mut quotient = (self_high_blocks / (rhs_high_blocks + 1)) as u64;
             let mut subtract = rhs.clone();
@@ -226,6 +234,7 @@ impl BigInt {
     }
 
     fn do_division(&mut self, rhs: &BigInt) -> BigInt {
+        assert!(!rhs.is_zero());
         assert!(!self.negative);
         assert!(!rhs.negative);
 
@@ -478,8 +487,13 @@ impl Mul for BigInt {
 
     type Output = BigInt;
 
-    fn mul(self, rhs: BigInt) -> Self::Output {
-        self.do_multiplication(&rhs)
+    fn mul(mut self, mut rhs: BigInt) -> Self::Output {
+        let sign = self.negative ^ rhs.negative;
+        self.negative = false;
+        rhs.negative = false;
+        let mut result = self.do_multiplication(&rhs);
+        result.negative = sign;
+        return result;
     }
 }
 
@@ -539,6 +553,33 @@ impl RemAssign for BigInt {
     }
 }
 
+impl One for BigInt {
+
+    fn one() -> BigInt {
+        BigInt {
+            negative: false,
+            data: vec![1]
+        }
+    }
+}
+
+impl Zero for BigInt {
+
+    fn zero() -> BigInt {
+        BigInt::ZERO.clone()
+    }
+}
+
+impl Neg for BigInt {
+
+    type Output = BigInt;
+
+    fn neg(mut self) -> BigInt {
+        self.negative = !self.negative;
+        self
+    }
+}
+
 impl PartialEq<u64> for BigInt {
 
     fn eq(&self, rhs: &u64) -> bool {
@@ -568,6 +609,8 @@ impl std::fmt::Display for BigInt {
     }
 }
 
+impl Ring for BigInt {}
+
 #[derive(Debug, Clone)]
 pub enum BigIntParseError {
     ParseIntError(std::num::ParseIntError),
@@ -593,6 +636,9 @@ impl std::str::FromStr for BigInt {
         Self::from_str_radix(s, 10)
     }
 }
+
+#[cfg(test)]
+use std::str::FromStr;
 
 #[test]
 fn test_print_power_2() {
@@ -702,4 +748,45 @@ fn test_assumptions_integer_division() {
     assert_eq!(1, 3 % -2);
     assert_eq!(-1, -3 % -2);
     assert_eq!(1, 3 % 2);
+}
+
+#[test]
+fn test_ring_axioms() {
+    const numbers: [&'static str; 10] = [
+        "5444517870735015415413993718908291383295", // power of two - 1
+        "5444517870735015415413993718908291383296", // power of two
+        "-5444517870735015415413993718908291383295",
+        "-5444517870735015415413993718908291383296",
+        "3489", // the rest is random
+        "891023591340178345678931246518793456983745682137459364598623489512389745698237456890239238476873429872346579",
+        "172365798123602365091834765607185713205612370956192783561461248973265193754762751378496572896497125361819754136",
+        "0",
+        "-231780567812394562346324763251741827457123654871236548715623487612384752328164",
+        "+1278367182354612381234568509783420989356938472561078564732895634928563482349872698723465"
+    ];
+    let ns = numbers.iter().cloned().map(BigInt::from_str).map(Result::unwrap).collect::<Vec<_>>();
+    let l = ns.len();
+    for i in 0..l {
+        assert_eq!(BigInt::ZERO, ns[i].clone() - ns[i].clone());
+        if !ns[i].is_zero() {
+            assert_eq!(BigInt::one(), ns[i].clone() / ns[i].clone());
+        }
+        assert_eq!(ns[i], ns[i].clone() + BigInt::zero());
+        assert_eq!(ns[i], ns[i].clone() * BigInt::one());
+    }
+    for i in 0..l {
+        for j in 0..l {
+            assert_eq!(ns[i].clone() + ns[j].clone(), ns[j].clone() + ns[i].clone());
+            assert_eq!(ns[i].clone() * ns[j].clone(), ns[j].clone() * ns[i].clone());
+        }
+    }
+    for i in 0..l {
+        for j in 0..l {
+            for k in 0..l {
+                assert_eq!(ns[k].clone() * (ns[i].clone() + ns[j].clone()), ns[k].clone() * ns[j].clone() + ns[k].clone() * ns[i].clone());
+                assert_eq!(ns[k].clone() * (ns[i].clone() * ns[j].clone()), (ns[k].clone() * ns[i].clone()) * ns[j].clone());
+                assert_eq!(ns[k].clone() + (ns[i].clone() + ns[j].clone()), (ns[k].clone() + ns[i].clone()) + ns[j].clone());
+            }
+        }
+    }
 }
