@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::ops::*;
 
 #[derive(Debug, Clone)]
 struct BigInt {
@@ -310,7 +311,7 @@ impl BigInt {
     ///
     /// Calculates self += summand * (1 << BLOCK_BITS)^block_offset
     /// 
-    fn do_addition_small(&mut self, summand: u64, block_offset: usize) {
+    fn do_addition_small(&mut self, summand: u64) {
         assert!(!self.negative);
 
         if self.data.len() > 0 {
@@ -347,7 +348,7 @@ impl BigInt {
             let val = value?;
             debug_assert!(val < base);
             result.do_multiplication_small(base);
-            result.do_addition_small(val, 0);
+            result.do_addition_small(val);
         }
         return Ok(result);
     }
@@ -396,6 +397,147 @@ impl PartialEq for BigInt {
 }
 
 impl Eq for BigInt {}
+
+impl PartialOrd for BigInt {
+
+    fn partial_cmp(&self, rhs: &BigInt) -> Option<Ordering> {
+        Some(self.cmp(rhs))
+    }
+}
+
+impl Ord for BigInt {
+
+    fn cmp(&self, rhs: &BigInt) -> Ordering {
+        if self.is_zero() && rhs.is_zero() {
+            Ordering::Equal
+        } else {
+            match (self.negative, rhs.negative) {
+                (true, true) => rhs.abs_cmp(self),
+                (true, false) => Ordering::Greater,
+                (false, true) => Ordering::Less,
+                (false, false) => self.abs_cmp(rhs)
+            }
+        }
+    }
+}
+
+impl Add for BigInt {
+
+    type Output = BigInt;
+
+    fn add(mut self, rhs: BigInt) -> Self::Output {
+        self += rhs;
+        return self;
+    }
+}
+
+impl AddAssign for BigInt {
+
+    fn add_assign(&mut self, mut rhs: BigInt) {
+        if self.negative == rhs.negative {
+            self.do_addition(&rhs, 0);
+        } else if self.abs_cmp(&rhs) != Ordering::Less {
+            self.negative = !self.negative;
+            self.do_subtraction(&rhs, 0);
+            self.negative = !self.negative;
+        } else {
+            rhs.negative = !rhs.negative;
+            rhs.do_subtraction(&self, 0);
+            rhs.negative = !rhs.negative;
+            std::mem::swap(self, &mut rhs);
+        }
+    }
+}
+
+impl Sub for BigInt {
+
+    type Output = BigInt;
+
+    fn sub(mut self, rhs: BigInt) -> Self::Output {
+        self -= rhs;
+        return self;
+    }
+}
+
+impl SubAssign for BigInt {
+
+    fn sub_assign(&mut self, mut rhs: BigInt) {
+        if self.negative != rhs.negative {
+            self.do_addition(&rhs, 0);
+        } else if self.abs_cmp(&rhs) != Ordering::Less {
+            self.do_subtraction(&rhs, 0);
+        } else {
+            rhs.do_subtraction(&self, 0);
+            rhs.negative = !rhs.negative;
+            std::mem::swap(self, &mut rhs);
+        }
+    }
+}
+
+impl Mul for BigInt {
+
+    type Output = BigInt;
+
+    fn mul(self, rhs: BigInt) -> Self::Output {
+        self.do_multiplication(&rhs)
+    }
+}
+
+impl MulAssign for BigInt {
+
+    fn mul_assign(&mut self, rhs: BigInt) {
+        let mut data = Vec::new();
+        std::mem::swap(&mut data, &mut self.data);
+        let self_copy = BigInt {
+            negative: self.negative,
+            data: data
+        };
+        *self = self_copy * rhs;
+    }
+}
+
+impl Div for BigInt {
+
+    type Output = BigInt;
+
+    fn div(mut self, rhs: BigInt) -> BigInt {
+        self /= rhs;
+        self
+    }
+}
+
+impl DivAssign for BigInt {
+
+    fn div_assign(&mut self, mut rhs: BigInt) {
+        let result_sign = self.negative ^ rhs.negative;
+        self.negative = false;
+        rhs.negative = false;
+        let quotient = self.do_division(&rhs);
+        *self = quotient;
+        self.negative = result_sign;
+    }
+}
+
+impl Rem for BigInt {
+
+    type Output = BigInt;
+
+    fn rem(mut self, rhs: BigInt) -> BigInt {
+        self %= rhs;
+        self
+    }
+}
+
+impl RemAssign for BigInt {
+
+    fn rem_assign(&mut self, mut rhs: BigInt) {
+        let sign = self.negative;
+        self.negative = false;
+        rhs.negative = false;
+        self.do_division(&rhs);
+        self.negative = sign;
+    }
+}
 
 impl PartialEq<u64> for BigInt {
 
@@ -547,4 +689,17 @@ fn test_do_division_big() {
     let quotient = x.do_division(&y);
     assert_eq!(r, x);
     assert_eq!(q, quotient);
+}
+
+#[test]
+fn test_assumptions_integer_division() {
+    assert_eq!(-1, -3 / 2);
+    assert_eq!(-1, 3 / -2);
+    assert_eq!(1, -3 / -2);
+    assert_eq!(1, 3 / 2);
+
+    assert_eq!(-1, -3 % 2);
+    assert_eq!(1, 3 % -2);
+    assert_eq!(-1, -3 % -2);
+    assert_eq!(1, 3 % 2);
 }
