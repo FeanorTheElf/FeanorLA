@@ -521,3 +521,25 @@ fn test_do_division_no_remainder() {
     assert_eq!(BigInt::ZERO, x);
     assert_eq!(z, quotient);
 }
+
+#[test]
+fn test_do_division_remainder() {
+    let mut x = BigInt::from_str_radix("578435387FF0582367863200000000007651437856", 16).unwrap();
+    let y =                          BigInt::from_str_radix("200000000000000000000", 16).unwrap();
+    let z = BigInt::from_str_radix("2BC21A9C3FF82C11B3C319", 16).unwrap();
+    let r = BigInt::from_str_radix("7651437856", 16).unwrap();
+    let quotient = x.do_division(&y);
+    assert_eq!(r, x);
+    assert_eq!(z, quotient);
+}
+
+#[test]
+fn test_do_division_big() {
+    let mut x = BigInt::from_str_radix("581239456149785691238569872349872348569871269871234657986123987237865847935698734296434575367565723846982523852347", 10).unwrap();
+    let y = BigInt::from_str_radix("903852718907268716125180964783634518356783568793426834569872365791233387356325", 10).unwrap();
+    let q = BigInt::from_str_radix("643068769934649368349591185247155725", 10).unwrap();
+    let r = BigInt::from_str_radix("265234469040774335115597728873888165088018116561138613092906563355599185141722", 10).unwrap();
+    let quotient = x.do_division(&y);
+    assert_eq!(r, x);
+    assert_eq!(q, quotient);
+}
