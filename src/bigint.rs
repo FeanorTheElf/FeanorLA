@@ -199,11 +199,21 @@ impl BigInt {
             let rhs_high_blocks: u128 = ((rhs.data[rhs_high] as u128) << Self::BLOCK_BITS) | (rhs.data[rhs_high - 1] as u128);
 
             if rhs_high_blocks != u128::MAX && self_high_blocks >= (rhs_high_blocks + 1) {
-                let quotient = (self_high_blocks / (rhs_high_blocks + 1)) as u64;
+                let mut quotient = (self_high_blocks / (rhs_high_blocks + 1)) as u64;
                 debug_assert!(quotient != 0);
                 let mut subtract = rhs.clone();
                 subtract.do_multiplication_small(quotient);
                 self.do_subtraction(&subtract, self_high - rhs_high);
+
+                // we might be up to 2 away from the real quotient
+                if self.data[self_high] > rhs.data[rhs_high] {
+                    self.do_subtraction(rhs, self_high - rhs_high - 1);
+                    quotient += 1;
+                }
+                if self.data[self_high] > rhs.data[rhs_high] {
+                    self.do_subtraction(rhs, self_high - rhs_high - 1);
+                    quotient += 1;
+                }
                 result_upper = quotient;
             }
         }
@@ -217,15 +227,6 @@ impl BigInt {
                 subtract.do_multiplication_small(quotient);
                 self.do_subtraction(&subtract, self_high - rhs_high - 1);
                 
-                // we might be up to 2 away from the real quotient
-                if self.data[self_high] != 0 {
-                    self.do_subtraction(rhs, self_high - rhs_high - 1);
-                    quotient += 1;
-                }
-                if self.data[self_high] != 0 {
-                    self.do_subtraction(rhs, self_high - rhs_high - 1);
-                    quotient += 1;
-                }
                 result_lower = quotient;
             }
             debug_assert!(self.data[self_high] == 0);
