@@ -246,6 +246,20 @@ pub trait Ring {
     fn neg(&self, val: Self::El) -> Self::El;
     fn zero(&self) -> Self::El;
     fn one(&self) -> Self::El;
+
+    fn pow(&self, basis: Self::El, exp: u64) -> Self::El 
+        where Self::El: Clone
+    {
+        let mut power = basis;
+        let mut result = self.one();
+        for i in 0..(64 - exp.leading_zeros()) {
+            if ((exp >> i) & 1) != 0 {
+                result = self.mul(result, power.clone());
+            }
+            power = self.mul(power.clone(), power);
+        }
+        return result;
+    }
 }
 
 pub trait IntegralRing: Ring {}
@@ -292,4 +306,9 @@ impl<T: EuclideanRingEl> EuclideanRing for StaticRing<T> {
 impl<T: FieldEl> Field for StaticRing<T> {
 
     fn div(&self, lhs: Self::El, rhs: Self::El) -> Self::El { lhs / rhs }
+}
+
+#[test]
+fn test_pow() {
+    assert_eq!(81 * 81 * 3, StaticRing::<i64>::RING.pow(3, 9));
 }
