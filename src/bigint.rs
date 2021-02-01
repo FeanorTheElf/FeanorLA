@@ -52,7 +52,7 @@ impl BigInt {
         }
     }
 
-    fn is_zero(&self) -> bool {
+    pub fn is_zero(&self) -> bool {
         self.highest_set_block().is_none()
     }
     
@@ -127,8 +127,9 @@ impl BigInt {
             data: Vec::with_capacity(self.highest_set_block().unwrap_or(0) + rhs.highest_set_block().unwrap_or(0) + 2)
         };
         if let Some(d) = rhs.highest_set_block() {
+            let mut val = BigInt::zero();
             for i in 0..=d {
-                let mut val = self.clone();
+                val.assign(self);
                 val.do_multiplication_small(rhs.data[i]);
                 result.do_addition(&val, i);
             }
@@ -139,7 +140,7 @@ impl BigInt {
     ///
     /// Same as division_step, but for self_high == rhs_high == d
     /// 
-    fn division_step_last(&mut self, rhs: &BigInt, d: usize) -> u64 {
+    fn division_step_last(&mut self, rhs: &BigInt, d: usize, tmp: &mut BigInt) -> u64 {
         assert!(self.data[d] != 0);
         assert!(rhs.data[d] != 0);
 
@@ -155,9 +156,9 @@ impl BigInt {
             }
         } else {
             let mut quotient = (self_high_blocks / (rhs_high_blocks + 1)) as u64;
-            let mut subtract = rhs.clone();
-            subtract.do_multiplication_small(quotient);
-            self.do_subtraction(&subtract, 0);
+            tmp.assign(rhs);
+            tmp.do_multiplication_small(quotient);
+            self.do_subtraction(&tmp, 0);
             if self.abs_cmp(&rhs) != Ordering::Less {
                 self.do_subtraction(&rhs, 0);
                 quotient += 1;
@@ -175,9 +176,10 @@ impl BigInt {
     ///
     /// Finds some integer d such that subtracting d * rhs from self clears the top
     /// block of self. self will be assigned the value after the subtraction and d
-    /// will be returned as d = (u * 2^block_bits + l) * 2^(k log_bits) where the return value is (u, l, k)
+    /// will be returned as d = (u * 2 ^ block_bits + l) * 2 ^ (k * block_bits) 
+    /// where the return value is (u, l, k)
     /// 
-    fn division_step(&mut self, rhs: &BigInt, self_high: usize, rhs_high: usize) -> (u64, u64, usize) {
+    fn division_step(&mut self, rhs: &BigInt, self_high: usize, rhs_high: usize, tmp: &mut BigInt) -> (u64, u64, usize) {
         assert!(self_high > rhs_high);
         assert!(self.data[self_high] != 0);
         assert!(rhs.data[rhs_high] != 0);
@@ -186,9 +188,9 @@ impl BigInt {
         // the +1 is required to ensure that the quotient is smaller than the real quotient
         // one can prove that subtracting this is at most 2 * rhs away from the actual remainder
         
-        // Therefore, the upper bits may not be completely cleared. Therefore, perform the division again
+        // Therefore, the uppermost block may not be completely cleared. Therefore, perform the division again
         // with the one block shifted rhs. Here, we only use the upper 64 bits of rhs as otherwise, the truncating
-        // division will only yield 0, 1 or 2 and we will get smaller than rhs * shift, but may still have upper bits
+        // division will only yield 0 and we will get smaller than rhs * shift, but may still have upper bits
         // uncleared (as rhs may have upper bits uncleared)
 
         let mut result_upper = 0;
@@ -201,9 +203,9 @@ impl BigInt {
             if rhs_high_blocks != u128::MAX && self_high_blocks >= (rhs_high_blocks + 1) {
                 let mut quotient = (self_high_blocks / (rhs_high_blocks + 1)) as u64;
                 debug_assert!(quotient != 0);
-                let mut subtract = rhs.clone();
-                subtract.do_multiplication_small(quotient);
-                self.do_subtraction(&subtract, self_high - rhs_high);
+                tmp.assign(rhs);
+                tmp.do_multiplication_small(quotient);
+                self.do_subtraction(&tmp, self_high - rhs_high);
 
                 // we might be up to 2 away from the real quotient
                 if self.data[self_high] > rhs.data[rhs_high] {
@@ -222,10 +224,10 @@ impl BigInt {
             let self_high_blocks: u128 = ((self.data[self_high] as u128) << Self::BLOCK_BITS) | (self.data[self_high - 1] as u128);
 
             if self.data[self_high] != 0 {
-                let mut quotient = (self_high_blocks / (rhs.data[rhs_high] as u128 + 1)) as u64;
-                let mut subtract = rhs.clone();
-                subtract.do_multiplication_small(quotient);
-                self.do_subtraction(&subtract, self_high - rhs_high - 1);
+                let  quotient = (self_high_blocks / (rhs.data[rhs_high] as u128 + 1)) as u64;
+                tmp.assign(rhs);
+                tmp.do_multiplication_small(quotient);
+                self.do_subtraction(&tmp, self_high - rhs_high - 1);
                 
                 result_lower = quotient;
             }
@@ -240,6 +242,7 @@ impl BigInt {
         assert!(!rhs.negative);
 
         if let Some(mut d) = self.highest_set_block() {
+            let mut tmp = BigInt::zero();
             let k = rhs.highest_set_block().expect("Division by zero");
             if d < k {
                 return Self::ZERO.clone();
@@ -256,14 +259,14 @@ impl BigInt {
             result_data.resize(d + 1 - k, 0);
             while d > k {
                 if self.data[d] != 0 {
-                    let (quo_upper, quo_lower, quo_power) = self.division_step(&rhs, d, k);
+                    let (quo_upper, quo_lower, quo_power) = self.division_step(&rhs, d, k, &mut tmp);
                     result_data[quo_power] += quo_lower;
                     result_data[quo_power + 1] += quo_upper;
                     debug_assert!(self.data[d] == 0);
                 }
                 d -= 1;
             }
-            let quo = self.division_step_last(&rhs, d);
+            let quo = self.division_step_last(&rhs, d, &mut tmp);
             result_data[0] += quo;
             return BigInt {
                 negative: false,
@@ -299,6 +302,17 @@ impl BigInt {
             return buffer as u64;
         } else {
             return 0;
+        }
+    }
+
+    pub fn assign(&mut self, rhs: &BigInt) {
+        self.negative = rhs.negative;
+        self.data.clear();
+        if let Some(d) = rhs.highest_set_block() {
+            self.data.reserve(d);
+            for i in 0..=d {
+                self.data.push(rhs.data[i]);
+            }
         }
     }
 
@@ -347,7 +361,7 @@ impl BigInt {
     /// The passed iterator must yield the "digits" in the order starting with the
     /// highest significant digit.
     /// 
-    fn from_radix<I, E>(data: I, base: u64) -> Result<BigInt, E> 
+    pub fn from_radix<I, E>(data: I, base: u64) -> Result<BigInt, E> 
         where I: Iterator<Item = Result<u64, E>>
     {
         let mut result = BigInt {
@@ -363,7 +377,7 @@ impl BigInt {
         return Ok(result);
     }
 
-    fn from_str_radix(s: &str, base: u32) -> Result<BigInt, BigIntParseError> {
+    pub fn from_str_radix(s: &str, base: u32) -> Result<BigInt, BigIntParseError> {
         assert!(base >= 2);
         let sign = s.chars().next().unwrap();
         let (negative, rest): (bool, &[u8]) = if sign == '+' {
@@ -611,6 +625,8 @@ impl std::fmt::Display for BigInt {
 }
 
 impl Ring for BigInt {}
+impl IntegralRing for BigInt {}
+impl EuclideanRing for BigInt {}
 
 #[derive(Debug, Clone)]
 pub enum BigIntParseError {
@@ -790,4 +806,26 @@ fn test_ring_axioms() {
             }
         }
     }
+}
+
+#[bench]
+fn bench_mul(bencher: &mut test::Bencher) {
+    let x = BigInt::from_str_radix("2382385687561872365981723456981723456987134659834659813491964132897159283746918732563498628754", 10).unwrap();
+    let y = BigInt::from_str_radix("48937502893645789234569182735646324895723409587234", 10).unwrap();
+    let z = BigInt::from_str_radix("116588006478839442056346504147013274749794691549803163727888681858469844569693215953808606899770104590589390919543097259495176008551856143726436", 10).unwrap();
+    bencher.iter(|| {
+        let p = x.clone() * y.clone();
+        assert_eq!(z, p);
+    })
+}
+
+#[bench]
+fn bench_div(bencher: &mut test::Bencher) {
+    let x = BigInt::from_str_radix("2382385687561872365981723456981723456987134659834659813491964132897159283746918732563498628754", 10).unwrap();
+    let y = BigInt::from_str_radix("48937502893645789234569182735646324895723409587234", 10).unwrap();
+    let z = BigInt::from_str_radix("48682207850683149082203680872586784064678018", 10).unwrap();
+    bencher.iter(|| {
+        let q = x.clone() / y.clone();
+        assert_eq!(z, q);
+    })
 }
