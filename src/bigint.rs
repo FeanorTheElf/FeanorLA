@@ -3,7 +3,7 @@ use std::ops::*;
 use super::alg::*;
 
 #[derive(Debug, Clone)]
-struct BigInt {
+pub struct BigInt {
     /// "digits" of the (absolute value) of the number in base 2^64
     data: Vec<u64>,
     negative: bool
@@ -17,6 +17,9 @@ fn div_rem<T>(x: T, y: T) -> (T, T)
     (quot, rem)
 }
 
+///
+/// 10 to this power fits still in a u64
+/// 
 const BIG_POWER_TEN_ZEROS: u32 = 19;
 const BIG_POWER_TEN: u64 = 10000000000000000000u64;
 
@@ -26,7 +29,9 @@ impl BigInt {
     const ZERO: BigInt = BigInt { data: Vec::new(), negative: false };
 
     ///
-    /// Calculate self += rhs * (1 << BLOCK_BITS)^block_offset
+    /// Calculate abs(self) += rhs * (1 << BLOCK_BITS)^block_offset
+    /// 
+    /// the sign bit will be left unchanged.
     /// 
     fn abs_addition(&mut self, rhs: &BigInt, block_offset: usize) {
         let mut buffer: bool = false;
@@ -63,6 +68,9 @@ impl BigInt {
         return None;
     }
 
+    ///
+    /// Computes abs(self) <=> abs(rhs)
+    /// 
     fn abs_compare(&self, rhs: &BigInt) -> Ordering {
         match (self.highest_set_block(), rhs.highest_set_block()) {
            (None, None) => return Ordering::Equal,
@@ -86,7 +94,9 @@ impl BigInt {
     }
 
     ///
-    /// Calculate self -= rhs * (1 << BLOCK_BITS)^block_offset
+    /// Calculate abs(self) -= rhs * (1 << BLOCK_BITS)^block_offset
+    /// 
+    /// the sign bit will be left unchanged.
     /// 
     fn abs_subtraction(&mut self, rhs: &BigInt, block_offset: usize) {
         debug_assert!(self.abs_compare(rhs) != Ordering::Less);
@@ -273,7 +283,10 @@ impl BigInt {
     ///
     /// Calculates self /= divisor and returns the remainder of the division.
     /// This only works for positive numbers, as for negative numbers, as the remainder
-    /// must be returned as a u64 to avoid overflow
+    /// must be returned as a u64 to avoid overflow. Instead of throwing, this function
+    /// therefore works with abs(self) instead of self.
+    /// 
+    /// the sign bit will be left unchanged.
     /// 
     fn abs_division_small(&mut self, divisor: u64) -> u64 {
         assert!(divisor != 0);
@@ -325,11 +338,11 @@ impl BigInt {
     }
 
     ///
-    /// Calculates self += summand * (1 << BLOCK_BITS)^block_offset
+    /// Calculates abs(self) += summand * (1 << BLOCK_BITS)^block_offset
+    /// 
+    /// the sign bit will be left unchanged.
     /// 
     fn abs_addition_small(&mut self, summand: u64) {
-        assert!(!self.negative);
-
         if self.data.len() > 0 {
             let (sum, mut buffer) = self.data[0].overflowing_add(summand);
             self.data[0] = sum;
@@ -393,16 +406,18 @@ impl BigInt {
         return result;
     }
 
-    pub fn div_rem_ref(&mut self, rhs: &BigInt) -> BigInt {
+    pub fn div_rem(&mut self, rhs: &BigInt) -> BigInt {
         let mut quotient = self.abs_division(rhs);
         quotient.negative = self.negative ^ rhs.negative;
         return quotient;
     }
 
-    pub fn mul_ref(&self, rhs: &BigInt) -> BigInt {
-        let mut result = self.abs_multiplication(rhs);
-        result.negative = self.negative ^ rhs.negative;
-        return result;
+    pub fn normalize(&mut self) {
+        if let Some(d) = self.highest_set_block() {
+            self.data.truncate(d + 1);
+        } else {
+            self.data.truncate(0);
+        }
     }
 }
 
@@ -449,11 +464,12 @@ impl Ord for BigInt {
     }
 }
 
-impl Add for BigInt {
-
+impl<T> Add<T> for BigInt 
+    where BigInt: AddAssign<T>
+{
     type Output = BigInt;
 
-    fn add(mut self, rhs: BigInt) -> Self::Output {
+    fn add(mut self, rhs: T) -> Self::Output {
         self += rhs;
         return self;
     }
@@ -473,11 +489,27 @@ impl AddAssign<BigInt> for BigInt {
     }
 }
 
-impl Sub for BigInt {
+impl AddAssign<&BigInt> for BigInt {
 
+    fn add_assign(&mut self, rhs: &BigInt) {
+        if self.negative == rhs.negative {
+            self.abs_addition(rhs, 0);
+        } else if self.abs_compare(&rhs) != Ordering::Less {
+            self.abs_subtraction(rhs, 0);
+        } else {
+            let mut result = rhs.clone();
+            result.abs_subtraction(&self, 0);
+            std::mem::swap(self, &mut result);
+        }
+    }
+}
+
+impl<T> Sub<T> for BigInt 
+    where BigInt: SubAssign<T>
+{
     type Output = BigInt;
 
-    fn sub(mut self, rhs: BigInt) -> Self::Output {
+    fn sub(mut self, rhs: T) -> Self::Output {
         self -= rhs;
         return self;
     }
@@ -485,40 +517,50 @@ impl Sub for BigInt {
 
 impl SubAssign for BigInt {
 
-    fn sub_assign(&mut self, mut rhs: BigInt) {
-        if self.negative != rhs.negative {
-            self.abs_addition(&rhs, 0);
-        } else if self.abs_compare(&rhs) != Ordering::Less {
-            self.abs_subtraction(&rhs, 0);
-        } else {
-            rhs.abs_subtraction(&self, 0);
-            rhs.negative = !rhs.negative;
-            std::mem::swap(self, &mut rhs);
-        }
+    fn sub_assign(&mut self, rhs: BigInt) {
+        self.negative = !self.negative;
+        self.add_assign(rhs);
+        self.negative = !self.negative;
+        self.normalize();
     }
 }
 
-impl Mul for BigInt {
+impl SubAssign<&BigInt> for BigInt {
 
+    fn sub_assign(&mut self, rhs: &BigInt) {
+        self.negative = !self.negative;
+        self.add_assign(rhs);
+        self.negative = !self.negative;
+        self.normalize();
+    }
+}
+
+impl<T> Mul<T> for BigInt 
+    where BigInt: MulAssign<T>
+{
     type Output = BigInt;
 
-    fn mul(self, rhs: BigInt) -> Self::Output {
-        let mut result = self.abs_multiplication(&rhs);
-        result.negative = self.negative ^ rhs.negative;
-        return result;
+    fn mul(mut self, rhs: T) -> Self::Output {
+        self *= rhs;
+        return self;
     }
 }
 
 impl MulAssign for BigInt {
 
     fn mul_assign(&mut self, rhs: BigInt) {
-        let mut data = Vec::new();
-        std::mem::swap(&mut data, &mut self.data);
-        let self_copy = BigInt {
-            negative: self.negative,
-            data: data
-        };
-        *self = self_copy * rhs;
+        let sign = self.negative ^ rhs.negative;
+        *self = self.abs_multiplication(&rhs);
+        self.negative = sign;
+    }
+}
+
+impl MulAssign<&BigInt> for BigInt {
+
+    fn mul_assign(&mut self, rhs: &BigInt) {
+        let sign = self.negative ^ rhs.negative;
+        *self = self.abs_multiplication(rhs);
+        self.negative = sign;
     }
 }
 
@@ -526,29 +568,32 @@ impl MulAssign<i64> for BigInt {
 
     fn mul_assign(&mut self, rhs: i64) {
         self.abs_multiplication_small(rhs.abs() as u64);
-        self.negative ^= rhs > 0;
+        self.negative ^= rhs < 0;
     }
 }
 
-impl Div for BigInt {
-
+impl<T> Div<T> for BigInt
+    where BigInt: DivAssign<T>
+{
     type Output = BigInt;
 
-    fn div(mut self, rhs: BigInt) -> BigInt {
+    fn div(mut self, rhs: T) -> BigInt {
         self /= rhs;
-        self
+        return self;
     }
 }
 
 impl DivAssign for BigInt {
 
-    fn div_assign(&mut self, mut rhs: BigInt) {
-        let result_sign = self.negative ^ rhs.negative;
-        self.negative = false;
-        rhs.negative = false;
-        let quotient = self.abs_division(&rhs);
-        *self = quotient;
-        self.negative = result_sign;
+    fn div_assign(&mut self, rhs: BigInt) {
+        *self = self.div_rem(&rhs);
+    }
+}
+
+impl DivAssign<&BigInt> for BigInt {
+
+    fn div_assign(&mut self, rhs: &BigInt) {
+        *self = self.div_rem(rhs);
     }
 }
 
@@ -559,20 +604,30 @@ impl DivAssign<u64> for BigInt {
     }
 }
 
-impl Rem for BigInt {
-
+impl<T> Rem<T> for BigInt 
+    where BigInt: RemAssign<T>
+{
     type Output = BigInt;
 
-    fn rem(mut self, rhs: BigInt) -> BigInt {
+    fn rem(mut self, rhs: T) -> BigInt {
         self %= rhs;
-        self
+        return self;
     }
 }
 
 impl RemAssign for BigInt {
 
-    fn rem_assign(&mut self, mut rhs: BigInt) {
-        self.abs_division(&rhs);
+    fn rem_assign(&mut self, rhs: BigInt) {
+        self.div_rem(&rhs);
+        self.normalize();
+    }
+}
+
+impl RemAssign<&BigInt> for BigInt {
+
+    fn rem_assign(&mut self, rhs: &BigInt) {
+        self.div_rem(&rhs);
+        self.normalize();
     }
 }
 
@@ -653,7 +708,7 @@ impl EuclideanRingEl for BigInt {
 
     fn div_rem(&mut self, rhs: Self) -> Self
     {
-        self.div_rem_ref(&rhs)
+        self.div_rem(&rhs)
     }
 }
 

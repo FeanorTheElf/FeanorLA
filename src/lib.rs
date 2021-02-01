@@ -31,3 +31,4 @@ pub mod bigint;
 pub mod simplex;
 pub mod diophantine;
 pub mod qr;
+pub mod zn;
