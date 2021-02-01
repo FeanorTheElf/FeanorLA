@@ -171,41 +171,58 @@ impl Root for f64 {
 ///
 /// Multiplication must be commutative
 /// 
-pub trait Ring: Sized + Add<Output = Self> + Mul<Output = Self> + AddAssign + PartialEq + Zero + One + Neg<Output = Self> + Sub<Output = Self> + SubAssign {}
+pub trait RingEl: Sized + Add<Output = Self> + Mul<Output = Self> + AddAssign + PartialEq + Zero + One + Neg<Output = Self> + Sub<Output = Self> + SubAssign {}
 
-pub trait IntegralRing: Ring {}
+pub trait IntegralRingEl: RingEl {}
 
-pub trait EuclideanRing : IntegralRing + Rem<Output = Self> + RemAssign {}
+///
+/// Division must satisfy the invariant x = (x/y) * y + (x%y)
+/// 
+pub trait EuclideanRingEl: IntegralRingEl + Rem<Output = Self> + RemAssign + Div<Output = Self> + DivAssign {
 
-pub trait Field: IntegralRing + MulAssign + Div<Output = Self> + DivAssign {}
+    ///
+    /// Computes (returned, self) := (self / rhs, self % rhs) and returns returned.
+    /// Can be faster than computing both separately
+    /// 
+    fn div_rem(&mut self, rhs: Self) -> Self 
+        where Self: Clone
+    {
+        let result = self.clone() / rhs.clone();
+        *self = self.clone() % rhs;
+        return result;
+    }
 
-impl Ring for i8 {}
-impl Ring for i16 {}
-impl Ring for i32 {}
-impl Ring for i64 {}
-impl Ring for i128 {}
-impl IntegralRing for i8 {}
-impl IntegralRing for i16 {}
-impl IntegralRing for i32 {}
-impl IntegralRing for i64 {}
-impl IntegralRing for i128 {}
-impl EuclideanRing for i8 {}
-impl EuclideanRing for i16 {}
-impl EuclideanRing for i32 {}
-impl EuclideanRing for i64 {}
-impl EuclideanRing for i128 {}
+}
 
-impl Ring for f32 {}
-impl Ring for f64 {}
-impl IntegralRing for f32 {}
-impl IntegralRing for f64 {}
-impl Field for f32 {}
-impl Field for f64 {}
+pub trait FieldEl: IntegralRingEl + MulAssign + Div<Output = Self> + DivAssign {}
+
+impl RingEl for i8 {}
+impl RingEl for i16 {}
+impl RingEl for i32 {}
+impl RingEl for i64 {}
+impl RingEl for i128 {}
+impl IntegralRingEl for i8 {}
+impl IntegralRingEl for i16 {}
+impl IntegralRingEl for i32 {}
+impl IntegralRingEl for i64 {}
+impl IntegralRingEl for i128 {}
+impl EuclideanRingEl for i8 {}
+impl EuclideanRingEl for i16 {}
+impl EuclideanRingEl for i32 {}
+impl EuclideanRingEl for i64 {}
+impl EuclideanRingEl for i128 {}
+
+impl RingEl for f32 {}
+impl RingEl for f64 {}
+impl IntegralRingEl for f32 {}
+impl IntegralRingEl for f64 {}
+impl FieldEl for f32 {}
+impl FieldEl for f64 {}
 
 ///
 /// Division means truncating division
 /// 
-pub trait Integer: Clone + Eq + Ord + EuclideanRing + Div<Output = Self> + DivAssign {}
+pub trait Integer: Clone + Eq + Ord + EuclideanRingEl {}
 
 impl Integer for i8 {}
 impl Integer for i16 {}
@@ -216,7 +233,63 @@ impl Integer for i128 {}
 ///
 /// For types that may have rounding errors
 /// 
-pub trait Float: Clone + PartialEq + PartialOrd + Field {}
+pub trait Float: Clone + PartialEq + PartialOrd + FieldEl {}
 
 impl Float for f32 {}
 impl Float for f64 {}
+
+pub trait Ring {
+    type El: Sized;
+
+    fn add(&self, lhs: Self::El, rhs: Self::El) -> Self::El;
+    fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El;
+    fn neg(&self, val: Self::El) -> Self::El;
+    fn zero(&self) -> Self::El;
+    fn one(&self) -> Self::El;
+}
+
+pub trait IntegralRing: Ring {}
+
+pub trait EuclideanRing: IntegralRing {
+
+    fn rem(&self, lhs: Self::El, rhs: Self::El) -> Self::El;
+    fn div(&self, lhs: Self::El, rhs: Self::El) -> Self::El;
+}
+
+pub trait Field: IntegralRing {
+    
+    fn div(&self, lhs: Self::El, rhs: Self::El) -> Self::El;
+}
+
+pub struct StaticRing<T: RingEl> {
+    element: std::marker::PhantomData<T>
+}
+
+impl<T: RingEl> StaticRing<T> {
+    
+    pub const RING: StaticRing<T> = StaticRing { element: std::marker::PhantomData };
+
+}
+
+impl<T: RingEl> Ring for StaticRing<T> {
+    type El = T;
+
+    fn add(&self, lhs: Self::El, rhs: Self::El) -> Self::El { lhs + rhs }
+    fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El { lhs * rhs }
+    fn neg(&self, val: Self::El) -> Self::El { -val }
+    fn zero(&self) -> Self::El { T::zero() }
+    fn one(&self) -> Self::El { T::one() }
+}
+
+impl<T: IntegralRingEl> IntegralRing for StaticRing<T> {}
+
+impl<T: EuclideanRingEl> EuclideanRing for StaticRing<T> {
+
+    fn rem(&self, lhs: Self::El, rhs: Self::El) -> Self::El { lhs % rhs }
+    fn div(&self, lhs: Self::El, rhs: Self::El) -> Self::El { lhs / rhs }
+}
+
+impl<T: FieldEl> Field for StaticRing<T> {
+
+    fn div(&self, lhs: Self::El, rhs: Self::El) -> Self::El { lhs / rhs }
+}

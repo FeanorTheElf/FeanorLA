@@ -18,7 +18,7 @@ pub struct SystemUnbounded;
  * with
  */
 fn simplex<M, T>(mut table: Matrix<M, T>, basic_vars: &mut BasicVars) -> Result<(), SystemUnbounded> 
-    where M: MatrixMutRowIter<T>, T: Field + PartialOrd + Clone + 'static
+    where M: MatrixMutRowIter<T>, T: FieldEl + PartialOrd + Clone + 'static
 {
     while let Some(pivot_col) = find_pivot_col(table.row(0)) {
         pivot(table.as_mut(), pivot_col, basic_vars)?;
@@ -31,7 +31,7 @@ fn simplex<M, T>(mut table: Matrix<M, T>, basic_vars: &mut BasicVars) -> Result<
  * table: (b | A)
  */
 pub fn solve<M, T>(table: Matrix<M, T>) -> Option<Vec<T>> 
-    where M: MatrixView<T>, T: Field + PartialOrd + Clone + 'static
+    where M: MatrixView<T>, T: FieldEl + PartialOrd + Clone + 'static
 {
     let (mut matrix, mut basic_vars) = add_artificials(table.as_ref());
     simplex(matrix.as_mut(), &mut basic_vars).unwrap();
@@ -46,7 +46,7 @@ pub fn solve<M, T>(table: Matrix<M, T>) -> Option<Vec<T>>
 }
 
 fn is_solution<M, T>(vars: &[T], table: Matrix<M, T>) -> bool 
-    where M: MatrixView<T>, T: Field + PartialOrd + Clone
+    where M: MatrixView<T>, T: FieldEl + PartialOrd + Clone
 {
     assert_eq!(
         vars.len() + 1,
@@ -68,7 +68,7 @@ fn is_solution<M, T>(vars: &[T], table: Matrix<M, T>) -> bool
 }
 
 fn extract_solution<M, T>(table: Matrix<M, T>, basic_vars: &BasicVars) -> Box<[T]> 
-    where M: MatrixView<T>, T: Field + Clone
+    where M: MatrixView<T>, T: FieldEl + Clone
 {
     assert_eq!(basic_vars.len(), table.row_count() - 1);
     let mut result: Box<[T]> = {
@@ -89,7 +89,7 @@ fn pivot<M, T>(
     pivot_col_index: usize,
     basic_vars: &mut BasicVars,
 ) -> Result<(), SystemUnbounded> 
-    where M: MatrixMutRowIter<T>, T: Field + PartialOrd + Clone
+    where M: MatrixMutRowIter<T>, T: FieldEl + PartialOrd + Clone
 {
     let pivot_row_index: usize = find_pivot_row(table.as_ref(), pivot_col_index)?;
     basic_vars[pivot_row_index - 1] = pivot_col_index;
@@ -98,7 +98,7 @@ fn pivot<M, T>(
 }
 
 fn eliminate<M, T>(mut table: Matrix<M, T>, row_index: usize, col_index: usize) 
-    where M: MatrixMutRowIter<T>, T: Field + PartialOrd + Clone
+    where M: MatrixMutRowIter<T>, T: FieldEl + PartialOrd + Clone
 {
     let pivot_value: T = table.at(row_index, col_index).clone();
     assert!(pivot_value != T::zero());
@@ -115,7 +115,7 @@ fn eliminate<M, T>(mut table: Matrix<M, T>, row_index: usize, col_index: usize)
 }
 
 fn find_pivot_row<M, T>(table: Matrix<M, T>, pivot_col_index: usize) -> Result<usize, SystemUnbounded> 
-    where M: MatrixView<T>, T: Field + PartialOrd + Clone
+    where M: MatrixView<T>, T: FieldEl + PartialOrd + Clone
 {
     let last_col: usize = table.col_count() - 1;
     let mut current_min: Option<(usize, T)> = None;
@@ -135,7 +135,7 @@ fn find_pivot_row<M, T>(table: Matrix<M, T>, pivot_col_index: usize) -> Result<u
 }
 
 fn find_pivot_col<V, T>(row: Vector<V, T>) -> Option<usize> 
-    where V: VectorView<T>, T: Field + PartialOrd
+    where V: VectorView<T>, T: FieldEl + PartialOrd
 {
     for i in 0..row.len() {
         if *row.at(i) > T::zero() {
@@ -146,7 +146,7 @@ fn find_pivot_col<V, T>(row: Vector<V, T>) -> Option<usize>
 }
 
 fn add_artificials<M, T>(table: Matrix<M, T>) -> (Matrix<MatrixOwned<T>, T>, BasicVars) 
-    where M: MatrixView<T>, T: Field + Clone + PartialOrd, T: 'static
+    where M: MatrixView<T>, T: FieldEl + Clone + PartialOrd, T: 'static
 {
     let rows = table.row_count() + 1;
     let cols = table.col_count() + table.row_count();

@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-use super::alg::{One, Zero, Ring, Field, Float, IntegralRing};
+use super::alg::{One, Zero, RingEl, FieldEl, Float, IntegralRingEl};
 
 use std::cmp::{Ord, Ordering, PartialEq, PartialOrd};
 use std::convert::From;
@@ -290,9 +290,9 @@ impl Div<Self> for r64 {
     }
 }
 
-impl Ring for r64 {}
-impl IntegralRing for r64 {}
-impl Field for r64 {}
+impl RingEl for r64 {}
+impl IntegralRingEl for r64 {}
+impl FieldEl for r64 {}
 
 impl Debug for r64 {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {

@@ -218,7 +218,7 @@ impl<M, T> Matrix<M, T>
 }
 
 impl<M, T> Matrix<M, T> 
-    where M: MatrixViewMut<T>, T: Ring + Clone
+    where M: MatrixViewMut<T>, T: RingEl + Clone
 {
     ///
     /// Let T be the identity matrix (mxm where this matrix is mxn), in which the entries
@@ -259,7 +259,7 @@ impl<M, T> Matrix<M, T>
 }
 
 impl<M, T> Matrix<M, T> 
-    where M: MatrixView<T>, T: Ring + Clone
+    where M: MatrixView<T>, T: RingEl + Clone
 {
     pub fn frobenius_square(&self) -> T {
         let mut it = self.rows().flat_map(|r| (0..r.len()).map(move |i| r.at(i).clone() * r.at(i).clone()));
@@ -366,7 +366,7 @@ impl<T> Matrix<MatrixOwned<T>, T>
 }
 
 impl<M, T> Matrix<M, T>
-    where M: MatrixViewMut<T>, T: Field + Clone
+    where M: MatrixViewMut<T>, T: FieldEl + Clone
 {
     ///
     /// Transforms this matrix into strict upper triangle form by gaussian elimination.
@@ -464,7 +464,7 @@ impl<M, T> Matrix<M, T>
 }
 
 impl<M, T> Matrix<M, T>
-    where M: MatrixView<T>, T: Field + Clone
+    where M: MatrixView<T>, T: FieldEl + Clone
 {
     ///
     /// Solves the linear equation AX = B for a square matrix A.
