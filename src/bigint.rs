@@ -822,6 +822,9 @@ fn test_ring_axioms() {
     }
     for i in 0..l {
         for j in 0..l {
+            if !ns[j].is_zero() {
+                assert_eq!(ns[i], (ns[i].clone() / ns[j].clone()) * ns[j].clone() + (ns[i].clone() % ns[j].clone()));
+            }
             assert_eq!(ns[i].clone() + ns[j].clone(), ns[j].clone() + ns[i].clone());
             assert_eq!(ns[i].clone() * ns[j].clone(), ns[j].clone() * ns[i].clone());
         }
