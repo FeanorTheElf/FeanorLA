@@ -2,7 +2,9 @@ use super::bigint::BigInt;
 use super::alg::*;
 
 pub struct RingZn {
-    modulus: BigInt
+    modulus: BigInt,
+    inverse_modulus: BigInt,
+    inverse_modulus_bitshift: u64
 }
 
 impl Ring for RingZn {

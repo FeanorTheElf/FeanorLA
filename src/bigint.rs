@@ -645,6 +645,29 @@ impl Rem<i64> for BigInt {
     }
 }
 
+impl Shr<usize> for BigInt {
+
+    type Output = BigInt;
+
+    fn shr(mut self, rhs: usize) -> Self::Output {
+        let drop_blocks = rhs / Self::BLOCK_BITS;
+        let shift_amount = rhs % Self::BLOCK_BITS;
+        let keep_bits = Self::BLOCK_BITS - shift_amount;
+        if self.data.len() <= drop_blocks {
+            self = Self::ZERO.clone();
+        } else {
+            self.data.drain(0..drop_blocks);
+            self.data[0] >>= shift_amount;
+            for i in 1..self.data.len() {
+                let rotated = self.data[i].rotate_right(shift_amount as u32);
+                self.data[i] = rotated & (u64::MAX >> shift_amount);
+                self.data[i - 1] |= rotated & (u64::MAX << keep_bits);
+            }
+        }
+        return self;
+    }
+}
+
 impl One for BigInt {
 
     fn one() -> BigInt {
@@ -836,6 +859,14 @@ fn test_do_division_big() {
     let quotient = x.abs_division(&y);
     assert_eq!(r, x);
     assert_eq!(q, quotient);
+}
+
+#[test]
+fn test_shift_right() {
+    let mut x = BigInt::from_str_radix("9843a756781b34567f81394", 16).unwrap();
+    let z = BigInt::from_str_radix("9843a756781b34567", 16).unwrap();
+    x = x >> 24;
+    assert_eq!(z, x);
 }
 
 #[test]
