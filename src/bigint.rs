@@ -26,7 +26,19 @@ const BIG_POWER_TEN: u64 = 10000000000000000000u64;
 impl BigInt {
 
     const BLOCK_BITS: usize = 64;
-    const ZERO: BigInt = BigInt { data: Vec::new(), negative: false };
+    pub const ZERO: BigInt = BigInt { data: Vec::new(), negative: false };
+
+    pub fn power_of_two(n: usize) -> BigInt {
+        let blocks = n / Self::BLOCK_BITS;
+        let shift = n % Self::BLOCK_BITS;
+        let mut result = Vec::with_capacity(blocks + 1);
+        result.resize(blocks, 0);
+        result.push(1 << shift);
+        return BigInt {
+            negative: false,
+            data: result
+        };
+    }
 
     ///
     /// Calculate abs(self) += rhs * (1 << BLOCK_BITS)^block_offset
@@ -417,6 +429,56 @@ impl BigInt {
             self.data.truncate(d + 1);
         } else {
             self.data.truncate(0);
+        }
+    }
+
+    pub fn log2_floor(&self) -> usize {
+        if let Some(d) = self.highest_set_block() {
+            return Self::BLOCK_BITS - self.data[d].leading_zeros() as usize - 1 + d * Self::BLOCK_BITS;
+        } else {
+            // the number is zero, so the result would be -inf
+            panic!("log2 is undefined for 0");
+        }
+    }
+
+    ///
+    /// Returns the float that is closest to the integer. Note that if for very big numbers
+    /// (with abs() in the order of magnitude 2^1024 or greater, this can even yield infinity)
+    /// 
+    pub fn to_float_approx(&self) -> f64 {
+        if let Some(d) = self.highest_set_block() {
+            let mut upper_part = self.data[d] as f64 * 2f64.powi(Self::BLOCK_BITS as i32);
+            if d > 0 {
+                upper_part += self.data[d - 1] as f64;
+            }
+            return upper_part * 2f64.powi(Self::BLOCK_BITS as i32).powi(d as i32 - 1)
+        } else {
+            return 0.;
+        }
+    }
+
+    ///
+    /// Returns a BigInt that has the given value, rounded. Note that
+    /// for very big numbers, the float representation can be very imprecise.
+    /// 
+    pub fn from_float_approx(val: f64) -> BigInt {
+        if val.abs() <= 0.5 {
+            return BigInt::zero()
+        } else if val.abs() <= 1.5 {
+            return if val.is_sign_negative() { -BigInt::one() } else { BigInt::one() };
+        } else {
+            const MANTISSA: i32 = 52;
+            let exp = std::cmp::max(val.abs().log2() as i32, MANTISSA) - MANTISSA;
+            let int = (val.abs() / 2f64.powi(exp)).trunc() as u64;
+            let blocks = exp as usize / Self::BLOCK_BITS;
+            let block_shift = exp as usize % Self::BLOCK_BITS;
+            let mut result = (0..blocks).map(|_| 0).collect::<Vec<_>>();
+            result.push(int << block_shift);
+            result.push(int >> (Self::BLOCK_BITS - block_shift));
+            return BigInt {
+                negative: val.is_sign_negative(),
+                data: result
+            };
         }
     }
 }
@@ -935,6 +997,17 @@ fn bench_mul(bencher: &mut test::Bencher) {
         let p = x.clone() * y.clone();
         assert_eq!(z, p);
     })
+}
+
+#[test]
+fn from_to_float_approx() {
+    let x: f64 = 83465209236517892563478156042389675783219532497861237985328563.;
+    let y = BigInt::from_float_approx(x).to_float_approx();
+    println!("{}", x);
+    println!("{}", BigInt::from_float_approx(x));
+    println!("{}", y);
+    assert!(x * 0.99 < y);
+    assert!(y < x * 1.01);
 }
 
 #[bench]
