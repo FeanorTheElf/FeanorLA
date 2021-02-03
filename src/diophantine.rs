@@ -1,5 +1,5 @@
 use super::prelude::*;
-use super::eea::{eea, gcd};
+use super::eea::{signed_eea, gcd};
 
 type Item = i32;
 
@@ -92,7 +92,7 @@ fn transform_pivot_gcd_col<M, N>(mut A: Matrix<M, Item>, mut iL: Matrix<N, Item>
     }
     while current != 0 {
         let (a, b) = (*A.at(pivot_row, pivot_col), *A.at(pivot_row + current, pivot_col));
-        let (s, t, _) = eea(a, b);
+        let (s, t, _) = signed_eea(a, b);
         let gcd = s * a + t * b;
         let transform = [s, t, -b / gcd, a / gcd];
         A.transform_two_dims_left(pivot_row, pivot_row + current, &transform);
@@ -115,7 +115,7 @@ fn transform_pivot_gcd_row<M, N>(mut A: Matrix<M, Item>, mut iR: Matrix<N, Item>
     }
     while current != 0 {
         let (a, b) = (*A.at(pivot_row, pivot_col), *A.at(pivot_row, pivot_col + current));
-        let (s, t, _) = eea(a, b);
+        let (s, t, _) = signed_eea(a, b);
         let gcd = s * a + t * b;
         let transform = [s, -b / gcd, t, a / gcd];
         A.transform_two_dims_right(pivot_col, pivot_col + current, &transform);

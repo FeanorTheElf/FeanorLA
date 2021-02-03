@@ -81,7 +81,7 @@ fn quadratic_sieve(n: BigInt) {
         k = k.clone() * k;
         k -= &n;
         if let Some(rel) = check_smooth(k.clone(), &factor_base) {
-            println!("found relation {} ~ {:?}", k, rel);
+            println!("found relation {} ~ {:?}, d = {}", k, rel, d);
             relations.push(rel);
             if relations.len() > smoothness_bound as usize {
                 break;

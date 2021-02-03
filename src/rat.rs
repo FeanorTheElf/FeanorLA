@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-use super::alg::{One, Zero, RingEl, FieldEl, Float, IntegralRingEl};
+use super::alg::{One, Zero, RingEl, FieldEl, IntegralRingEl};
 
 use std::cmp::{Ord, Ordering, PartialEq, PartialOrd};
 use std::convert::From;

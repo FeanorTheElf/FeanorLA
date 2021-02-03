@@ -87,6 +87,10 @@ impl Ring for RingZn {
     fn one(&self) -> Self::El {
         BigInt::one()
     }
+
+    fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+        lhs == rhs
+    }
 }
 
 #[test]
