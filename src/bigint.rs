@@ -106,6 +106,17 @@ impl BigInt {
     }
 
     ///
+    /// Computes abs(self) <=> abs(rhs)
+    /// 
+    fn abs_compare_small(&self, rhs: u64) -> Ordering {
+        match self.highest_set_block() {
+           None => 0.cmp(&rhs),
+           Some(0) => self.data[0].cmp(&rhs),
+           Some(_) => Ordering::Greater,
+        }
+    }
+
+    ///
     /// Calculate abs(self) -= rhs * (1 << BLOCK_BITS)^block_offset
     /// 
     /// the sign bit will be left unchanged.
@@ -308,11 +319,13 @@ impl BigInt {
             self.data[0] = quo;
             return rem;
         } else if let Some(highest_block) = highest_block_opt {
-            let mut buffer: u128 = self.data[highest_block] as u128;
-            self.data[highest_block] = 0;
+            let (quo, rem) = div_rem(self.data[highest_block], divisor);
+            let mut buffer = rem as u128;
+            self.data[highest_block] = quo;
             for i in (0..highest_block).rev() {
                 buffer = (buffer << Self::BLOCK_BITS) | (self.data[i] as u128);
                 let (quo, rem) = div_rem(buffer, divisor as u128);
+                debug_assert!(quo <= u64::MAX as u128);
                 self.data[i] = quo as u64;
                 buffer = rem;
             }
@@ -424,6 +437,15 @@ impl BigInt {
         return quotient;
     }
 
+    pub fn div_rem_small(mut self, rhs: i64) -> (BigInt, i64) {
+        let mut remainder = self.abs_division_small(rhs.abs() as u64) as i64;
+        if self.negative {
+            remainder = -remainder;
+        }
+        self.negative = self.negative ^ (rhs < 0);
+        return (self, remainder);
+    }
+
     pub fn normalize(&mut self) {
         if let Some(d) = self.highest_set_block() {
             self.data.truncate(d + 1);
@@ -471,10 +493,12 @@ impl BigInt {
             let exp = std::cmp::max(val.abs().log2() as i32, MANTISSA) - MANTISSA;
             let int = (val.abs() / 2f64.powi(exp)).trunc() as u64;
             let blocks = exp as usize / Self::BLOCK_BITS;
-            let block_shift = exp as usize % Self::BLOCK_BITS;
+            let within_block_shift = exp as usize % Self::BLOCK_BITS;
             let mut result = (0..blocks).map(|_| 0).collect::<Vec<_>>();
-            result.push(int << block_shift);
-            result.push(int >> (Self::BLOCK_BITS - block_shift));
+            result.push(int << within_block_shift);
+            if within_block_shift != 0 {
+                result.push(int >> (Self::BLOCK_BITS - within_block_shift));
+            }
             return BigInt {
                 negative: val.is_sign_negative(),
                 data: result
@@ -491,7 +515,7 @@ impl PartialEq for BigInt {
             return false;
         }
         if let Some(d) = highest_block {
-            for i in 0..d {
+            for i in 0..=d {
                 if self.data[i] != rhs.data[i] {
                     return false;
                 }
@@ -566,6 +590,21 @@ impl AddAssign<&BigInt> for BigInt {
     }
 }
 
+impl AddAssign<i64> for BigInt {
+
+    fn add_assign(&mut self, rhs: i64) {
+        if self.negative == (rhs < 0) {
+            self.abs_addition_small(rhs.abs() as u64);
+        } else {
+            let rhs_bigint = BigInt {
+                negative: rhs < 0,
+                data: vec![rhs.abs() as u64]
+            };
+            *self += rhs_bigint;
+        }
+    }
+}
+
 impl<T> Sub<T> for BigInt 
     where BigInt: SubAssign<T>
 {
@@ -594,6 +633,15 @@ impl SubAssign<&BigInt> for BigInt {
         self.add_assign(rhs);
         self.negative = !self.negative;
         self.normalize();
+    }
+}
+
+impl SubAssign<i64> for BigInt {
+
+    fn sub_assign(&mut self, rhs: i64) {
+        self.negative = !self.negative;
+        self.add_assign(rhs);
+        self.negative = !self.negative;
     }
 }
 
@@ -697,13 +745,8 @@ impl Rem<i64> for BigInt {
 
     type Output = i64;
 
-    fn rem(mut self, rhs: i64) -> Self::Output {
-        let abs_result = self.abs_division_small(rhs.abs() as u64) as i64;
-        if self.negative {
-            return -abs_result;
-        } else {
-            return abs_result;
-        }
+    fn rem(self, rhs: i64) -> Self::Output {
+        self.div_rem_small(rhs).1
     }
 }
 
@@ -924,6 +967,14 @@ fn test_do_division_big() {
 }
 
 #[test]
+fn test_abs_division_small() {
+    let mut x = BigInt::from_str_radix("891023591340178345678931246518793456983745682137459364598623489512389745698237456890239238476873429872346579", 10).unwrap();
+    let q = BigInt::from_str_radix("255380794307875708133829534685810678413226048190730686328066348384175908769916152734376393945793473738133", 10).unwrap();
+    x.abs_division_small(3489);
+    assert_eq!(q, x);
+}
+
+#[test]
 fn test_shift_right() {
     let mut x = BigInt::from_str_radix("9843a756781b34567f81394", 16).unwrap();
     let z = BigInt::from_str_radix("9843a756781b34567", 16).unwrap();
@@ -1003,9 +1054,6 @@ fn bench_mul(bencher: &mut test::Bencher) {
 fn from_to_float_approx() {
     let x: f64 = 83465209236517892563478156042389675783219532497861237985328563.;
     let y = BigInt::from_float_approx(x).to_float_approx();
-    println!("{}", x);
-    println!("{}", BigInt::from_float_approx(x));
-    println!("{}", y);
     assert!(x * 0.99 < y);
     assert!(y < x * 1.01);
 }
@@ -1019,4 +1067,9 @@ fn bench_div(bencher: &mut test::Bencher) {
         let q = x.clone() / y.clone();
         assert_eq!(z, q);
     })
+}
+
+#[test]
+fn test_eq() {
+    assert!(BigInt::from_str_radix("98711", 10).unwrap() != BigInt::one());
 }
