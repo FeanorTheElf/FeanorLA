@@ -121,7 +121,7 @@ fn check_congruent_square<V>(n: &BigInt, factor_base: &Vec<i64>, relations: &Vec
     }
 
     let factor = gcd(&StaticRing::<BigInt>::RING, n.clone(), x.clone() - y.clone());
-    if factor != BigInt::zero() && factor != *n {
+    if factor != BigInt::one() && factor != *n {
         return Ok(factor);
     } else {
         return Err(());
@@ -176,4 +176,12 @@ fn test_quadratic_sieve() {
     assert!(factor != f5);
     assert!(factor != 1);
     assert_eq!(f5 % factor, 0);
+}
+
+#[test]
+fn experiment() {
+    let f7 = BigInt::power_of_two(128) + 1;
+    let factor = quadratic_sieve(&f7);
+    println!("{} has factor {}", f7, factor);
+    assert!(false);
 }
