@@ -92,6 +92,8 @@ impl Ring for RingZn {
     }
 
     fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+        assert!(lhs < &self.modulus);
+        assert!(rhs < &self.modulus);
         lhs == rhs
     }
 }
