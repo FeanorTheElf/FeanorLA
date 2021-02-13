@@ -58,8 +58,8 @@ impl Ring for RingZn {
     type El = BigInt;
 
     fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
-        debug_assert!(lhs < self.modulus);
-        debug_assert!(rhs < &self.modulus);
+        assert!(lhs < self.modulus);
+        assert!(rhs < &self.modulus);
 
         let mut result = lhs + rhs;
         if result >= self.modulus {
@@ -69,14 +69,14 @@ impl Ring for RingZn {
     }
 
     fn mul_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
-        debug_assert!(lhs < self.modulus);
-        debug_assert!(rhs < &self.modulus);
+        assert!(lhs < self.modulus);
+        assert!(rhs < &self.modulus);
 
         return self.project_leq_n_square(lhs * rhs);
     }
 
     fn neg(&self, val: Self::El) -> Self::El {
-        debug_assert!(val < self.modulus);
+        assert!(val < self.modulus);
 
         let mut result = -val;
         result += &self.modulus;
