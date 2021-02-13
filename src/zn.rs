@@ -119,12 +119,16 @@ const fn is_prime(n: u64) -> bool {
 
 impl<const N: u64, const IS_FIELD: bool> GeneralZnEl<N, IS_FIELD> {
 
-    pub const fn project(v: u64) -> GeneralZnEl<N, IS_FIELD> {
+    pub const fn project(v: i64) -> GeneralZnEl<N, IS_FIELD> {
         assert!(N <= u64::MAX / 2);
         assert!(N <= i64::MAX as u64);
         assert!(IS_FIELD == is_prime(N));
+        let mut result = v % N as i64;
+        if result < 0 {
+            result += N as i64;
+        }
         GeneralZnEl {
-            repr: v % N
+            repr: result as u64
         }
     }
 }
@@ -226,6 +230,13 @@ impl<const N: u64, const IS_FIELD: bool> Neg for GeneralZnEl<N, IS_FIELD> {
         assert!(self.repr < N);
         self.repr = N - self.repr;
         return self;
+    }
+}
+
+impl<const N: u64, const IS_FIELD: bool> std::fmt::Display for GeneralZnEl<N, IS_FIELD> {
+
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "[{}]", self.repr)
     }
 }
 

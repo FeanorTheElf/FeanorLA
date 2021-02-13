@@ -1,5 +1,7 @@
 use super::bigint::*;
 use super::alg::*;
+use super::mat::*;
+use super::zn::*;
 
 use std::collections::BTreeMap;
 
@@ -98,6 +100,9 @@ fn quadratic_sieve(n: BigInt) {
             }
         }
     }
+
+    type F2 = ZnEl<2>;
+    let matrix = Matrix::from_fn(factor_base.len(), relations.len(), |r, c| F2::project(*relations[c].get(&factor_base[r]).unwrap_or(&0) as i64));
 }
 
 #[test]

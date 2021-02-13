@@ -828,7 +828,7 @@ impl std::fmt::Display for BigInt {
         remainders.reverse();
         let mut it = remainders.into_iter();
         if let Some(fst) = it.next() {
-            write!(f, "{}", fst);
+            write!(f, "{}", fst)?;
             for rem in it {
                 write!(f, "{:0>width$}", rem, width = BIG_POWER_TEN_ZEROS as usize)?;
             }

@@ -1,11 +1,12 @@
-use super::matrix_view::*;
-use super::vector_view::*;
-use super::vec::*;
-use super::vector::*;
-use super::submatrix::*;
-use super::matrix_owned::*;
-use super::matrix_vector::*;
-use super::matrix_row_col::*;
+pub use super::matrix_view::*;
+pub use super::vector_view::*;
+pub use super::vec::*;
+pub use super::vector::*;
+pub use super::submatrix::*;
+pub use super::matrix_owned::*;
+pub use super::matrix_vector::*;
+pub use super::matrix_row_col::*;
+
 use super::alg::*;
 
 use std::marker::PhantomData;
@@ -266,6 +267,37 @@ impl<M, T> Matrix<M, T>
         let initial = it.next().unwrap();
         it.fold(initial, |a, b| a + b)
     }
+
+    ///
+    /// Expects self to be a square, strict upper triangular matrix (i.e. 1 on the diagonal)
+    /// and assigns to rhs the solution of the equation self * X = rhs
+    /// 
+    /// Complexity O(n^2(n + m)) where self is nxn and rhs is nxm
+    /// 
+    pub fn solve_strict_triangular<N>(&self, rhs: &mut Matrix<N, T>)
+        where N: MatrixViewMut<T>
+    {
+        assert_eq!(self.row_count(), self.col_count());
+        assert_eq!(self.row_count(), rhs.row_count());
+
+        #[cfg(debug)]
+        for i in 0..self.row_count() {
+            debug_assert_eq!(T::one(), *self.at(i, i));
+            for j in (0..i) {
+                debug_assert_eq!(T::zero(), *self.at(i, j));
+            }
+        }
+
+        // now self is in upper triangle form
+        for col in 0..rhs.col_count() {
+            for row in (0..self.row_count()).rev() {
+                for i in (row + 1)..self.row_count() {
+                    let d = self.at(row, i).clone() * rhs.at(i, col).clone();
+                    *rhs.at_mut(row, col) -= d;
+                }
+            }
+        }
+    }
 }
 
 impl<M, T> Matrix<M, T>
@@ -386,7 +418,7 @@ impl<M, T> Matrix<M, T>
     fn gaussion_elimination_half<F, G, H, S>(&mut self, mut mul_row: F, mut swap_rows: G, mut sub_row: H, state: &mut S) -> Result<(), usize>
         where F: FnMut(usize, T, &mut S), G: FnMut(usize, usize, &mut S), H: FnMut(usize, T, usize, &mut S)
     {
-        for i in 0..self.col_count() {
+        for i in 0..std::cmp::min(self.col_count(), self.row_count()) {
             // pivot
             if *self.at(i, i) == T::zero() {
                 let mut has_swapped = false;
@@ -395,6 +427,7 @@ impl<M, T> Matrix<M, T>
                         has_swapped = true;
                         self.swap_rows(i, j);
                         swap_rows(i, j, state);
+                        break;
                     }
                 }
                 if !has_swapped {
@@ -450,16 +483,83 @@ impl<M, T> Matrix<M, T>
             |i, j, rhs| rhs.swap_rows(i, j), 
             |dst, a, src, rhs| rhs.transform_two_dims_left(src, dst, &[T::one(), T::zero(), -a, T::one()]), rhs)?;
 
-        // now self is in upper triangle form
-        for col in 0..rhs.col_count() {
-            for row in (0..self.row_count()).rev() {
-                for i in (row + 1)..self.row_count() {
-                    let d = self.at(row, i).clone() * rhs.at(i, col).clone();
-                    *rhs.at_mut(row, col) -= d;
+        self.solve_strict_triangular(rhs);
+
+        return Ok(());
+    }
+
+    ///
+    /// Calculates a base of the kernel of this matrix, or returns None if this kernel is trivial.
+    /// 
+    fn kernel_base_modifying(&mut self) -> Option<Matrix<MatrixOwned<T>, T>> {
+        // the approach is to transform the matrix in upper triangle form, so ( U | R ) with
+        // an upper triangle matrix U and a nonsquare rest matrix R. Then the kernel base matrix
+        // is given by ( -inv(U)*R )
+        //             (     I     )
+        // we just have to watch out if the left side is singular, then swap cols
+        let mut col_swaps: Vec<(usize, usize)> = Vec::new();
+
+        fn find_non_null_column<N, T>(A: Matrix<N, T>) -> Option<usize> 
+            where N: MatrixView<T>, T: PartialEq + Zero
+        {
+            for i in 0..A.col_count() {
+                for j in 0..A.row_count() {
+                    if *A.at(j, i) != T::zero() {
+                        return Some(i);
+                    }
                 }
             }
+            return None;
         }
-        return Ok(());
+
+        let mut i = 0;
+        let mut non_zero_row_count = self.row_count();
+        loop {
+            let mut current_submatrix = self.submatrix_mut(i.., i..);
+            let gaussian_elim_result = current_submatrix.gaussion_elimination_half(|_, _, _| {}, |_, _, _| {}, |_, _, _, _| {}, &mut ());
+            let (col1, col2) = if let Err(null_col) = gaussian_elim_result {
+                if let Some(other_col) = find_non_null_column(current_submatrix.submatrix(1.., 1..)) {
+                    // swap columns
+                    (null_col + i, other_col + i + 1)
+                } else {
+                    // we have a whole 0-rectangle in the lower right corner, so we really are in upper triangle form
+                    non_zero_row_count = null_col + i;
+                    break;
+                }
+            } else {
+                // upper triangle form is reached
+                break;
+            };
+            col_swaps.push((col1, col2));
+            self.swap_cols(col1, col2);
+            i = col1;
+        }
+
+        // now self is in upper triangle form
+        let effective_matrix = self.submatrix_mut(0..non_zero_row_count, ..);
+        if effective_matrix.row_count() >= effective_matrix.col_count() {
+            return None;
+        }
+        let upper_part = effective_matrix.row_count();
+        let lower_part = effective_matrix.col_count() - effective_matrix.row_count();
+        let mut result = Matrix::zero(upper_part + lower_part, lower_part);
+
+        // set to identity in the lower part
+        for i in 0..lower_part {
+            *result.at_mut(upper_part + i, i) = -T::one();
+        }
+        
+        // set the interesting upper part
+        let mut result_upper_part = result.submatrix_mut(..upper_part, ..);
+        result_upper_part += effective_matrix.submatrix(.., upper_part..);
+        effective_matrix.submatrix(.., ..upper_part).solve_strict_triangular(&mut result_upper_part);
+
+        // and now perform the swaps
+        for (row1, row2) in col_swaps.iter().rev() {
+            result.swap_rows(*row1, *row2);
+        }
+
+        return Some(result);
     }
 }
 
@@ -499,6 +599,10 @@ impl<M, T> Matrix<M, T>
         let mut result = Matrix::identity(self.row_count(), self.col_count());
         self.solve(&mut result)?;
         return Ok(result);
+    }
+
+    pub fn kernel_base(&self) -> Option<Matrix<MatrixOwned<T>, T>> {
+        self.to_owned().kernel_base_modifying()
     }
 }
 
@@ -554,4 +658,15 @@ fn test_mul() {
     let c = Matrix::from_array([[4, 2, 3], [2, 0, 1]]);
 
     assert_eq!(c, a * b);
+}
+
+#[test]
+fn test_kernel_base() {
+    let mut a = Matrix::from_array([[1., 3., 1., 3.], [2., 6., 1., 2.], [0., 0., 1., 1.]]);
+    let b = Matrix::from_array([[3.], [-1.], [0.], [0.]]);
+    assert_eq!(b, a.kernel_base_modifying().unwrap());
+
+    let mut a = Matrix::from_array([[1., 3., 1., 3.], [2., 6., 1., 5.], [0., 0., 1., 1.]]);
+    let b = Matrix::from_array([[3., 2.], [-1., 0.], [0., 1.], [0., -1.]]);
+    assert_eq!(b, a.kernel_base_modifying().unwrap());
 }
