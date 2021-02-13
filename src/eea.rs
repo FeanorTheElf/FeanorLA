@@ -85,35 +85,55 @@ fn test_signed_eea() {
     assert_eq!((4, -7, 2), signed_eea(32, 18));
 }
 
-/// Finds the greatest common divisor of a and b
 /// 
-///  a < 0 => ggT(a, b) < 0
-/// a > 0 => ggT(a, b) > 0
+/// Finds a greatest common divisor of a and b.
+/// 
+/// The gcd of two elements in a euclidean ring is the (w.r.t divisibility) greatest
+/// element that divides both elements. It is unique up to multiplication with units. 
+/// This function makes no guarantees on which of these will be returned.
+/// 
+/// If this is required, see also signed_gcd that gives precise statement on the
+/// sign of the gcd in case of two integers.
+/// 
+pub fn gcd<R: EuclideanRing>(ring: &R, a: R::El, b: R::El) -> R::El 
+    where R::El: Clone
+{
+    let (_, _, d) = eea(ring, a, b);
+    return d;
+}
+
+/// 
+/// Finds the greatest common divisor of a and b.
+/// 
+/// The gcd is only unique up to multiplication by units, so in this case up to sign.
+/// However, this function guarantees the following behavior w.r.t different signs:
+/// 
+/// a < 0 => gcd(a, b) < 0
+/// a > 0 => gcd(a, b) > 0
 /// sign of b is irrelevant
-/// ggT(0, 0) = 0
+/// gcd(0, 0) = 0
 /// 
-/// for details, see eea
-pub fn gcd<Int: Integer + Copy>(a: Int, b: Int) -> Int {
+pub fn signed_gcd<Int: Integer + Copy>(a: Int, b: Int) -> Int {
     let (_, _, d) = signed_eea(a, b);
     return d;
 }
 
 #[test]
 fn test_gcd() {
-    assert_eq!(3, gcd(15, 6));
-    assert_eq!(3, gcd(6, 15));
+    assert_eq!(3, signed_gcd(15, 6));
+    assert_eq!(3, signed_gcd(6, 15));
 
-    assert_eq!(7, gcd(0, 7));
-    assert_eq!(7, gcd(7, 0));
-    assert_eq!(0, gcd(0, 0));
+    assert_eq!(7, signed_gcd(0, 7));
+    assert_eq!(7, signed_gcd(7, 0));
+    assert_eq!(0, signed_gcd(0, 0));
 
-    assert_eq!(1, gcd(9, 1));
-    assert_eq!(1, gcd(1, 9));
+    assert_eq!(1, signed_gcd(9, 1));
+    assert_eq!(1, signed_gcd(1, 9));
 
-    assert_eq!(1, gcd(13, 300));
-    assert_eq!(1, gcd(300, 13));
+    assert_eq!(1, signed_gcd(13, 300));
+    assert_eq!(1, signed_gcd(300, 13));
 
-    assert_eq!(-3, gcd(-15, 6));
-    assert_eq!(3, gcd(6, -15));
-    assert_eq!(-3, gcd(-6, -15));
+    assert_eq!(-3, signed_gcd(-15, 6));
+    assert_eq!(3, signed_gcd(6, -15));
+    assert_eq!(-3, signed_gcd(-6, -15));
 }

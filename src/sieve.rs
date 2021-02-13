@@ -2,6 +2,7 @@ use super::bigint::*;
 use super::alg::*;
 use super::mat::*;
 use super::zn::*;
+use super::eea::*;
 
 use std::collections::BTreeMap;
 
@@ -40,19 +41,21 @@ fn around_zero_iter() -> impl Iterator<Item = i64> {
     });
 }
 
-fn check_smooth(mut k: BigInt, factor_base: &Vec<i64>) -> Option<BTreeMap<i64, u32>> {
-    let mut result = BTreeMap::new();
+type RelVec = Vector<VectorOwned<u32>, u32>;
+
+fn check_smooth(mut k: BigInt, factor_base: &Vec<i64>) -> Option<RelVec> {
+    let mut result = RelVec::zero(factor_base.len());
     assert!(factor_base[0] == -1);
     if k < 0 {
-        result.insert(-1, 1);
+        *result.at_mut(0) = 1;
         k = -k;
     }
     let mut tmp = BigInt::zero();
-    for p in &factor_base[1..] {
+    for i in 1..factor_base.len() {
         let mut dividing_power = 0;
         tmp.assign(&k);
         loop {
-            let (quo, rem) = tmp.div_rem_small(*p as i64);
+            let (quo, rem) = tmp.div_rem_small(factor_base[i] as i64);
             tmp = quo;
             if rem != 0 {
                 break;
@@ -62,7 +65,7 @@ fn check_smooth(mut k: BigInt, factor_base: &Vec<i64>) -> Option<BTreeMap<i64, u
             }
         }
         if dividing_power > 0 {
-            result.insert(*p, dividing_power);
+            *result.at_mut(i) = dividing_power;
         }
     }
     if k == BigInt::one() {
@@ -72,7 +75,65 @@ fn check_smooth(mut k: BigInt, factor_base: &Vec<i64>) -> Option<BTreeMap<i64, u
     }
 }
 
-fn quadratic_sieve(n: BigInt) {
+fn collect_relations<I>(m: &BigInt, n: &BigInt, factor_base: &Vec<i64>, relations: &mut Vec<(BigInt, RelVec)>, count: usize, delta_it: &mut I)
+    where I: Iterator<Item = i64>
+{
+    let mut k = m.clone();
+    loop {
+        let d = delta_it.next().unwrap();
+        k.assign(&m);
+        k += d;
+        let mut square = k.clone();
+        square *= &k;
+        square -= n;
+        if let Some(rel) = check_smooth(square, &factor_base) {
+            relations.push((k.clone(), rel));
+            if relations.len() == count {
+                return;
+            }
+        }
+    }
+}
+
+type F2 = ZnEl<2>;
+
+///
+/// Checks if the congruent square given by choosing exactly the relations from sol is a real
+/// congruent square that yields a factor. If it does, the factor is returned
+/// 
+fn check_congruent_square<V>(n: &BigInt, factor_base: &Vec<i64>, relations: &Vec<(BigInt, RelVec)>, sol: Vector<V, F2>) -> Result<BigInt, ()>
+    where V: VectorView<ZnEl<2>>
+{
+    let mut x = BigInt::one();
+    let mut y_powers = RelVec::zero(factor_base.len());
+    for (i, rel) in relations.iter().enumerate() {
+        if *sol.at(i) == F2::ONE {
+            x *= &rel.0;
+            y_powers += rel.1.as_ref();
+        }
+    }
+
+    let mut y = BigInt::one();
+    for i in 0..factor_base.len() {
+        let power = *y_powers.at(i);
+        debug_assert!(power % 2 == 0);
+        y *= BigInt::from(factor_base[i]).pow(power as u64 / 2);
+    }
+
+    let factor = gcd(&StaticRing::<BigInt>::RING, n.clone(), x.clone() - y.clone());
+    if factor != BigInt::zero() && factor != *n {
+        return Ok(factor);
+    } else {
+        return Err(());
+    }
+}
+
+///
+/// Uses the quadratic sieve algorithm to find a nontrivial factor of n. Use only for composite numbers,
+/// as it will not terminate for primes.
+/// 
+pub fn quadratic_sieve(n: &BigInt) -> BigInt {
+    assert!(*n >= 2);
     let n_float = n.to_float_approx();
     let smoothness_bound_float = (0.5 * n_float.ln().sqrt() * n_float.ln().ln().sqrt()).exp();
     assert!(smoothness_bound_float < i64::MAX as f64);
@@ -84,31 +145,35 @@ fn quadratic_sieve(n: BigInt) {
     };
     println!("factor_base: {:?}", factor_base);
     let m = BigInt::from_float_approx(n_float.sqrt());
-    let mut relations: Vec<BTreeMap<i64, u32>> = Vec::with_capacity(factor_base.len() + 1);
+    let mut relations: Vec<(BigInt, RelVec)> = Vec::with_capacity(factor_base.len() + 1);
+    let mut delta_it = around_zero_iter();
+    let mut count = factor_base.len() + 1;
 
-    let mut k = m.clone();
-    for d in around_zero_iter() {
-        k.assign(&m);
-        k += d;
-        k = k.clone() * k;
-        k -= &n;
-        if let Some(rel) = check_smooth(k.clone(), &factor_base) {
-            println!("found relation {} ~ {:?}, d = {}:", k, rel, d);
-            relations.push(rel);
-            if relations.len() > factor_base.len() as usize {
-                break;
+    loop {
+
+        collect_relations(&m, n, &factor_base, &mut relations, count, &mut delta_it);
+
+        let matrix = Matrix::from_fn(factor_base.len(), relations.len(), |r, c| F2::project(*relations[c].1.at(r) as i64));
+        let solutions = matrix.kernel_base().unwrap();
+
+        for i in 0..solutions.col_count() {
+
+            if let Ok(factor) = check_congruent_square(n, &factor_base, &relations, solutions.col(i)) {
+                return factor;
             }
         }
-    }
 
-    type F2 = ZnEl<2>;
-    let matrix = Matrix::from_fn(factor_base.len(), relations.len(), |r, c| F2::project(*relations[c].get(&factor_base[r]).unwrap_or(&0) as i64));
+        // increase count and hope we find suitable factors with more relations
+        count += (count as f64).ln() as usize;
+        count += 1;
+    }
 }
 
 #[test]
-fn experiment() {
-    let f5 = BigInt::power_of_two(32) + BigInt::one();
-    println!("{}", f5);
-    quadratic_sieve(f5);
-    assert!(false);
+fn test_quadratic_sieve() {
+    let f5 = BigInt::power_of_two(32) + 1;
+    let factor = quadratic_sieve(&f5);
+    assert!(factor != f5);
+    assert!(factor != 1);
+    assert_eq!(f5 % factor, 0);
 }

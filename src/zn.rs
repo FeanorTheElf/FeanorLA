@@ -127,10 +127,14 @@ impl<const N: u64, const IS_FIELD: bool> GeneralZnEl<N, IS_FIELD> {
         if result < 0 {
             result += N as i64;
         }
+        debug_assert!((result as u64) < N);
         GeneralZnEl {
             repr: result as u64
         }
     }
+
+    pub const ZERO: GeneralZnEl<N, IS_FIELD> = GeneralZnEl::project(0);
+    pub const ONE: GeneralZnEl<N, IS_FIELD> = GeneralZnEl::project(1);
 }
 
 impl<const N: u64, const IS_FIELD: bool> AddAssign for GeneralZnEl<N, IS_FIELD> {
@@ -139,9 +143,10 @@ impl<const N: u64, const IS_FIELD: bool> AddAssign for GeneralZnEl<N, IS_FIELD> 
         debug_assert!(self.repr < N);
         debug_assert!(rhs.repr < N);
         self.repr += rhs.repr;
-        if self.repr > N {
+        if self.repr >= N {
             self.repr -= N;
         }
+        debug_assert!(self.repr < N);
     }
 }
 
@@ -152,9 +157,10 @@ impl<const N: u64, const IS_FIELD: bool> SubAssign for GeneralZnEl<N, IS_FIELD> 
         debug_assert!(rhs.repr < N);
         self.repr += N;
         self.repr -= rhs.repr;
-        if self.repr > N {
+        if self.repr >= N {
             self.repr -= N;
         }
+        debug_assert!(self.repr < N);
     }
 }
 
@@ -164,6 +170,7 @@ impl<const N: u64, const IS_FIELD: bool> MulAssign for GeneralZnEl<N, IS_FIELD> 
         debug_assert!(self.repr < N);
         debug_assert!(rhs.repr < N);
         self.repr = ((self.repr as u128 * rhs.repr as u128) % N as u128) as u64;
+        debug_assert!(self.repr < N);
     }
 }
 
@@ -179,6 +186,7 @@ impl<const N: u64> DivAssign for GeneralZnEl<N, true> {
             result += N as i64;
         }
         self.repr = result as u64;
+        debug_assert!(self.repr < N);
     }
 }
 
@@ -228,7 +236,10 @@ impl<const N: u64, const IS_FIELD: bool> Neg for GeneralZnEl<N, IS_FIELD> {
 
     fn neg(mut self) -> Self::Output {
         assert!(self.repr < N);
-        self.repr = N - self.repr;
+        if self.repr != 0 {
+            self.repr = N - self.repr;
+        }
+        debug_assert!(self.repr < N);
         return self;
     }
 }

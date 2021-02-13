@@ -369,7 +369,9 @@ impl<M, N, T, U, R> Mul<Matrix<N, U>> for Matrix<M, T>
         debug_assert!(self.col_count() > 0);
         Matrix::new(
             MatrixOwned::from_fn(self.row_count(), rhs.col_count(), |i, j| {
-                let mut it = (0..self.col_count()).map(|k| self.at(i, k).clone() * rhs.at(k, j).clone());
+                let mut it = (0..self.col_count()).map(|k| 
+                    self.at(i, k).clone() * rhs.at(k, j).clone()
+                );
                 let initial = it.next().unwrap();
                 it.fold(initial, |a, b| a + b)
             })
@@ -490,8 +492,10 @@ impl<M, T> Matrix<M, T>
 
     ///
     /// Calculates a base of the kernel of this matrix, or returns None if this kernel is trivial.
+    /// Note that this function modifies self, so if you can life with an additional copy, prefer
+    /// to use kernel_base() instead
     /// 
-    fn kernel_base_modifying(&mut self) -> Option<Matrix<MatrixOwned<T>, T>> {
+    pub fn kernel_base_modifying(&mut self) -> Option<Matrix<MatrixOwned<T>, T>> {
         // the approach is to transform the matrix in upper triangle form, so ( U | R ) with
         // an upper triangle matrix U and a nonsquare rest matrix R. Then the kernel base matrix
         // is given by ( -inv(U)*R )
@@ -518,9 +522,9 @@ impl<M, T> Matrix<M, T>
             let mut current_submatrix = self.submatrix_mut(i.., i..);
             let gaussian_elim_result = current_submatrix.gaussion_elimination_half(|_, _, _| {}, |_, _, _| {}, |_, _, _, _| {}, &mut ());
             let (col1, col2) = if let Err(null_col) = gaussian_elim_result {
-                if let Some(other_col) = find_non_null_column(current_submatrix.submatrix(1.., 1..)) {
+                if let Some(other_col) = find_non_null_column(self.submatrix((null_col + i).., (null_col + i)..)) {
                     // swap columns
-                    (null_col + i, other_col + i + 1)
+                    (null_col + i, null_col + i + other_col)
                 } else {
                     // we have a whole 0-rectangle in the lower right corner, so we really are in upper triangle form
                     non_zero_row_count = null_col + i;
@@ -606,6 +610,33 @@ impl<M, T> Matrix<M, T>
     }
 }
 
+impl<M, T> std::fmt::Display for Matrix<M, T> 
+    where M: MatrixView<T>, T: std::fmt::Display
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let entries = (0..self.row_count()).flat_map(|row| (0..self.col_count()).map(move |col| format!("{}", self.at(row, col)))).collect::<Vec<_>>();
+        let width = entries.iter().map(|s| s.chars().count()).max().unwrap();
+        writeln!(f, "[")?;
+        for row in 0..self.row_count() {
+            write!(f, "[")?;
+            write!(f, "{:>width$}", entries[row * self.col_count()], width = width)?;
+            for col in 1..self.col_count() {
+                write!(f, ", {:>width$}", entries[row * self.col_count() + col], width = width)?;
+            }
+            if row + 1 == self.row_count() {
+                writeln!(f, "]")?;
+            } else {
+                writeln!(f, "],")?;
+            }
+        }
+        write!(f, "]")?;
+        return Ok(());
+    }
+}
+
+#[cfg(test)]
+use super::zn::*;
+
 #[test]
 fn test_mul_matrix() {
     let a = Matrix::from_array([[0, 1], [1, 2]]);
@@ -669,4 +700,13 @@ fn test_kernel_base() {
     let mut a = Matrix::from_array([[1., 3., 1., 3.], [2., 6., 1., 5.], [0., 0., 1., 1.]]);
     let b = Matrix::from_array([[3., 2.], [-1., 0.], [0., 1.], [0., -1.]]);
     assert_eq!(b, a.kernel_base_modifying().unwrap());
+}
+
+#[test]
+fn test_kernel_base_f2() {
+    type F2 = ZnEl<2>;
+    let a_int = Matrix::from_array([[1, 0, 1], [1, 1, 1], [0, 0, 0]]);
+    let a = Matrix::from_fn(3, 3, |i, j| F2::project(*a_int.at(i, j)));
+    let b = Matrix::from_array([[F2::ONE], [F2::ZERO], [F2::ONE]]);
+    assert_eq!(b, a.kernel_base().unwrap());
 }

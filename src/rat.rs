@@ -7,7 +7,7 @@ use std::convert::From;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-use super::eea::gcd;
+use super::eea::signed_gcd;
 
 ///
 /// Overflow contract: r64 may overflow, if the naive formulas for the
@@ -58,7 +58,7 @@ impl r64 {
     }
 
     pub fn reduce(&mut self) {
-        let ggT: i64 = gcd(self.denominator, self.numerator);
+        let ggT: i64 = signed_gcd(self.denominator, self.numerator);
         self.denominator /= ggT;
         self.numerator /= ggT;
     }
@@ -166,24 +166,24 @@ impl AddAssign<r64> for r64 {
         }
         assign_or_reduce_on_failure!(self.numerator.checked_mul(rhs.denominator) => self.numerator; self.reduce(); rhs.reduce());
         assign_or_reduce_on_failure!(self.denominator.checked_mul(rhs.numerator) => rhs.numerator; self.reduce(); {
-            let ggT = gcd(rhs.denominator, rhs.numerator);
+            let ggT = signed_gcd(rhs.denominator, rhs.numerator);
             rhs.denominator /= ggT;
             rhs.numerator /= ggT;
             self.numerator /= ggT;
         });
         assign_or_reduce_on_failure!(self.numerator.checked_add(rhs.numerator) => self.numerator; {
-            let ggT = gcd(self.denominator, self.numerator);
+            let ggT = signed_gcd(self.denominator, self.numerator);
             self.denominator /= ggT;
             self.numerator /= ggT;
             rhs.numerator /= ggT;
         }; {
-            let ggT = gcd(rhs.denominator, rhs.numerator);
+            let ggT = signed_gcd(rhs.denominator, rhs.numerator);
             rhs.denominator /= ggT;
             rhs.numerator /= ggT;
             self.numerator /= ggT;
         });
         assign_or_reduce_on_failure!(self.denominator.checked_mul(rhs.denominator) => self.denominator; self.reduce(); {
-            let ggT = gcd(self.numerator, rhs.denominator);
+            let ggT = signed_gcd(self.numerator, rhs.denominator);
             self.numerator /= ggT;
             rhs.denominator /= ggT;
         });
@@ -194,7 +194,7 @@ impl MulAssign<r64> for r64 {
     fn mul_assign(&mut self, mut rhs: r64) {
         assign_or_reduce_on_failure!(self.numerator.checked_mul(rhs.numerator) => self.numerator; self.reduce(); rhs.reduce());
         assign_or_reduce_on_failure!(self.denominator.checked_mul(rhs.denominator) => self.denominator; self.reduce(); {
-            let ggT = gcd(rhs.numerator, rhs.denominator);
+            let ggT = signed_gcd(rhs.numerator, rhs.denominator);
             rhs.denominator /= ggT;
             self.numerator /= ggT;
         });

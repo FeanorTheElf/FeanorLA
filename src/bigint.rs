@@ -505,6 +505,35 @@ impl BigInt {
             };
         }
     }
+
+    pub fn pow(self, power: u64) -> BigInt {
+        StaticRing::<BigInt>::RING.pow(self, power)
+    }
+}
+
+impl From<i64> for BigInt {
+    fn from(val: i64) -> BigInt {
+        if val < 0 {
+            BigInt {
+                negative: true,
+                data: vec![(-val) as u64]
+            }
+        } else {
+            BigInt {
+                negative: false,
+                data: vec![val as u64]
+            }
+        }
+    }
+}
+
+impl From<u64> for BigInt {
+    fn from(val: u64) -> BigInt {
+        BigInt {
+            negative: false,
+            data: vec![val]
+        }
+    }
 }
 
 impl PartialEq for BigInt {
@@ -530,7 +559,11 @@ impl Eq for BigInt {}
 impl PartialOrd<u64> for BigInt {
 
     fn partial_cmp(&self, rhs: &u64) -> Option<Ordering> {
-        Some(self.abs_compare_small(*rhs))
+        if self.negative && !self.is_zero() {
+            Some(Ordering::Less)
+        } else {
+            Some(self.abs_compare_small(*rhs))
+        }
     }
 }
 
@@ -810,7 +843,8 @@ impl Neg for BigInt {
 impl PartialEq<u64> for BigInt {
 
     fn eq(&self, rhs: &u64) -> bool {
-        self.highest_set_block() == Some(0) && self.data[0] == *rhs
+        (self.highest_set_block() == Some(0) && self.data[0] == *rhs && !self.negative) ||
+        (self.is_zero() && *rhs == 0)
     }
 }
 
@@ -1091,4 +1125,9 @@ fn bench_div(bencher: &mut test::Bencher) {
 #[test]
 fn test_eq() {
     assert!(BigInt::from_str_radix("98711", 10).unwrap() != BigInt::one());
+}
+
+#[test]
+fn test_cmp_small() {
+    assert!("-23678".parse::<BigInt>().unwrap() < 0);
 }

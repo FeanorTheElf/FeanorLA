@@ -195,3 +195,17 @@ impl<T> Vector<VectorOwned<T>, T>
         Vector::new(VectorOwned::unit_vector(i, len))
     }
 }
+
+impl<V, T> std::fmt::Display for Vector<V, T> 
+    where V: VectorView<T>, T: std::fmt::Display
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "[")?;
+        write!(f, "{}", self.at(0))?;
+        for i in 1..self.len() {
+            write!(f, ", {}", self.at(i))?;
+        }
+        write!(f, "]")?;
+        return Ok(());
+    }
+}

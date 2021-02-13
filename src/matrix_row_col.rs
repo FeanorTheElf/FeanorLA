@@ -3,6 +3,7 @@ use super::vector_view::*;
 use super::vec::*;
 use std::marker::PhantomData;
 
+#[derive(Debug)]
 pub struct MatrixRow<'a, T, M>
     where M: MatrixView<T> 
 {
@@ -90,6 +91,7 @@ impl<'a, T, M> Clone for MatrixRowIter<'a, T, M>
     }
 }
 
+#[derive(Debug)]
 pub struct MatrixCol<'a, T, M>
     where M: MatrixView<T> 
 {

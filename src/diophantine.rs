@@ -1,5 +1,5 @@
 use super::prelude::*;
-use super::eea::{signed_eea, gcd};
+use super::eea::{signed_eea, signed_gcd};
 
 type Item = i32;
 
@@ -146,13 +146,13 @@ where
 fn find_smallest_gcd_entry_in_pivot_row<M>(A: Matrix<M, Item>) -> usize 
     where M: MatrixViewMut<Item>
 {
-    find_min(0..A.col_count(), |col: &usize| gcd(*A.at(0, 0), *A.at(0, *col))).unwrap()
+    find_min(0..A.col_count(), |col: &usize| signed_gcd(*A.at(0, 0), *A.at(0, *col))).unwrap()
 }
 
 fn find_smallest_gcd_entry_in_pivot_col<M>(A: Matrix<M, Item>) -> usize
     where M: MatrixViewMut<Item>
 {
-    find_min(0..A.row_count(), |row: &usize| gcd(*A.at(0, 0), *A.at(*row, 0))).unwrap()
+    find_min(0..A.row_count(), |row: &usize| signed_gcd(*A.at(0, 0), *A.at(*row, 0))).unwrap()
 }
 
 fn swap_pivot_entry_if_zero<M, N, K>(
