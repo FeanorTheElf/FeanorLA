@@ -107,7 +107,7 @@ impl BigInt {
 
     ///
     /// Computes abs(self) <=> abs(rhs)
-    /// 
+    ///
     fn abs_compare_small(&self, rhs: u64) -> Ordering {
         match self.highest_set_block() {
            None => 0.cmp(&rhs),
@@ -527,6 +527,13 @@ impl PartialEq for BigInt {
 
 impl Eq for BigInt {}
 
+impl PartialOrd<u64> for BigInt {
+
+    fn partial_cmp(&self, rhs: &u64) -> Option<Ordering> {
+        Some(self.abs_compare_small(*rhs))
+    }
+}
+
 impl PartialOrd for BigInt {
 
     fn partial_cmp(&self, rhs: &BigInt) -> Option<Ordering> {
@@ -630,7 +637,7 @@ impl SubAssign<&BigInt> for BigInt {
 
     fn sub_assign(&mut self, rhs: &BigInt) {
         self.negative = !self.negative;
-        self.add_assign(rhs);
+        *self += rhs;
         self.negative = !self.negative;
         self.normalize();
     }
@@ -640,7 +647,7 @@ impl SubAssign<i64> for BigInt {
 
     fn sub_assign(&mut self, rhs: i64) {
         self.negative = !self.negative;
-        self.add_assign(rhs);
+        *self += rhs;
         self.negative = !self.negative;
     }
 }
@@ -809,6 +816,9 @@ impl PartialEq<u64> for BigInt {
 
 impl std::fmt::Display for BigInt {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if self.negative {
+            write!(f, "-")?;
+        }
         let mut copy = self.clone();
         let mut remainders: Vec<u64> = Vec::with_capacity((self.highest_set_block().unwrap_or(0) + 1) * Self::BLOCK_BITS / 3);
         while !copy.is_zero() {
@@ -892,7 +902,7 @@ fn test_from_str_radix() {
 }
 
 #[test]
-fn test_do_subtraction() {
+fn test_abs_subtraction() {
     let mut x = "923645871236598172365987287530543".parse::<BigInt>().unwrap();
     let y =      "58430657823473456743684735863478".parse::<BigInt>().unwrap();
     let z =     "865215213413124715622302551667065".parse::<BigInt>().unwrap();
@@ -901,7 +911,7 @@ fn test_do_subtraction() {
 }
 
 #[test]
-fn test_do_subtraction_carry() {
+fn test_abs_subtraction_with_carry() {
     let mut x = BigInt::from_str_radix("1000000000000000000", 16).unwrap();
     let y =      BigInt::from_str_radix("FFFFFFFFFFFFFFFF00", 16).unwrap();
     x.abs_subtraction(&y, 0);
@@ -909,7 +919,16 @@ fn test_do_subtraction_carry() {
 }
 
 #[test]
-fn test_do_addition() {
+fn test_sub_assign() {
+    let mut x = "4294836225".parse::<BigInt>().unwrap();
+    let y =     "4294967297".parse::<BigInt>().unwrap();
+    let z =        "-131072".parse::<BigInt>().unwrap();
+    x -= &y;
+    assert_eq!(z, x);
+}
+
+#[test]
+fn test_abs_addition() {
     let mut x = "923645871236598172365987287530543".parse::<BigInt>().unwrap();
     let y =      "58430657823473456743684735863478".parse::<BigInt>().unwrap();
     let z =     "982076529060071629109672023394021".parse::<BigInt>().unwrap();
@@ -918,7 +937,7 @@ fn test_do_addition() {
 }
 
 #[test]
-fn test_do_addition_carry() {
+fn test_abs_addition_with_carry() {
     let mut x =             BigInt::from_str_radix("1BC00000000000000BC", 16).unwrap();
     let y =  BigInt::from_str_radix("FFFFFFFFFFFFFFFF0000000000000000BC", 16).unwrap();
     let z = BigInt::from_str_radix("10000000000000000BC0000000000000178", 16).unwrap();
@@ -927,7 +946,7 @@ fn test_do_addition_carry() {
 }
 
 #[test]
-fn test_do_multiplication() {
+fn test_abs_multiplication() {
     let x = BigInt::from_str_radix("57873674586797895671345345", 10).unwrap();
     let y = BigInt::from_str_radix("21308561789045691782534873921650342768903561413264128756389247568729346542359871235465", 10).unwrap();
     let z = BigInt::from_str_radix("1233204770891906354921751949503652431220138020953161094405729272872607166072371117664593787957056214903826660425", 10).unwrap();
@@ -935,7 +954,7 @@ fn test_do_multiplication() {
 }
 
 #[test]
-fn test_do_division_no_remainder() {
+fn test_abs_division_no_remainder() {
     let mut x = BigInt::from_str_radix("578435387FF0582367863200000000000000000000", 16).unwrap();
     let y =                          BigInt::from_str_radix("200000000000000000000", 16).unwrap();
     let z = BigInt::from_str_radix("2BC21A9C3FF82C11B3C319", 16).unwrap();
@@ -945,7 +964,7 @@ fn test_do_division_no_remainder() {
 }
 
 #[test]
-fn test_do_division_remainder() {
+fn test_abs_division_remainder() {
     let mut x = BigInt::from_str_radix("578435387FF0582367863200000000007651437856", 16).unwrap();
     let y =                          BigInt::from_str_radix("200000000000000000000", 16).unwrap();
     let z = BigInt::from_str_radix("2BC21A9C3FF82C11B3C319", 16).unwrap();
@@ -956,7 +975,7 @@ fn test_do_division_remainder() {
 }
 
 #[test]
-fn test_do_division_big() {
+fn test_abs_division_big() {
     let mut x = BigInt::from_str_radix("581239456149785691238569872349872348569871269871234657986123987237865847935698734296434575367565723846982523852347", 10).unwrap();
     let y = BigInt::from_str_radix("903852718907268716125180964783634518356783568793426834569872365791233387356325", 10).unwrap();
     let q = BigInt::from_str_radix("643068769934649368349591185247155725", 10).unwrap();
@@ -996,8 +1015,8 @@ fn test_assumptions_integer_division() {
 }
 
 #[test]
-fn test_ring_axioms() {
-    const numbers: [&'static str; 10] = [
+fn test_axioms() {
+    const NUMBERS: [&'static str; 10] = [
         "5444517870735015415413993718908291383295", // power of two - 1
         "5444517870735015415413993718908291383296", // power of two
         "-5444517870735015415413993718908291383295",
@@ -1009,7 +1028,7 @@ fn test_ring_axioms() {
         "-231780567812394562346324763251741827457123654871236548715623487612384752328164",
         "+1278367182354612381234568509783420989356938472561078564732895634928563482349872698723465"
     ];
-    let ns = numbers.iter().cloned().map(BigInt::from_str).map(Result::unwrap).collect::<Vec<_>>();
+    let ns = NUMBERS.iter().cloned().map(BigInt::from_str).map(Result::unwrap).collect::<Vec<_>>();
     let l = ns.len();
     for i in 0..l {
         assert_eq!(BigInt::ZERO, ns[i].clone() - ns[i].clone());

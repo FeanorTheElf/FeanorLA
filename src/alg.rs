@@ -169,9 +169,12 @@ impl Root for f64 {
 }
 
 ///
+/// Should be only used for "small" (easy-to-copy) objects, as arithmetic operations
+/// use pass-by-value
+/// 
 /// Multiplication must be commutative
 /// 
-pub trait RingEl: Sized + Add<Output = Self> + Mul<Output = Self> + AddAssign + PartialEq + Zero + One + Neg<Output = Self> + Sub<Output = Self> + SubAssign {}
+pub trait RingEl: Clone + Sized + Add<Output = Self> + Mul<Output = Self> + AddAssign + PartialEq + Zero + One + Neg<Output = Self> + Sub<Output = Self> + SubAssign {}
 
 pub trait IntegralRingEl: RingEl {}
 
@@ -268,14 +271,35 @@ impl Float for f32 {}
 impl Float for f64 {}
 
 pub trait Ring {
-    type El: Sized;
+    type El: Sized + Clone;
 
-    fn add(&self, lhs: Self::El, rhs: Self::El) -> Self::El;
-    fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El;
+    //
+    // Design rationale: Types that are cheap to copy can be used with the op()-functions,
+    // for types that are expensive to copy, one can use the op_ref()-functions. However,
+    // as each op() / op_ref() function returns the result by value, for big types, is is
+    // usually most efficient to clone at least one parameter and potentially reuse the memory.
+    //
+    // If an operation can improve efficience by consuming both parameters, one should
+    // explicitly implement the default-implemented op()-functions.
+    //
+
+    fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El;
+    fn mul_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El;
     fn neg(&self, val: Self::El) -> Self::El;
     fn zero(&self) -> Self::El;
     fn one(&self) -> Self::El;
     fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool;
+
+    fn sub_ref_fst(&self, lhs: &Self::El, rhs: Self::El) -> Self::El {
+        self.add_ref(self.neg(rhs), lhs)
+    }
+
+    fn sub_ref_snd(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
+        self.neg(self.add_ref(self.neg(lhs), rhs))
+    }
+
+    fn add(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.add_ref(lhs, &rhs) }
+    fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.mul_ref(lhs, &rhs) }
 
     fn sub(&self, lhs: Self::El, rhs: Self::El) -> Self::El {
         self.add(lhs, self.neg(rhs))
@@ -324,8 +348,8 @@ impl<T: RingEl> StaticRing<T> {
 impl<T: RingEl> Ring for StaticRing<T> {
     type El = T;
 
-    fn add(&self, lhs: Self::El, rhs: Self::El) -> Self::El { lhs + rhs }
-    fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El { lhs * rhs }
+    fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { lhs + rhs.clone() }
+    fn mul_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { lhs * rhs.clone() }
     fn neg(&self, val: Self::El) -> Self::El { -val }
     fn zero(&self) -> Self::El { T::zero() }
     fn one(&self) -> Self::El { T::one() }

@@ -40,8 +40,13 @@ fn around_zero_iter() -> impl Iterator<Item = i64> {
 
 fn check_smooth(mut k: BigInt, factor_base: &Vec<i64>) -> Option<BTreeMap<i64, u32>> {
     let mut result = BTreeMap::new();
+    assert!(factor_base[0] == -1);
+    if k < 0 {
+        result.insert(-1, 1);
+        k = -k;
+    }
     let mut tmp = BigInt::zero();
-    for p in factor_base {
+    for p in &factor_base[1..] {
         let mut dividing_power = 0;
         tmp.assign(&k);
         loop {
@@ -70,20 +75,25 @@ fn quadratic_sieve(n: BigInt) {
     let smoothness_bound_float = (0.5 * n_float.ln().sqrt() * n_float.ln().ln().sqrt()).exp();
     assert!(smoothness_bound_float < i64::MAX as f64);
     let smoothness_bound = smoothness_bound_float as i64;
-    let factor_base = gen_primes(smoothness_bound);
+    let factor_base = {
+        let mut result = gen_primes(smoothness_bound);
+        result.insert(0, -1);
+        result
+    };
     println!("factor_base: {:?}", factor_base);
     let m = BigInt::from_float_approx(n_float.sqrt());
     let mut relations: Vec<BTreeMap<i64, u32>> = Vec::with_capacity(factor_base.len() + 1);
 
+    let mut k = m.clone();
     for d in around_zero_iter() {
-        let mut k = m.clone();
+        k.assign(&m);
         k += d;
         k = k.clone() * k;
         k -= &n;
         if let Some(rel) = check_smooth(k.clone(), &factor_base) {
-            println!("found relation {} ~ {:?}, d = {}", k, rel, d);
+            println!("found relation {} ~ {:?}, d = {}:", k, rel, d);
             relations.push(rel);
-            if relations.len() > smoothness_bound as usize {
+            if relations.len() > factor_base.len() as usize {
                 break;
             }
         }
