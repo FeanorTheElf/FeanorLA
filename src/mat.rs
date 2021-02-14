@@ -280,11 +280,13 @@ impl<M, T> Matrix<M, T>
         assert_eq!(self.row_count(), self.col_count());
         assert_eq!(self.row_count(), rhs.row_count());
 
-        #[cfg(debug)]
-        for i in 0..self.row_count() {
-            debug_assert_eq!(T::one(), *self.at(i, i));
-            for j in (0..i) {
-                debug_assert_eq!(T::zero(), *self.at(i, j));
+        // check upper triangle
+        #[cfg(debug)] {
+            for i in 0..self.row_count() {
+                debug_assert_eq!(T::one(), *self.at(i, i));
+                for j in (0..i) {
+                    debug_assert_eq!(T::zero(), *self.at(i, j));
+                }
             }
         }
 

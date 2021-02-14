@@ -64,9 +64,7 @@ fn check_smooth(mut k: BigInt, factor_base: &Vec<i64>) -> Option<RelVec> {
                 k.assign(&tmp);
             }
         }
-        if dividing_power > 0 {
-            *result.at_mut(i) = dividing_power;
-        }
+        *result.at_mut(i) = dividing_power;
     }
     if k == BigInt::one() {
         return Some(result);
@@ -87,6 +85,7 @@ fn collect_relations<I>(m: &BigInt, n: &BigInt, factor_base: &Vec<i64>, relation
         square *= &k;
         square -= n;
         if let Some(rel) = check_smooth(square, &factor_base) {
+            println!("found relation: {}, relation count: {}", k, relations.len());
             relations.push((k.clone(), rel));
             if relations.len() == count {
                 return;
@@ -120,7 +119,7 @@ fn check_congruent_square<V>(n: &BigInt, factor_base: &Vec<i64>, relations: &Vec
         y *= BigInt::from(factor_base[i]).pow(power as u64 / 2);
     }
 
-    let factor = gcd(&StaticRing::<BigInt>::RING, n.clone(), x.clone() - y.clone());
+    let factor = gcd(&StaticRing::<RingAxiomsEuclideanRing, BigInt>::RING, n.clone(), x.clone() - y.clone());
     if factor != BigInt::one() && factor != *n {
         return Ok(factor);
     } else {
@@ -174,14 +173,6 @@ fn test_quadratic_sieve() {
     let f5 = BigInt::power_of_two(32) + 1;
     let factor = quadratic_sieve(&f5);
     assert!(factor != f5);
-    assert!(factor != 1);
-    assert_eq!(f5 % factor, 0);
-}
-
-#[test]
-fn experiment() {
-    let f7 = BigInt::power_of_two(128) + 1;
-    let factor = quadratic_sieve(&f7);
-    println!("{} has factor {}", f7, factor);
-    assert!(false);
+    assert!(factor != 1u64);
+    assert_eq!(f5 % factor, 0u64);
 }

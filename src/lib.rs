@@ -34,4 +34,5 @@ pub mod simplex;
 pub mod diophantine;
 pub mod qr;
 pub mod zn;
+pub mod quotient;
 pub mod sieve;

@@ -169,40 +169,64 @@ impl Root for f64 {
 }
 
 ///
-/// Should be only used for "small" (easy-to-copy) objects, as arithmetic operations
-/// use pass-by-value
+/// Note that the Ring axioms are mutually exclusive, so a ring providing
+/// euclidean division should be RingAxiomsEuclideanRing but not RingAxiomsIntegralRing
+/// even though it is integral
+/// 
+pub trait RingAxioms {}
+pub struct RingAxiomsZeroDivisorRing;
+pub struct RingAxiomsIntegralRing;
+pub struct RingAxiomsEuclideanRing;
+pub struct RingAxiomsField;
+impl RingAxioms for RingAxiomsZeroDivisorRing {}
+impl RingAxioms for RingAxiomsIntegralRing {}
+impl RingAxioms for RingAxiomsEuclideanRing {}
+impl RingAxioms for RingAxiomsField {}
+
+///
+/// Use this for rings whose structure is determined completely at compile time
 /// 
 /// Multiplication must be commutative
 /// 
-pub trait RingEl: Clone + Sized + Add<Output = Self> + Mul<Output = Self> + AddAssign + PartialEq + Zero + One + Neg<Output = Self> + Sub<Output = Self> + SubAssign {}
+pub trait RingEl: Clone + Sized + Add<Output = Self> + Mul<Output = Self> + AddAssign + PartialEq + Zero + One + Neg<Output = Self> + Sub<Output = Self> + SubAssign {
 
-pub trait IntegralRingEl: RingEl {}
+    type Axioms: RingAxioms;
+}
 
 ///
 /// Division must satisfy the invariant x = (x/y) * y + (x%y)
 /// 
-pub trait EuclideanRingEl: IntegralRingEl + Rem<Output = Self> + RemAssign + Div<Output = Self> + DivAssign {
+pub trait EuclideanRingEl: RingEl<Axioms = RingAxiomsEuclideanRing> + Rem<Output = Self> + RemAssign + Div<Output = Self> + DivAssign {
 
     ///
     /// Computes (returned, self) := (self / rhs, self % rhs) and returns returned.
     /// Can be faster than computing both separately
     /// 
     fn div_rem(&mut self, rhs: Self) -> Self;
-
 }
 
-pub trait FieldEl: IntegralRingEl + MulAssign + Div<Output = Self> + DivAssign {}
+pub trait FieldEl: RingEl<Axioms = RingAxiomsField> + MulAssign + Div<Output = Self> + DivAssign {}
 
-impl RingEl for i8 {}
-impl RingEl for i16 {}
-impl RingEl for i32 {}
-impl RingEl for i64 {}
-impl RingEl for i128 {}
-impl IntegralRingEl for i8 {}
-impl IntegralRingEl for i16 {}
-impl IntegralRingEl for i32 {}
-impl IntegralRingEl for i64 {}
-impl IntegralRingEl for i128 {}
+impl RingEl for i8 {
+    type Axioms = RingAxiomsEuclideanRing;
+}
+
+impl RingEl for i16 {
+    type Axioms = RingAxiomsEuclideanRing;
+}
+
+impl RingEl for i32 {
+    type Axioms = RingAxiomsEuclideanRing;
+}
+
+impl RingEl for i64 {
+    type Axioms = RingAxiomsEuclideanRing;
+}
+
+impl RingEl for i128 {
+    type Axioms = RingAxiomsEuclideanRing;
+}
+
 
 impl EuclideanRingEl for i8 {
     fn div_rem(&mut self, rhs: Self) -> Self { 
@@ -244,10 +268,14 @@ impl EuclideanRingEl for i128 {
     }
 }
 
-impl RingEl for f32 {}
-impl RingEl for f64 {}
-impl IntegralRingEl for f32 {}
-impl IntegralRingEl for f64 {}
+impl RingEl for f32 {
+    type Axioms = RingAxiomsField;
+}
+
+impl RingEl for f64 {
+    type Axioms = RingAxiomsField;
+}
+
 impl FieldEl for f32 {}
 impl FieldEl for f64 {}
 
@@ -318,34 +346,50 @@ pub trait Ring {
         }
         return result;
     }
-}
 
-pub trait IntegralRing: Ring {}
-
-pub trait EuclideanRing: IntegralRing {
-
-    fn div_rem(&self, lhs: Self::El, rhs: Self::El) -> (Self::El, Self::El);
-
-    fn rem(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.div_rem(lhs, rhs).1 }
-    fn div(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.div_rem(lhs, rhs).0 }
-}
-
-pub trait Field: IntegralRing {
+    fn is_integral(&self) -> bool;
+    fn is_euclidean(&self) -> bool;
+    fn is_field(&self) -> bool;
     
+    ///
+    /// May panic if the ring is not euclidean. The first result is the quotient
+    /// and the second result the remainder. The inequality
+    ///  lhs = quo * rhs + rem
+    /// must always hold.
+    /// 
+    fn euclidean_div_rem(&self, lhs: Self::El, rhs: Self::El) -> (Self::El, Self::El);
+    ///
+    /// May panic if the ring is not euclidean
+    /// 
+    fn euclidean_rem(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.euclidean_div_rem(lhs, rhs).1 }
+    ///
+    /// May panic if the ring is not euclidean
+    /// 
+    fn euclidean_div(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.euclidean_div_rem(lhs, rhs).0 }
+    ///
+    /// May panic if the ring is not a field. If it does not panic, the result
+    /// must be valid. For a non-field ring, it therefore must panic if rhs does not
+    /// divide lhs, and if it does, it may either compute the correct quotient but may
+    /// also panic nevertheless.
+    /// 
     fn div(&self, lhs: Self::El, rhs: Self::El) -> Self::El;
 }
 
-pub struct StaticRing<T: RingEl> {
+pub struct StaticRing<Axioms, T> 
+    where Axioms: RingAxioms, T: RingEl<Axioms = Axioms>
+{
     element: std::marker::PhantomData<T>
 }
 
-impl<T: RingEl> StaticRing<T> {
-    
-    pub const RING: StaticRing<T> = StaticRing { element: std::marker::PhantomData };
-
+impl<A, T> StaticRing<A, T> 
+    where A: RingAxioms, T: RingEl<Axioms = A>
+{
+    pub const RING: StaticRing<A, T> = StaticRing { element: std::marker::PhantomData };
 }
 
-impl<T: RingEl> Ring for StaticRing<T> {
+impl<T> Ring for StaticRing<RingAxiomsZeroDivisorRing, T> 
+    where T: RingEl<Axioms = RingAxiomsZeroDivisorRing>
+{
     type El = T;
 
     fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { lhs + rhs.clone() }
@@ -354,27 +398,105 @@ impl<T: RingEl> Ring for StaticRing<T> {
     fn zero(&self) -> Self::El { T::zero() }
     fn one(&self) -> Self::El { T::one() }
     fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool { lhs == rhs }
-}
 
-impl<T: IntegralRingEl> IntegralRing for StaticRing<T> {}
+    fn is_integral(&self) -> bool { false }
+    fn is_euclidean(&self) -> bool { false }
+    fn is_field(&self) -> bool { false }
 
-impl<T: EuclideanRingEl> EuclideanRing for StaticRing<T> {
-
-    fn div_rem(&self, mut lhs: Self::El, rhs: Self::El) -> (Self::El, Self::El) { 
-        let quo = lhs.div_rem(rhs); 
-        (quo, lhs)
+    fn euclidean_div_rem(&self, _lhs: Self::El, _rhs: Self::El) -> (Self::El, Self::El) { 
+        panic!("Not a euclidean domain!");
     }
 
-    fn rem(&self, lhs: Self::El, rhs: Self::El) -> Self::El { lhs % rhs }
-    fn div(&self, lhs: Self::El, rhs: Self::El) -> Self::El { lhs / rhs }
+    fn div(&self, _lhs: Self::El, _rhs: Self::El) -> Self::El { 
+        panic!("Not a field!");
+    }
 }
 
-impl<T: FieldEl> Field for StaticRing<T> {
+impl<T> Ring for StaticRing<RingAxiomsIntegralRing, T> 
+    where T: RingEl<Axioms = RingAxiomsIntegralRing>
+{
+    type El = T;
 
-    fn div(&self, lhs: Self::El, rhs: Self::El) -> Self::El { lhs / rhs }
+    fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { lhs + rhs.clone() }
+    fn mul_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { lhs * rhs.clone() }
+    fn neg(&self, val: Self::El) -> Self::El { -val }
+    fn zero(&self) -> Self::El { T::zero() }
+    fn one(&self) -> Self::El { T::one() }
+    fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool { lhs == rhs }
+
+    fn is_integral(&self) -> bool { true }
+    fn is_euclidean(&self) -> bool { false }
+    fn is_field(&self) -> bool { false }
+
+    fn euclidean_div_rem(&self, _lhs: Self::El, _rhs: Self::El) -> (Self::El, Self::El) { 
+        panic!("Not a euclidean domain!");
+    }
+
+    fn div(&self, _lhs: Self::El, _rhs: Self::El) -> Self::El { 
+        panic!("Not a field!");
+    }
+}
+
+impl<T> Ring for StaticRing<RingAxiomsEuclideanRing, T> 
+    where T: EuclideanRingEl
+{
+    type El = T;
+
+    fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { lhs + rhs.clone() }
+    fn mul_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { lhs * rhs.clone() }
+    fn neg(&self, val: Self::El) -> Self::El { -val }
+    fn zero(&self) -> Self::El { T::zero() }
+    fn one(&self) -> Self::El { T::one() }
+    fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool { lhs == rhs }
+
+    fn is_integral(&self) -> bool { true }
+    fn is_euclidean(&self) -> bool { true }
+    fn is_field(&self) -> bool { false }
+
+    fn euclidean_div_rem(&self, mut lhs: Self::El, rhs: Self::El) -> (Self::El, Self::El) { 
+        let quo = lhs.div_rem(rhs);
+        return (quo, lhs);
+    }
+
+    fn euclidean_div(&self, lhs: Self::El, rhs: Self::El) -> Self::El { 
+        lhs / rhs
+    }
+    
+    fn euclidean_rem(&self, lhs: Self::El, rhs: Self::El) -> Self::El { 
+        lhs % rhs
+    }
+
+    fn div(&self, _lhs: Self::El, _rhs: Self::El) -> Self::El { 
+        panic!("Not a field!");
+    }
+}
+
+impl<T> Ring for StaticRing<RingAxiomsField, T> 
+    where T: FieldEl
+{
+    type El = T;
+
+    fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { lhs + rhs.clone() }
+    fn mul_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { lhs * rhs.clone() }
+    fn neg(&self, val: Self::El) -> Self::El { -val }
+    fn zero(&self) -> Self::El { T::zero() }
+    fn one(&self) -> Self::El { T::one() }
+    fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool { lhs == rhs }
+
+    fn is_integral(&self) -> bool { true }
+    fn is_euclidean(&self) -> bool { false }
+    fn is_field(&self) -> bool { true }
+
+    fn euclidean_div_rem(&self, _lhs: Self::El, _rhs: Self::El) -> (Self::El, Self::El) { 
+        panic!("Not a euclidean domain!");
+    }
+
+    fn div(&self, lhs: Self::El, rhs: Self::El) -> Self::El { 
+        lhs / rhs
+    }
 }
 
 #[test]
 fn test_pow() {
-    assert_eq!(81 * 81 * 3, StaticRing::<i64>::RING.pow(3, 9));
+    assert_eq!(81 * 81 * 3, StaticRing::<RingAxiomsEuclideanRing, i64>::RING.pow(3, 9));
 }

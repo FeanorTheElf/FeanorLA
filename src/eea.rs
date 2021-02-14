@@ -7,16 +7,20 @@ use std::mem::swap;
 /// d is only unique up to units, and s, t are not unique at all. No guarantees are given on which
 /// of these solutions is returned. For integers, see signed_eea which gives more guarantees.
 /// 
-pub fn eea<R: EuclideanRing>(ring: &R, fst: R::El, snd: R::El) -> (R::El, R::El, R::El) 
+/// The given ring must be euclidean
+/// 
+pub fn eea<R: Ring>(ring: &R, fst: R::El, snd: R::El) -> (R::El, R::El, R::El) 
     where R::El: Clone
 {
+    assert!(ring.is_euclidean());
+
     let (mut a, mut b) = (fst, snd);
     let (mut sa, mut ta) = (ring.one(), ring.zero());
     let (mut sb, mut tb) = (ring.zero(), ring.one());
 
     // invariant: sa * a + ta * b = fst, sb * a + tb * b = snd
     while !ring.eq(&b, &ring.zero()) {
-        let (quot, rem) = ring.div_rem(a, b.clone());
+        let (quot, rem) = ring.euclidean_div_rem(a, b.clone());
         ta = ring.sub(ta, ring.mul(quot.clone(), tb.clone()));
         sa = ring.sub(sa, ring.mul(quot.clone(), sb.clone()));
         a = rem;
@@ -49,7 +53,7 @@ pub fn signed_eea<Int: Integer + Copy>(fst: Int, snd: Int) -> (Int, Int, Int) {
         }
     }
 
-    let (s, t, d) = eea(&StaticRing::<Int>::RING, fst, snd);
+    let (s, t, d) = eea(&StaticRing::<RingAxiomsEuclideanRing, Int>::RING, fst, snd);
     
     // the sign is not consistent (potentially toggled each iteration), so normalize here
     if (d < Int::zero()) == (fst < Int::zero()) {
@@ -95,7 +99,9 @@ fn test_signed_eea() {
 /// If this is required, see also signed_gcd that gives precise statement on the
 /// sign of the gcd in case of two integers.
 /// 
-pub fn gcd<R: EuclideanRing>(ring: &R, a: R::El, b: R::El) -> R::El 
+/// The given ring must be euclidean
+/// 
+pub fn gcd<R: Ring>(ring: &R, a: R::El, b: R::El) -> R::El 
     where R::El: Clone
 {
     let (_, _, d) = eea(ring, a, b);

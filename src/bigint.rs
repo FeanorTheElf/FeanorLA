@@ -280,24 +280,25 @@ impl BigInt {
                     negative: false,
                     data: div_data
                 };
-            }
-            let mut result_data = Vec::new();
-            result_data.resize(d + 1 - k, 0);
-            while d > k {
-                if self.data[d] != 0 {
-                    let (quo_upper, quo_lower, quo_power) = self.division_step(&rhs, d, k, &mut tmp);
-                    result_data[quo_power] += quo_lower;
-                    result_data[quo_power + 1] += quo_upper;
-                    debug_assert!(self.data[d] == 0);
+            } else {
+                let mut result_data = Vec::new();
+                result_data.resize(d + 1 - k, 0);
+                while d > k {
+                    if self.data[d] != 0 {
+                        let (quo_upper, quo_lower, quo_power) = self.division_step(&rhs, d, k, &mut tmp);
+                        result_data[quo_power] += quo_lower;
+                        result_data[quo_power + 1] += quo_upper;
+                        debug_assert!(self.data[d] == 0);
+                    }
+                    d -= 1;
                 }
-                d -= 1;
+                let quo = self.division_step_last(&rhs, d, &mut tmp);
+                result_data[0] += quo;
+                return BigInt {
+                    negative: false,
+                    data: result_data
+                };
             }
-            let quo = self.division_step_last(&rhs, d, &mut tmp);
-            result_data[0] += quo;
-            return BigInt {
-                negative: false,
-                data: result_data
-            };
         } else {
             return Self::ZERO.clone();
         }
@@ -339,7 +340,9 @@ impl BigInt {
         self.negative = rhs.negative;
         self.data.clear();
         if let Some(d) = rhs.highest_set_block() {
-            self.data.reserve(d);
+            if self.data.len() < d {
+                self.data.reserve(d - self.data.len());
+            }
             for i in 0..=d {
                 self.data.push(rhs.data[i]);
             }
@@ -507,7 +510,12 @@ impl BigInt {
     }
 
     pub fn pow(self, power: u64) -> BigInt {
-        StaticRing::<BigInt>::RING.pow(self, power)
+        StaticRing::<RingAxiomsEuclideanRing, BigInt>::RING.pow(self, power)
+    }
+
+    pub fn abs(mut self) -> BigInt {
+        self.negative = false;
+        return self;
     }
 }
 
@@ -551,6 +559,26 @@ impl PartialEq for BigInt {
             }
         }
         return true;
+    }
+}
+
+impl PartialEq<u64> for BigInt {
+
+    fn eq(&self, rhs: &u64) -> bool {
+        (self.highest_set_block() == Some(0) && self.data[0] == *rhs && !self.negative) ||
+        (self.is_zero() && *rhs == 0)
+    }
+}
+
+impl PartialEq<i64> for BigInt {
+
+    fn eq(&self, rhs: &i64) -> bool {
+        if let Some(d) = self.highest_set_block() {
+            (*rhs < 0 && self.negative && d == 0 && self.data[0] == (-*rhs) as u64) ||
+            (*rhs > 0 && !self.negative && d == 0 && self.data[0] == *rhs as u64)
+        } else {
+            *rhs == 0
+        }
     }
 }
 
@@ -840,14 +868,6 @@ impl Neg for BigInt {
     }
 }
 
-impl PartialEq<u64> for BigInt {
-
-    fn eq(&self, rhs: &u64) -> bool {
-        (self.highest_set_block() == Some(0) && self.data[0] == *rhs && !self.negative) ||
-        (self.is_zero() && *rhs == 0)
-    }
-}
-
 impl std::fmt::Display for BigInt {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if self.negative {
@@ -873,8 +893,10 @@ impl std::fmt::Display for BigInt {
     }
 }
 
-impl RingEl for BigInt {}
-impl IntegralRingEl for BigInt {}
+impl RingEl for BigInt {
+
+    type Axioms = RingAxiomsEuclideanRing;
+}
 
 impl EuclideanRingEl for BigInt {
 
@@ -949,7 +971,7 @@ fn test_abs_subtraction_with_carry() {
     let mut x = BigInt::from_str_radix("1000000000000000000", 16).unwrap();
     let y =      BigInt::from_str_radix("FFFFFFFFFFFFFFFF00", 16).unwrap();
     x.abs_subtraction(&y, 0);
-    assert_eq!(x, 256);
+    assert_eq!(x, 256u64);
 }
 
 #[test]

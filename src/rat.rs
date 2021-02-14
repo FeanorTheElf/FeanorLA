@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-use super::alg::{One, Zero, RingEl, FieldEl, IntegralRingEl};
+use super::alg::*;
 
 use std::cmp::{Ord, Ordering, PartialEq, PartialOrd};
 use std::convert::From;
@@ -290,8 +290,9 @@ impl Div<Self> for r64 {
     }
 }
 
-impl RingEl for r64 {}
-impl IntegralRingEl for r64 {}
+impl RingEl for r64 {
+    type Axioms = RingAxiomsField;
+}
 impl FieldEl for r64 {}
 
 impl Debug for r64 {
