@@ -28,6 +28,8 @@ impl BigInt {
     const BLOCK_BITS: usize = 64;
     pub const ZERO: BigInt = BigInt { data: Vec::new(), negative: false };
 
+    pub const RING: StaticRing::<RingAxiomsEuclideanRing, BigInt> = StaticRing::<RingAxiomsEuclideanRing, BigInt>::RING;
+
     pub fn power_of_two(n: usize) -> BigInt {
         let blocks = n / Self::BLOCK_BITS;
         let shift = n % Self::BLOCK_BITS;
@@ -490,7 +492,11 @@ impl BigInt {
         if val.abs() <= 0.5 {
             return BigInt::zero()
         } else if val.abs() <= 1.5 {
-            return if val.is_sign_negative() { -BigInt::one() } else { BigInt::one() };
+            if val.is_sign_negative() { 
+                return -BigInt::one();
+            } else { 
+                return BigInt::one();
+            }
         } else {
             const MANTISSA: i32 = 52;
             let exp = std::cmp::max(val.abs().log2() as i32, MANTISSA) - MANTISSA;
@@ -510,7 +516,7 @@ impl BigInt {
     }
 
     pub fn pow(self, power: u64) -> BigInt {
-        StaticRing::<RingAxiomsEuclideanRing, BigInt>::RING.pow(self, power)
+        Self::RING.pow(self, power)
     }
 
     pub fn abs(mut self) -> BigInt {
@@ -905,6 +911,8 @@ impl EuclideanRingEl for BigInt {
         self.div_rem(&rhs)
     }
 }
+
+impl Integer for BigInt {}
 
 #[derive(Debug, Clone)]
 pub enum BigIntParseError {

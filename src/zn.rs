@@ -1,4 +1,3 @@
-use super::bigint::BigInt;
 use super::alg::*;
 use super::eea::signed_eea;
 
@@ -179,7 +178,7 @@ impl<const N: u64> RingEl for GeneralZnEl<N, true> {
 }
 
 impl<const N: u64> RingEl for GeneralZnEl<N, false> {
-    type Axioms = RingAxiomsZeroDivisorRing;
+    type Axioms = RingAxiomsRing;
 }
 
 impl<const N: u64> FieldEl for GeneralZnEl<N, true> {}

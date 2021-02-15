@@ -4,8 +4,6 @@ use super::mat::*;
 use super::zn::*;
 use super::eea::*;
 
-use std::collections::BTreeMap;
-
 ///
 /// Generates all primes <= bound
 /// 
@@ -119,7 +117,7 @@ fn check_congruent_square<V>(n: &BigInt, factor_base: &Vec<i64>, relations: &Vec
         y *= BigInt::from(factor_base[i]).pow(power as u64 / 2);
     }
 
-    let factor = gcd(&StaticRing::<RingAxiomsEuclideanRing, BigInt>::RING, n.clone(), x.clone() - y.clone());
+    let factor = gcd(&BigInt::RING, n.clone(), x.clone() - y.clone());
     if factor != BigInt::one() && factor != *n {
         return Ok(factor);
     } else {

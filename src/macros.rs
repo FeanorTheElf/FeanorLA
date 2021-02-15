@@ -51,7 +51,7 @@ macro_rules! assert_approx_eq {
         if !($left).approx_eq(($right), ($delta))
         {
             panic!(
-                r#"assertion failed: `(left == right +-{:?})`
+                r#"assertion failed: `(left == right +-{})`
   left: `{:?}`,
  right: `{:?}`"#,
                 $delta, $left, $right

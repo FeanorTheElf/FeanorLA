@@ -113,7 +113,7 @@ impl Ring for QuotientRingZ {
     }
 
     fn div(&self, lhs: Self::El, rhs: Self::El) -> Self::El { 
-        let (s, _t, d) = eea(&StaticRing::<RingAxiomsEuclideanRing, BigInt>::RING, rhs, self.modulus.clone());
+        let (s, _t, d) = eea(&BigInt::RING, rhs, self.modulus.clone());
         if d != 1u64 && d != -1i64 {
             panic!("Tried to divide in Z/{}Z, however this is not a field and the divisor is not invertible (the modulus has the nontrivial factor {})", self.modulus, d)
         } else {

@@ -21,8 +21,8 @@ pub fn eea<R: Ring>(ring: &R, fst: R::El, snd: R::El) -> (R::El, R::El, R::El)
     // invariant: sa * a + ta * b = fst, sb * a + tb * b = snd
     while !ring.eq(&b, &ring.zero()) {
         let (quot, rem) = ring.euclidean_div_rem(a, b.clone());
-        ta = ring.sub(ta, ring.mul(quot.clone(), tb.clone()));
-        sa = ring.sub(sa, ring.mul(quot.clone(), sb.clone()));
+        ta = ring.sub(ta, ring.mul_ref(quot.clone(), &tb));
+        sa = ring.sub(sa, ring.mul_ref(quot, &sb));
         a = rem;
         swap(&mut a, &mut b);
         swap(&mut sa, &mut sb);
@@ -39,7 +39,7 @@ pub fn eea<R: Ring>(ring: &R, fst: R::El, snd: R::El) -> (R::El, R::El, R::El)
 /// unspecified whether this function returns (±1, 0, a) or (0, ±1, a). We define the greatest common divisor gcd(a, b) as the minimal
 /// element of the set of integers dividing a and b (ordered by divisibility), whose sign matches the sign of a.
 /// 
-/// In particular, have `gcd(6, 8) == 2`, `gcd(0, 0) == 0`, `gcd(0, x) == |x|`, `gcd(x, 0) == x`, `gcd(-1, 1) == -1`, `gcd(1, -1) == 1`
+/// In particular, have `signed_gcd(6, 8) == 2`, `signed_gcd(0, 0) == 0`, `signed_gcd(0, x) == |x|`, `signed_gcd(x, 0) == x`, `signed_gcd(-1, 1) == -1`, `signed_gcd(1, -1) == 1`
 /// and therefore `signed_eea(6, 8) == (-1, 1, 2)`, `signed_eea(-6, 8) == (-1, -1, -2)`, `signed_eea(8, -6) == (1, 1, 2)`, `signed_eea(0, 0) == (0, 0, 0)`
 /// 
 pub fn signed_eea<Int: Integer + Copy>(fst: Int, snd: Int) -> (Int, Int, Int) {
