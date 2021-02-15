@@ -11,10 +11,11 @@ pub struct QuotientRingZ {
 impl QuotientRingZ {
 
     pub fn new(modulus: BigInt) -> Self {
+        assert!(modulus >= 2);
         // have k such that 2^k > modulus^2
         // then (2^k / modulus) * x >> k differs at most 1 from floor(x / modulus)
         // if x < n^2, which is the case after multiplication
-        let k = modulus.log2_floor() * 2 + 1;
+        let k = modulus.log2_floor() * 2 + 2;
         let inverse_modulus = BigInt::power_of_two(k) / modulus.clone();
         return QuotientRingZ {
             modulus: modulus,
@@ -50,6 +51,18 @@ impl QuotientRingZ {
         debug_assert!(red_n < self.modulus);
         return red_n;
     }
+
+    ///
+    /// Returns either the inverse of x (as Ok()) or a nontrivial factor of the modulus (as Err())
+    /// 
+    pub fn invert(&self, x: BigInt) -> Result<BigInt, BigInt> {
+        let (s, _t, d) = eea(&BigInt::RING, x, self.modulus.clone());
+        if d != 1u64 && d != -1i64 {
+            Err(d)
+        } else {
+            Ok(s)
+        }
+    }
 }
 
 impl Ring for QuotientRingZ {
@@ -64,6 +77,8 @@ impl Ring for QuotientRingZ {
         if result >= self.modulus {
             result -= &self.modulus;
         }
+
+        assert!(result < self.modulus);
         return result;
     }
 
@@ -71,14 +86,21 @@ impl Ring for QuotientRingZ {
         assert!(lhs < self.modulus);
         assert!(rhs < &self.modulus);
 
-        return self.project_leq_n_square(lhs * rhs);
+        let result = self.project_leq_n_square(lhs * rhs);
+
+        assert!(result < self.modulus);
+        return result;
     }
 
     fn neg(&self, val: Self::El) -> Self::El {
         assert!(val < self.modulus);
 
         let mut result = -val;
-        result += &self.modulus;
+        if result < 0 {
+            result += &self.modulus;
+        }
+
+        assert!(result < self.modulus);
         return result;
     }
 
@@ -113,11 +135,9 @@ impl Ring for QuotientRingZ {
     }
 
     fn div(&self, lhs: Self::El, rhs: Self::El) -> Self::El { 
-        let (s, _t, d) = eea(&BigInt::RING, rhs, self.modulus.clone());
-        if d != 1u64 && d != -1i64 {
-            panic!("Tried to divide in Z/{}Z, however this is not a field and the divisor is not invertible (the modulus has the nontrivial factor {})", self.modulus, d)
-        } else {
-            self.mul(lhs, s)
+        match self.invert(rhs) {
+            Err(factor) => panic!("Tried to divide in Z/{}Z, however this is not a field and the divisor is not invertible (the modulus has the nontrivial factor {})", self.modulus, factor),
+            Ok(inverse) => self.mul(lhs, inverse)
         }
     }
 }

@@ -1,6 +1,8 @@
+use super::alg::*;
+
 use std::cmp::Ordering;
 use std::ops::*;
-use super::alg::*;
+use std::hash::{Hash, Hasher};
 
 #[derive(Debug, Clone)]
 pub struct BigInt {
@@ -266,6 +268,11 @@ impl BigInt {
         }
     }
 
+    ///
+    /// Calculates abs(self) = abs(self) % abs(rhs) and returns the quotient
+    /// of the division abs(self) / abs(rhs). The sign bit of self is ignored
+    /// and left unchanged.
+    /// 
     fn abs_division(&mut self, rhs: &BigInt) -> BigInt {
         assert!(!rhs.is_zero());
 
@@ -288,8 +295,12 @@ impl BigInt {
                 while d > k {
                     if self.data[d] != 0 {
                         let (quo_upper, quo_lower, quo_power) = self.division_step(&rhs, d, k, &mut tmp);
-                        result_data[quo_power] += quo_lower;
-                        result_data[quo_power + 1] += quo_upper;
+                        result_data[quo_power] = quo_lower;
+                        let (new_upper_part, overflow) = result_data[quo_power + 1].overflowing_add(quo_upper);
+                        result_data[quo_power + 1] = new_upper_part;
+                        if overflow {
+                            result_data[quo_power + 2] += 1;
+                        }
                         debug_assert!(self.data[d] == 0);
                     }
                     d -= 1;
@@ -519,9 +530,79 @@ impl BigInt {
         Self::RING.pow(self, power)
     }
 
+    pub fn pow_big(self, power: BigInt) -> BigInt {
+        Self::RING.pow_big(self, power)
+    }
+
     pub fn abs(mut self) -> BigInt {
         self.negative = false;
         return self;
+    }
+
+    ///
+    /// Generates a uniformly random number from the range 0 to end_exclusive, using
+    /// entropy from the given rng.
+    /// 
+    /// The distribution may not be perfectly uniform, but within l1-statistical distance
+    /// 2^(-statistical_distance_bound) of a true uniformly random distribution
+    /// 
+    pub fn get_uniformly_random<G>(mut rng: G, end_exclusive: &BigInt, statistical_distance_bound: usize) -> BigInt 
+        where G: FnMut() -> u64
+    {
+        assert!(*end_exclusive > 0);
+        let k = statistical_distance_bound + end_exclusive.log2_floor();
+        let random_blocks = k / Self::BLOCK_BITS + 1;
+        // generate a truly random number in the range from 0 to 2^k and take it modulo end_exclusive
+        // the number of bigints between 0 and 2^k that give a fixed x differs at most by one. Therefore
+        // the probability difference to get any to distinct numbers is at most 1/2^k. The l1-distance
+        // between the distributions is therefore bounded by n/2^k <= 2^(-statistical_distance_bound)
+        let mut result = BigInt {
+            data: (0..random_blocks).map(|_| rng()).collect(),
+            negative: false
+        };
+        result.abs_division(&end_exclusive);
+        return result;
+    }
+
+    pub fn highest_dividing_power_of_two(&self) -> usize {
+        if let Some(d) = self.highest_set_block() {
+            for i in 0..=d {
+                if self.data[i] != 0 {
+                    return self.data[i].trailing_zeros() as usize + i * Self::BLOCK_BITS;
+                }
+            }
+            unreachable!()
+        } else {
+            return 0;
+        }
+    }
+
+    pub fn is_bit_set(&self, i: usize) -> bool {
+        if let Some(d) = self.highest_set_block() {
+            let block = i / Self::BLOCK_BITS;
+            let bit = i % Self::BLOCK_BITS;
+            if block > d {
+                false
+            } else {
+                ((self.data[block] >> bit) & 1) == 1
+            }
+        } else {
+            false
+        }
+    }
+
+    pub fn to_int(&self) -> Result<i64, ()> {
+        if let Some(d) = self.highest_set_block() {
+            if d == 0 && self.data[0] <= i64::MAX as u64 && self.negative {
+                Ok(-(self.data[0] as i64))
+            } else if d == 0 && self.data[0] <= i64::MAX as u64 && !self.negative {
+                Ok(self.data[0] as i64)
+            } else {
+                Err(())
+            }
+        } else {
+            Ok(0)
+        }
     }
 }
 
@@ -874,6 +955,18 @@ impl Neg for BigInt {
     }
 }
 
+impl Hash for BigInt {
+
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        if let Some(d) = self.highest_set_block() {
+            hasher.write_u8(if self.negative { 1 } else { 0 });
+            for i in 0..=d {
+                hasher.write_u64(self.data[i])
+            }
+        }
+    }
+}
+
 impl std::fmt::Display for BigInt {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if self.negative {
@@ -1154,7 +1247,22 @@ fn bench_div(bencher: &mut test::Bencher) {
 
 #[test]
 fn test_eq() {
-    assert!(BigInt::from_str_radix("98711", 10).unwrap() != BigInt::one());
+    fn calculate_hash<T: Hash>(t: &T) -> u64 {
+        let mut s = std::collections::hash_map::DefaultHasher::new();
+        t.hash(&mut s);
+        s.finish()
+    }
+
+    let a = "98711".parse::<BigInt>().unwrap();
+    let mut b = a.clone();
+    b.data.push(0);
+    assert!(a == 98711u64);
+    assert!(a == b);
+    assert!(b == a);
+    assert!(calculate_hash(&a) == calculate_hash(&b));
+    assert!(a != BigInt::one());
+    // the next line could theoretically fail, but it is very improbable and we definitly should test hash inequality
+    assert!(calculate_hash(&a) != calculate_hash(&BigInt::one()));
 }
 
 #[test]

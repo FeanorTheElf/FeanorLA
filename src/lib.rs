@@ -37,3 +37,4 @@ pub mod qr;
 pub mod zn;
 pub mod quotient;
 pub mod sieve;
+pub mod primes;

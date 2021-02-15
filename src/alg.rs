@@ -1,5 +1,7 @@
 use std::ops::{ Add, Mul, Sub, Neg, Div, Rem, AddAssign, MulAssign, DivAssign, SubAssign, RemAssign };
 
+use super::bigint::*;
+
 pub trait Zero: Sized + Add<Self, Output = Self> {
     fn zero() -> Self;
 }
@@ -358,11 +360,22 @@ pub trait Ring {
     fn pow(&self, basis: Self::El, exp: u64) -> Self::El 
         where Self::El: Clone
     {
+        self.pow_big(basis, BigInt::from(exp))
+    }
+
+    fn pow_big(&self, basis: Self::El, exp: BigInt) -> Self::El 
+        where Self::El: Clone
+    {
+        assert!(exp >= 0);
+        if exp.is_zero() {
+            return self.one();
+        }
+
         let mut power = basis;
         let mut result = self.one();
-        for i in 0..(64 - exp.leading_zeros()) {
-            if ((exp >> i) & 1) != 0 {
-                result = self.mul(result, power.clone());
+        for i in 0..(exp.log2_floor() + 1) {
+            if exp.is_bit_set(i) {
+                result = self.mul_ref(result, &power);
             }
             power = self.mul(power.clone(), power);
         }
@@ -371,6 +384,7 @@ pub trait Ring {
 
     fn is_zero(&self, val: &Self::El) -> bool { self.eq(val, &self.zero()) }
     fn is_one(&self, val: &Self::El) -> bool { self.eq(val, &self.one()) }
+    fn is_neg_one(&self, val: &Self::El) -> bool { self.eq(val, &self.neg(self.one())) }
 
     fn is_integral(&self) -> bool;
     fn is_euclidean(&self) -> bool;
