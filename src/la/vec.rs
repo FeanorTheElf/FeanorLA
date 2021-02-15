@@ -1,6 +1,6 @@
+use super::super::alg::*;
 use super::vector_view::*;
 use super::vector::*;
-use super::alg::*;
 
 use std::marker::PhantomData;
 use std::ops::{AddAssign, Add, Mul, MulAssign, RangeBounds, Bound};

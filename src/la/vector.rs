@@ -1,6 +1,6 @@
+use super::super::alg::*;
 use super::vector_view::*;
 use std::marker::PhantomData;
-use super::alg::*;
 
 #[derive(Debug, Clone)]
 pub struct VectorOwned<T> {

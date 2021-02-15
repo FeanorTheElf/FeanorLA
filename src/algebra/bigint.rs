@@ -1,4 +1,4 @@
-use super::alg::*;
+use super::super::alg::*;
 
 use std::cmp::Ordering;
 use std::ops::*;

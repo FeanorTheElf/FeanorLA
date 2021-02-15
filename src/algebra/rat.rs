@@ -1,6 +1,5 @@
 #![allow(non_camel_case_types)]
-
-use super::alg::*;
+use super::super::alg::*;
 
 use std::cmp::{Ord, Ordering, PartialEq, PartialOrd};
 use std::convert::From;
@@ -58,9 +57,9 @@ impl r64 {
     }
 
     pub fn reduce(&mut self) {
-        let ggT: i64 = signed_gcd(self.denominator, self.numerator);
-        self.denominator /= ggT;
-        self.numerator /= ggT;
+        let gcd: i64 = signed_gcd(self.denominator, self.numerator);
+        self.denominator /= gcd;
+        self.numerator /= gcd;
     }
 
     pub fn compare_zero(&self) -> Option<Ordering> {
@@ -179,31 +178,31 @@ impl AddAssign<r64> for r64 {
             self.denominator.checked_mul(rhs.numerator) => rhs.numerator; 
             self.reduce(); 
         {
-            let ggT = signed_gcd(rhs.denominator, rhs.numerator);
-            rhs.denominator /= ggT;
-            rhs.numerator /= ggT;
-            self.numerator /= ggT;
+            let gcd = signed_gcd(rhs.denominator, rhs.numerator);
+            rhs.denominator /= gcd;
+            rhs.numerator /= gcd;
+            self.numerator /= gcd;
         });
         assign_or_reduce_on_failure!(
             self.numerator.checked_add(rhs.numerator) => self.numerator; 
         {
-            let ggT = signed_gcd(self.denominator, self.numerator);
-            self.denominator /= ggT;
-            self.numerator /= ggT;
-            rhs.numerator /= ggT;
+            let gcd = signed_gcd(self.denominator, self.numerator);
+            self.denominator /= gcd;
+            self.numerator /= gcd;
+            rhs.numerator /= gcd;
         }; {
-            let ggT = signed_gcd(rhs.denominator, rhs.numerator);
-            rhs.denominator /= ggT;
-            rhs.numerator /= ggT;
-            self.numerator /= ggT;
+            let gcd = signed_gcd(rhs.denominator, rhs.numerator);
+            rhs.denominator /= gcd;
+            rhs.numerator /= gcd;
+            self.numerator /= gcd;
         });
         assign_or_reduce_on_failure!(
             self.denominator.checked_mul(rhs.denominator) => self.denominator; 
             self.reduce(); 
         {
-            let ggT = signed_gcd(self.numerator, rhs.denominator);
-            self.numerator /= ggT;
-            rhs.denominator /= ggT;
+            let gcd = signed_gcd(self.numerator, rhs.denominator);
+            self.numerator /= gcd;
+            rhs.denominator /= gcd;
         });
     }
 }
@@ -219,9 +218,9 @@ impl MulAssign<r64> for r64 {
             self.denominator.checked_mul(rhs.denominator) => self.denominator; 
             self.reduce(); 
         {
-            let ggT = signed_gcd(rhs.numerator, rhs.denominator);
-            rhs.denominator /= ggT;
-            self.numerator /= ggT;
+            let gcd = signed_gcd(rhs.numerator, rhs.denominator);
+            rhs.denominator /= gcd;
+            self.numerator /= gcd;
         });
     }
 }
@@ -424,7 +423,7 @@ fn test_real_overflow() {
 }
 
 #[test]
-fn test_cmp_NaN_Inf() {
+fn test_cmp_nan_inf() {
     assert_eq!(INFINITY, r64::from(1) / r64::from(0));
     assert_eq!(-INFINITY, r64::from(-2) / r64::from(0));
     assert_eq!(INFINITY, INFINITY);
@@ -443,7 +442,7 @@ fn test_cmp_NaN_Inf() {
 }
 
 #[test]
-fn test_calculate_NaN_Inf() {
+fn test_calculate_nan_inf() {
     assert_eq!(INFINITY, INFINITY + INFINITY);
     assert!((INFINITY - INFINITY).is_nan());
     assert_eq!(-INFINITY, r64::from(1) - INFINITY);
@@ -455,7 +454,7 @@ fn test_calculate_NaN_Inf() {
 }
 
 #[test]
-fn test_ord_NaN_Inf() {
+fn test_ord_nan_inf() {
     assert!(-INFINITY < INFINITY);
     assert!(r64::from(10) < INFINITY);
     assert!(r64::from(0) < INFINITY);

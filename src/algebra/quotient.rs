@@ -1,5 +1,5 @@
+use super::super::alg::*;
 use super::bigint::*;
-use super::alg::*;
 use super::eea::*;
 
 pub struct QuotientRingZ {

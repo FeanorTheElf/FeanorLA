@@ -3,7 +3,7 @@ use std::ops::{
     DivAssign, SubAssign, RemAssign 
 };
 
-use super::bigint::*;
+use super::algebra::bigint::*;
 
 pub trait Zero: Sized + Add<Self, Output = Self> {
     fn zero() -> Self;

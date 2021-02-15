@@ -1,6 +1,6 @@
+use super::super::alg::*;
+use super::super::la::prelude::*;
 use super::bigint::*;
-use super::alg::*;
-use super::mat::*;
 use super::zn::*;
 use super::eea::*;
 

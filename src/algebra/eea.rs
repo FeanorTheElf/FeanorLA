@@ -1,4 +1,4 @@
-use super::alg::*;
+use super::super::alg::*;
 
 use std::mem::swap;
 

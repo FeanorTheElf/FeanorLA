@@ -1,3 +1,5 @@
+use super::super::alg::*;
+
 pub use super::matrix_view::*;
 pub use super::vector_view::*;
 pub use super::vec::*;
@@ -6,8 +8,6 @@ pub use super::submatrix::*;
 pub use super::matrix_owned::*;
 pub use super::matrix_vector::*;
 pub use super::matrix_row_col::*;
-
-use super::alg::*;
 
 use std::marker::PhantomData;
 use std::ops::{AddAssign, Add, Mul, RangeBounds, Bound, MulAssign};
@@ -545,12 +545,12 @@ impl<M, T> Matrix<M, T>
         // we just have to watch out if the left side is singular, then swap cols
         let mut col_swaps: Vec<(usize, usize)> = Vec::new();
 
-        fn find_non_null_column<N, T>(A: Matrix<N, T>) -> Option<usize> 
+        fn find_non_null_column<N, T>(matrix: Matrix<N, T>) -> Option<usize> 
             where N: MatrixView<T>, T: PartialEq + Zero
         {
-            for i in 0..A.col_count() {
-                for j in 0..A.row_count() {
-                    if *A.at(j, i) != T::zero() {
+            for i in 0..matrix.col_count() {
+                for j in 0..matrix.row_count() {
+                    if *matrix.at(j, i) != T::zero() {
                         return Some(i);
                     }
                 }
@@ -689,7 +689,7 @@ impl<M, T> std::fmt::Display for Matrix<M, T>
 }
 
 #[cfg(test)]
-use super::zn::*;
+use super::super::algebra::zn::*;
 
 #[test]
 fn test_mul_matrix() {

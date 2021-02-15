@@ -1,7 +1,4 @@
 use super::mat::*;
-use super::matrix_view::*;
-use super::vec::*;
-use super::vector_view::*;
 
 #[cfg(test)]
 pub trait ApproxEq {

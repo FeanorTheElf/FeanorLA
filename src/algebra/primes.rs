@@ -1,5 +1,5 @@
+use super::super::alg::*;
 use super::sieve::*;
-use super::alg::*;
 use super::bigint::*;
 use super::quotient::*;
 

@@ -1,4 +1,4 @@
-use super::alg::*;
+use super::super::alg::*;
 use super::eea::signed_eea;
 
 use std::ops::{AddAssign, MulAssign, SubAssign, DivAssign, Add, Mul, Sub, Div, Neg};
