@@ -156,7 +156,10 @@ impl BigInt {
     fn abs_multiplication(&self, rhs: &BigInt) -> BigInt {
         let mut result = BigInt {
             negative: false,
-            data: Vec::with_capacity(self.highest_set_block().unwrap_or(0) + rhs.highest_set_block().unwrap_or(0) + 2)
+            data: Vec::with_capacity(
+                self.highest_set_block().unwrap_or(0) + 
+                rhs.highest_set_block().unwrap_or(0) + 2
+            )
         };
         if let Some(d) = rhs.highest_set_block() {
             let mut val = BigInt::zero();
@@ -176,8 +179,10 @@ impl BigInt {
         assert!(self.data[d] != 0);
         assert!(rhs.data[d] != 0);
 
-        let self_high_blocks: u128 = ((self.data[d] as u128) << Self::BLOCK_BITS) | (self.data[d - 1] as u128);
-        let rhs_high_blocks: u128 = ((rhs.data[d] as u128) << Self::BLOCK_BITS) | (rhs.data[d - 1] as u128);
+        let self_high_blocks: u128 = ((self.data[d] as u128) << Self::BLOCK_BITS) | 
+            (self.data[d - 1] as u128);
+        let rhs_high_blocks: u128 = ((rhs.data[d] as u128) << Self::BLOCK_BITS) | 
+            (rhs.data[d - 1] as u128);
 
         if rhs_high_blocks == u128::MAX {
             if self.abs_compare(&rhs) != Ordering::Less {
@@ -199,7 +204,8 @@ impl BigInt {
                 self.abs_subtraction(&rhs, 0);
                 quotient += 1;
             }
-            // we have been at most 2 away from the real quotient, so here it must be done so far
+            // we have been at most 2 away from the real quotient, so here 
+            // it must be done so far
             debug_assert!(self.abs_compare(&rhs) == Ordering::Less);
             return quotient;
         }
@@ -211,26 +217,40 @@ impl BigInt {
     /// will be returned as d = (u * 2 ^ block_bits + l) * 2 ^ (k * block_bits) 
     /// where the return value is (u, l, k)
     /// 
-    fn division_step(&mut self, rhs: &BigInt, self_high: usize, rhs_high: usize, tmp: &mut BigInt) -> (u64, u64, usize) {
+    fn division_step(
+        &mut self, 
+        rhs: &BigInt, 
+        self_high: usize, 
+        rhs_high: usize, 
+        tmp: &mut BigInt
+    ) -> (u64, u64, usize) 
+    {
         assert!(self_high > rhs_high);
         assert!(self.data[self_high] != 0);
         assert!(rhs.data[rhs_high] != 0);
 
-        // the best approximation of the quotient we get through self_high_blocks / (rhs_high_blocks + 1)
-        // the +1 is required to ensure that the quotient is smaller than the real quotient
-        // one can prove that subtracting this is at most 2 * rhs away from the actual remainder
+        // the best approximation of the quotient we get through 
+        // self_high_blocks / (rhs_high_blocks + 1)
+        // the +1 is required to ensure that the quotient is smaller 
+        // than the real quotient
+        // one can prove that subtracting this is at most 2 * rhs away 
+        // from the actual remainder
         
-        // Therefore, the uppermost block may not be completely cleared. Therefore, perform the division again
-        // with the one block shifted rhs. Here, we only use the upper 64 bits of rhs as otherwise, the truncating
-        // division will only yield 0 and we will get smaller than rhs * shift, but may still have upper bits
+        // Therefore, the uppermost block may not be completely cleared. 
+        // Therefore, perform the division again with the one block shifted 
+        // rhs. Here, we only use the upper 64 bits of rhs as otherwise, 
+        // the truncating division will only yield 0 and we will get smaller 
+        // than rhs * shift, but may still have upper bits
         // uncleared (as rhs may have upper bits uncleared)
 
         let mut result_upper = 0;
         let mut result_lower = 0;
 
         {
-            let self_high_blocks: u128 = ((self.data[self_high] as u128) << Self::BLOCK_BITS) | (self.data[self_high - 1] as u128);
-            let rhs_high_blocks: u128 = ((rhs.data[rhs_high] as u128) << Self::BLOCK_BITS) | (rhs.data[rhs_high - 1] as u128);
+            let self_high_blocks: u128 = ((self.data[self_high] as u128) << Self::BLOCK_BITS) | 
+                (self.data[self_high - 1] as u128);
+            let rhs_high_blocks: u128 = ((rhs.data[rhs_high] as u128) << Self::BLOCK_BITS) | 
+                (rhs.data[rhs_high - 1] as u128);
 
             if rhs_high_blocks != u128::MAX && self_high_blocks >= (rhs_high_blocks + 1) {
                 let mut quotient = (self_high_blocks / (rhs_high_blocks + 1)) as u64;
@@ -253,7 +273,8 @@ impl BigInt {
         }
 
         {
-            let self_high_blocks: u128 = ((self.data[self_high] as u128) << Self::BLOCK_BITS) | (self.data[self_high - 1] as u128);
+            let self_high_blocks: u128 = ((self.data[self_high] as u128) << Self::BLOCK_BITS) | 
+                (self.data[self_high - 1] as u128);
 
             if self.data[self_high] != 0 {
                 let  quotient = (self_high_blocks / (rhs.data[rhs_high] as u128 + 1)) as u64;
@@ -296,7 +317,8 @@ impl BigInt {
                     if self.data[d] != 0 {
                         let (quo_upper, quo_lower, quo_power) = self.division_step(&rhs, d, k, &mut tmp);
                         result_data[quo_power] = quo_lower;
-                        let (new_upper_part, overflow) = result_data[quo_power + 1].overflowing_add(quo_upper);
+                        let (new_upper_part, overflow) = 
+                            result_data[quo_power + 1].overflowing_add(quo_upper);
                         result_data[quo_power + 1] = new_upper_part;
                         if overflow {
                             result_data[quo_power + 2] += 1;
@@ -319,9 +341,10 @@ impl BigInt {
 
     ///
     /// Calculates self /= divisor and returns the remainder of the division.
-    /// This only works for positive numbers, as for negative numbers, as the remainder
-    /// must be returned as a u64 to avoid overflow. Instead of throwing, this function
-    /// therefore works with abs(self) instead of self.
+    /// This only works for positive numbers, as for negative numbers, 
+    /// as the remainder must be returned as a u64 to avoid overflow. 
+    /// Instead of throwing, this function therefore works with abs(self) 
+    /// instead of self.
     /// 
     /// the sign bit will be left unchanged.
     /// 
@@ -439,7 +462,9 @@ impl BigInt {
         let it = rest.rchunks(chunk_size as usize).rev()
             .map(std::str::from_utf8)
             .map(|chunk| chunk.map_err(BigIntParseError::from))
-            .map(|chunk| chunk.and_then(|n| u64::from_str_radix(n, base).map_err(BigIntParseError::from)));
+            .map(|chunk| chunk.and_then(|n| 
+                u64::from_str_radix(n, base).map_err(BigIntParseError::from))
+            );
         let mut result = Self::from_radix(it, (base as u64).pow(chunk_size as u32));
         if let Ok(r) = &mut result {
             r.negative = negative;
@@ -472,7 +497,8 @@ impl BigInt {
 
     pub fn log2_floor(&self) -> usize {
         if let Some(d) = self.highest_set_block() {
-            return Self::BLOCK_BITS - self.data[d].leading_zeros() as usize - 1 + d * Self::BLOCK_BITS;
+            return Self::BLOCK_BITS - self.data[d].leading_zeros() as usize - 1 + 
+                d * Self::BLOCK_BITS;
         } else {
             // the number is zero, so the result would be -inf
             panic!("log2 is undefined for 0");
@@ -480,12 +506,14 @@ impl BigInt {
     }
 
     ///
-    /// Returns the float that is closest to the integer. Note that if for very big numbers
-    /// (with abs() in the order of magnitude 2^1024 or greater, this can even yield infinity)
+    /// Returns the float that is closest to the integer. Note that 
+    /// if for very big numbers (with abs() in the order of magnitude 
+    /// 2^1024 or greater, this can even yield infinity)
     /// 
     pub fn to_float_approx(&self) -> f64 {
         if let Some(d) = self.highest_set_block() {
-            let mut upper_part = self.data[d] as f64 * 2f64.powi(Self::BLOCK_BITS as i32);
+            let mut upper_part = self.data[d] as f64 * 
+                2f64.powi(Self::BLOCK_BITS as i32);
             if d > 0 {
                 upper_part += self.data[d - 1] as f64;
             }
@@ -543,19 +571,27 @@ impl BigInt {
     /// Generates a uniformly random number from the range 0 to end_exclusive, using
     /// entropy from the given rng.
     /// 
-    /// The distribution may not be perfectly uniform, but within l1-statistical distance
-    /// 2^(-statistical_distance_bound) of a true uniformly random distribution
+    /// The distribution may not be perfectly uniform, but within 
+    /// l1-statistical distance 2^(-statistical_distance_bound) of a true 
+    /// uniformly random distribution
     /// 
-    pub fn get_uniformly_random<G>(mut rng: G, end_exclusive: &BigInt, statistical_distance_bound: usize) -> BigInt 
+    pub fn get_uniformly_random<G>(
+        mut rng: G, 
+        end_exclusive: &BigInt, 
+        statistical_distance_bound: usize
+    ) -> BigInt 
         where G: FnMut() -> u64
     {
         assert!(*end_exclusive > 0);
         let k = statistical_distance_bound + end_exclusive.log2_floor();
         let random_blocks = k / Self::BLOCK_BITS + 1;
-        // generate a truly random number in the range from 0 to 2^k and take it modulo end_exclusive
-        // the number of bigints between 0 and 2^k that give a fixed x differs at most by one. Therefore
-        // the probability difference to get any to distinct numbers is at most 1/2^k. The l1-distance
-        // between the distributions is therefore bounded by n/2^k <= 2^(-statistical_distance_bound)
+        // generate a truly random number in the range from 0 to 2^k 
+        // and take it modulo end_exclusive the number of bigints 
+        // between 0 and 2^k that give a fixed x differs at most by one. 
+        // Therefore the probability difference to get any to distinct 
+        // numbers is at most 1/2^k. The l1-distance
+        // between the distributions is therefore bounded 
+        // by n/2^k <= 2^(-statistical_distance_bound)
         let mut result = BigInt {
             data: (0..random_blocks).map(|_| rng()).collect(),
             negative: false
@@ -568,7 +604,8 @@ impl BigInt {
         if let Some(d) = self.highest_set_block() {
             for i in 0..=d {
                 if self.data[i] != 0 {
-                    return self.data[i].trailing_zeros() as usize + i * Self::BLOCK_BITS;
+                    return self.data[i].trailing_zeros() as usize + 
+                        i * Self::BLOCK_BITS;
                 }
             }
             unreachable!()
@@ -652,8 +689,9 @@ impl PartialEq for BigInt {
 impl PartialEq<u64> for BigInt {
 
     fn eq(&self, rhs: &u64) -> bool {
-        (self.highest_set_block() == Some(0) && self.data[0] == *rhs && !self.negative) ||
-        (self.is_zero() && *rhs == 0)
+        (self.highest_set_block() == Some(0) && 
+            self.data[0] == *rhs && !self.negative
+        ) || (self.is_zero() && *rhs == 0)
     }
 }
 
@@ -973,7 +1011,9 @@ impl std::fmt::Display for BigInt {
             write!(f, "-")?;
         }
         let mut copy = self.clone();
-        let mut remainders: Vec<u64> = Vec::with_capacity((self.highest_set_block().unwrap_or(0) + 1) * Self::BLOCK_BITS / 3);
+        let mut remainders: Vec<u64> = Vec::with_capacity(
+            (self.highest_set_block().unwrap_or(0) + 1) * Self::BLOCK_BITS / 3
+        );
         while !copy.is_zero() {
             let rem = copy.abs_division_small(BIG_POWER_TEN);
             remainders.push(rem);

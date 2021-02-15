@@ -5,3 +5,4 @@ pub use super::matrix_view::*;
 pub use super::vector_view::*;
 pub use super::matrix_owned::*;
 pub use super::vector::*;
+pub use super::bigint::*;

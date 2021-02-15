@@ -53,7 +53,8 @@ impl QuotientRingZ {
     }
 
     ///
-    /// Returns either the inverse of x (as Ok()) or a nontrivial factor of the modulus (as Err())
+    /// Returns either the inverse of x (as Ok()) or a nontrivial 
+    /// factor of the modulus (as Err())
     /// 
     pub fn invert(&self, x: BigInt) -> Result<BigInt, BigInt> {
         let (s, _t, d) = eea(&BigInt::RING, x, self.modulus.clone());
@@ -130,7 +131,11 @@ impl Ring for QuotientRingZ {
         self.is_integral()
     }
 
-    fn euclidean_div_rem(&self, _lhs: Self::El, _rhs: Self::El) -> (Self::El, Self::El) { 
+    fn euclidean_div_rem(
+        &self, _lhs: 
+        Self::El, _rhs: 
+        Self::El) -> (Self::El, Self::El) 
+    { 
         panic!("Not a euclidean domain!");
     }
 

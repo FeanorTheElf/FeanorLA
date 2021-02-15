@@ -9,12 +9,18 @@ use super::eea::*;
 /// 
 pub fn gen_primes(bound: i64) -> Vec<i64> {
     assert!(bound >= 0);
-    // the prime density formulas used later to estimate the vector size do not work for very small values 
+    // the prime density formulas used later to estimate the vector 
+    // size do not work for very small values 
     if bound <= 13 {
-        return [2, 5, 7, 11].iter().map(|p| *p).filter(|p| *p < bound).collect::<Vec<_>>();
+        return [2, 5, 7, 11].iter()
+            .map(|p| *p)
+            .filter(|p| *p < bound)
+            .collect::<Vec<_>>();
     }
     let mut numbers = (0..bound).map(|_| true).collect::<Vec<_>>();
-    let mut result = Vec::with_capacity(2 * ((bound as f64) / (bound as f64).ln()) as usize);
+    let mut result = Vec::with_capacity(
+        2 * ((bound as f64) / (bound as f64).ln()) as usize
+    );
     for i in 2..(bound as usize) {
         if !numbers[i] {
             continue;
@@ -75,7 +81,14 @@ fn check_smooth(mut k: BigInt, factor_base: &Vec<i64>) -> Option<RelVec> {
     }
 }
 
-fn collect_relations<I>(m: &BigInt, n: &BigInt, factor_base: &Vec<i64>, relations: &mut Vec<(BigInt, RelVec)>, count: usize, delta_it: &mut I)
+fn collect_relations<I>(
+    m: &BigInt, 
+    n: &BigInt, 
+    factor_base: &Vec<i64>, 
+    relations: &mut Vec<(BigInt, RelVec)>, 
+    count: usize, 
+    delta_it: &mut I
+)
     where I: Iterator<Item = i64>
 {
     let mut k = m.clone();
@@ -99,10 +112,15 @@ fn collect_relations<I>(m: &BigInt, n: &BigInt, factor_base: &Vec<i64>, relation
 type F2 = ZnEl<2>;
 
 ///
-/// Checks if the congruent square given by choosing exactly the relations from sol is a real
-/// congruent square that yields a factor. If it does, the factor is returned
+/// Checks if the congruent square given by choosing exactly 
+/// the relations from sol is a real congruent square that 
+/// yields a factor. If it does, the factor is returned
 /// 
-fn check_congruent_square<V>(n: &BigInt, factor_base: &Vec<i64>, relations: &Vec<(BigInt, RelVec)>, sol: Vector<V, F2>) -> Result<BigInt, ()>
+fn check_congruent_square<V>(
+    n: &BigInt, factor_base: &Vec<i64>, 
+    relations: &Vec<(BigInt, RelVec)>, 
+    sol: Vector<V, F2>
+) -> Result<BigInt, ()>
     where V: VectorView<ZnEl<2>>
 {
     let mut x = BigInt::one();
@@ -130,13 +148,15 @@ fn check_congruent_square<V>(n: &BigInt, factor_base: &Vec<i64>, relations: &Vec
 }
 
 ///
-/// Uses the quadratic sieve algorithm to find a nontrivial factor of n. Use only for composite numbers,
-/// as it will not terminate for primes.
+/// Uses the quadratic sieve algorithm to find a nontrivial factor of n. 
+/// Use only for composite numbers, as it will not terminate for primes.
 /// 
 pub fn quadratic_sieve(n: &BigInt) -> BigInt {
     assert!(*n >= 2);
     let n_float = n.to_float_approx();
-    let smoothness_bound_float = (0.5 * n_float.ln().sqrt() * n_float.ln().ln().sqrt()).exp();
+    let smoothness_bound_float = (
+        0.5 * n_float.ln().sqrt() * n_float.ln().ln().sqrt()
+    ).exp();
     assert!(smoothness_bound_float < i64::MAX as f64);
     let smoothness_bound = smoothness_bound_float as i64;
     let factor_base = {
@@ -146,7 +166,9 @@ pub fn quadratic_sieve(n: &BigInt) -> BigInt {
     };
     println!("factor_base: {:?}", factor_base);
     let m = BigInt::from_float_approx(n_float.sqrt());
-    let mut relations: Vec<(BigInt, RelVec)> = Vec::with_capacity(factor_base.len() + 1);
+    let mut relations: Vec<(BigInt, RelVec)> = Vec::with_capacity(
+        factor_base.len() + 1
+    );
     let mut delta_it = around_zero_iter();
     let mut count = factor_base.len() + 1;
 
@@ -154,12 +176,16 @@ pub fn quadratic_sieve(n: &BigInt) -> BigInt {
 
         collect_relations(&m, n, &factor_base, &mut relations, count, &mut delta_it);
 
-        let matrix = Matrix::from_fn(factor_base.len(), relations.len(), |r, c| F2::project(*relations[c].1.at(r) as i64));
+        let matrix = Matrix::from_fn(factor_base.len(), relations.len(), |r, c| 
+            F2::project(*relations[c].1.at(r) as i64)
+        );
         let solutions = matrix.kernel_base().unwrap();
 
         for i in 0..solutions.col_count() {
 
-            if let Ok(factor) = check_congruent_square(n, &factor_base, &relations, solutions.col(i)) {
+            if let Ok(factor) = check_congruent_square(
+                n, &factor_base, &relations, solutions.col(i)
+            ) {
                 return factor;
             }
         }

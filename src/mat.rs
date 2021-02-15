@@ -46,7 +46,11 @@ impl<M, T> Matrix<M, T>
         self.submatrix(.., ..)
     }
 
-    pub fn submatrix<'a, R, S>(&'a self, rows: R, cols: S) -> Matrix<MatrixRef<'a, M, T>, T> 
+    pub fn submatrix<'a, R, S>(
+        &'a self,
+        rows: R, 
+        cols: S
+    ) -> Matrix<MatrixRef<'a, M, T>, T> 
         where R: RangeBounds<usize>, S: RangeBounds<usize>
     {
         let rows_begin = match rows.start_bound() {
@@ -69,7 +73,9 @@ impl<M, T> Matrix<M, T>
             Bound::Excluded(x) => *x,
             Bound::Unbounded => self.col_count(),
         };
-        Matrix::new(MatrixRef::new(rows_begin, rows_end, cols_begin, cols_end, &self.data))
+        Matrix::new(MatrixRef::new(
+            rows_begin, rows_end, cols_begin, cols_end, &self.data
+        ))
     }
 
     pub fn rows(&self) -> MatrixRowIter<T, M> {
@@ -150,7 +156,11 @@ impl<M, T> Matrix<M, T>
         self.submatrix_mut(.., ..)
     }
 
-    pub fn submatrix_mut<'a, R, S>(&'a mut self, rows: R, cols: S) -> Matrix<MatrixRefMut<'a, M, T>, T> 
+    pub fn submatrix_mut<'a, R, S>(
+        &'a mut self, 
+        rows: R, 
+        cols: S
+    ) -> Matrix<MatrixRefMut<'a, M, T>, T> 
         where R: RangeBounds<usize>, S: RangeBounds<usize>
     {
         let rows_begin = match rows.start_bound() {
@@ -173,7 +183,9 @@ impl<M, T> Matrix<M, T>
             Bound::Excluded(x) => *x,
             Bound::Unbounded => self.col_count(),
         };
-        Matrix::new(MatrixRefMut::new(rows_begin, rows_end, cols_begin, cols_end, &mut self.data))
+        Matrix::new(MatrixRefMut::new(
+            rows_begin, rows_end, cols_begin, cols_end, &mut self.data
+        ))
     }
 
     pub fn scale<U>(&mut self, rhs: U) 
@@ -190,11 +202,18 @@ impl<M, T> Matrix<M, T>
 impl<M, T> Matrix<M, T>
     where M: MatrixMutRowIter<T>
 {
-    pub fn row_mut<'a>(&'a mut self, row: usize) -> Vector<<M as LifetimeMatrixMutRowIter<'a, T>>::RowRef, T> {
+    pub fn row_mut<'a>(
+        &'a mut self, 
+        row: usize
+    ) -> Vector<<M as LifetimeMatrixMutRowIter<'a, T>>::RowRef, T> 
+    {
         Vector::new(self.data.get_row_mut(row))
     }
 
-    pub fn rows_mut<'a>(&'a mut self) -> impl Iterator<Item = Vector<<M as LifetimeMatrixMutRowIter<'a, T>>::RowRef, T>> {
+    pub fn rows_mut<'a>(
+        &'a mut self
+    ) -> impl Iterator<Item = Vector<<M as LifetimeMatrixMutRowIter<'a, T>>::RowRef, T>> 
+    {
         self.data.rows_mut().map(|r| Vector::new(r))
     }
 }
@@ -234,8 +253,10 @@ impl<M, T> Matrix<M, T>
         self.data.assert_row_in_range(snd);
         for col in 0..self.col_count() {
             let b = self.at(fst, col).clone();
-            *self.at_mut(fst, col) = self.at(fst, col).clone() * transform[0].clone() + self.at(snd, col).clone() * transform[1].clone();
-            *self.at_mut(snd, col) = b * transform[2].clone() + self.at(snd, col).clone() * transform[3].clone();
+            *self.at_mut(fst, col) = self.at(fst, col).clone() * transform[0].clone() + 
+                self.at(snd, col).clone() * transform[1].clone();
+            *self.at_mut(snd, col) = b * transform[2].clone() + 
+                self.at(snd, col).clone() * transform[3].clone();
         }
     }
 
@@ -253,8 +274,10 @@ impl<M, T> Matrix<M, T>
         self.data.assert_col_in_range(snd);
         for row in 0..self.row_count() {
             let b = self.at(row, fst).clone();
-            *self.at_mut(row, fst) = self.at(row, fst).clone() * transform[0].clone() + self.at(row, snd).clone() * transform[2].clone();
-            *self.at_mut(row, snd) = b * transform[1].clone() + self.at(row, snd).clone() * transform[3].clone();
+            *self.at_mut(row, fst) = self.at(row, fst).clone() * transform[0].clone() + 
+                self.at(row, snd).clone() * transform[2].clone();
+            *self.at_mut(row, snd) = b * transform[1].clone() + 
+                self.at(row, snd).clone() * transform[3].clone();
         }
     }
 }
@@ -263,7 +286,9 @@ impl<M, T> Matrix<M, T>
     where M: MatrixView<T>, T: RingEl + Clone
 {
     pub fn frobenius_square(&self) -> T {
-        let mut it = self.rows().flat_map(|r| (0..r.len()).map(move |i| r.at(i).clone() * r.at(i).clone()));
+        let mut it = self.rows().flat_map(|r| 
+            (0..r.len()).map(move |i| r.at(i).clone() * r.at(i).clone())
+        );
         let initial = it.next().unwrap();
         it.fold(initial, |a, b| a + b)
     }
@@ -362,7 +387,8 @@ impl<M, N, T, U> Add<Matrix<N, U>> for Matrix<M, T>
 }
 
 impl<M, N, T, U, R> Mul<Matrix<N, U>> for Matrix<M, T>
-    where M: MatrixView<T>, N: MatrixView<U>, T: Mul<U, Output = R> + Clone, U: Clone, R: Add<R, Output = R>
+    where M: MatrixView<T>, N: MatrixView<U>, 
+        T: Mul<U, Output = R> + Clone, U: Clone, R: Add<R, Output = R>
 {
     type Output = Matrix<MatrixOwned<R>, R>;
 
@@ -396,7 +422,9 @@ impl<T> Matrix<MatrixOwned<T>, T>
 {
     pub fn identity(rows: usize, cols: usize) -> Self {
         Matrix::new(
-            MatrixOwned::from_fn(rows, cols, |i, j| if i == j { T::one() } else { T::zero() })
+            MatrixOwned::from_fn(rows, cols, |i, j| 
+                if i == j { T::one() } else { T::zero() }
+            )
         )
     }
 }
@@ -411,16 +439,24 @@ impl<M, T> Matrix<M, T>
     /// upper triangle form, with the (i,i)-th entry being zero.
     /// 
     /// The passed functions are called whenever a gaussian elimination step is made,
-    /// so that the caller can adjust other data as well (i.e. a potential right-hand side
-    /// of a linear equation, or a determinant)
+    /// so that the caller can adjust other data as well (i.e. a potential 
+    /// right-hand side of a linear equation, or a determinant)
     /// 
     /// Use not for types that have rounding errors, as the algorithm
     /// can be numerically unstable
     /// 
     /// Complexity O(n^3)
     /// 
-    fn gaussion_elimination_half<F, G, H, S>(&mut self, mut mul_row: F, mut swap_rows: G, mut sub_row: H, state: &mut S) -> Result<(), usize>
-        where F: FnMut(usize, T, &mut S), G: FnMut(usize, usize, &mut S), H: FnMut(usize, T, usize, &mut S)
+    fn gaussion_elimination_half<F, G, H, S>(
+        &mut self, 
+        mut mul_row: F, 
+        mut swap_rows: G, 
+        mut sub_row: H, 
+        state: &mut S
+    ) -> Result<(), usize>
+        where F: FnMut(usize, T, &mut S), 
+            G: FnMut(usize, usize, &mut S), 
+            H: FnMut(usize, T, usize, &mut S)
     {
         for i in 0..std::cmp::min(self.col_count(), self.row_count()) {
             // pivot
@@ -485,7 +521,9 @@ impl<M, T> Matrix<M, T>
         self.gaussion_elimination_half(
             |row, a, rhs| rhs.submatrix_mut(row..=row, 0..).scale(a), 
             |i, j, rhs| rhs.swap_rows(i, j), 
-            |dst, a, src, rhs| rhs.transform_two_dims_left(src, dst, &[T::one(), T::zero(), -a, T::one()]), rhs)?;
+            |dst, a, src, rhs| rhs.transform_two_dims_left(
+                src, dst, &[T::one(), T::zero(), -a, T::one()]
+            ), rhs)?;
 
         self.solve_strict_triangular(rhs);
 
@@ -493,13 +531,15 @@ impl<M, T> Matrix<M, T>
     }
 
     ///
-    /// Calculates a base of the kernel of this matrix, or returns None if this kernel is trivial.
-    /// Note that this function modifies self, so if you can life with an additional copy, prefer
+    /// Calculates a base of the kernel of this matrix, or returns None 
+    /// if this kernel is trivial. Note that this function modifies self, 
+    /// so if you can life with an additional copy, prefer
     /// to use kernel_base() instead
     /// 
     pub fn kernel_base_modifying(&mut self) -> Option<Matrix<MatrixOwned<T>, T>> {
-        // the approach is to transform the matrix in upper triangle form, so ( U | R ) with
-        // an upper triangle matrix U and a nonsquare rest matrix R. Then the kernel base matrix
+        // the approach is to transform the matrix in upper triangle form, 
+        // so ( U | R ) with an upper triangle matrix U and a nonsquare 
+        // rest matrix R. Then the kernel base matrix
         // is given by ( -inv(U)*R )
         //             (     I     )
         // we just have to watch out if the left side is singular, then swap cols
@@ -522,13 +562,18 @@ impl<M, T> Matrix<M, T>
         let mut non_zero_row_count = self.row_count();
         loop {
             let mut current_submatrix = self.submatrix_mut(i.., i..);
-            let gaussian_elim_result = current_submatrix.gaussion_elimination_half(|_, _, _| {}, |_, _, _| {}, |_, _, _, _| {}, &mut ());
+            let gaussian_elim_result = current_submatrix.gaussion_elimination_half(
+                |_, _, _| {}, |_, _, _| {}, |_, _, _, _| {}, &mut ()
+            );
             let (col1, col2) = if let Err(null_col) = gaussian_elim_result {
-                if let Some(other_col) = find_non_null_column(self.submatrix((null_col + i).., (null_col + i)..)) {
+                if let Some(other_col) = find_non_null_column(
+                    self.submatrix((null_col + i).., (null_col + i)..)
+                ) {
                     // swap columns
                     (null_col + i, null_col + i + other_col)
                 } else {
-                    // we have a whole 0-rectangle in the lower right corner, so we really are in upper triangle form
+                    // we have a whole 0-rectangle in the lower right corner, 
+                    // so we really are in upper triangle form
                     non_zero_row_count = null_col + i;
                     break;
                 }
@@ -558,7 +603,9 @@ impl<M, T> Matrix<M, T>
         // set the interesting upper part
         let mut result_upper_part = result.submatrix_mut(..upper_part, ..);
         result_upper_part += effective_matrix.submatrix(.., upper_part..);
-        effective_matrix.submatrix(.., ..upper_part).solve_strict_triangular(&mut result_upper_part);
+        effective_matrix.submatrix(.., ..upper_part).solve_strict_triangular(
+            &mut result_upper_part
+        );
 
         // and now perform the swaps
         for (row1, row2) in col_swaps.iter().rev() {
@@ -616,7 +663,12 @@ impl<M, T> std::fmt::Display for Matrix<M, T>
     where M: MatrixView<T>, T: std::fmt::Display
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let entries = (0..self.row_count()).flat_map(|row| (0..self.col_count()).map(move |col| format!("{}", self.at(row, col)))).collect::<Vec<_>>();
+        let entries = (0..self.row_count()).flat_map(|row| 
+            (0..self.col_count()
+        ).map(move |col| 
+            format!("{}", self.at(row, col))
+        )).collect::<Vec<_>>();
+
         let width = entries.iter().map(|s| s.chars().count()).max().unwrap();
         writeln!(f, "[")?;
         for row in 0..self.row_count() {
@@ -695,19 +747,35 @@ fn test_mul() {
 
 #[test]
 fn test_kernel_base() {
-    let mut a = Matrix::from_array([[1., 3., 1., 3.], [2., 6., 1., 2.], [0., 0., 1., 1.]]);
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    let mut a = Matrix::from_array([[1., 3., 1., 3.], 
+                                    [2., 6., 1., 2.], 
+                                    [0., 0., 1., 1.]]);
+
     let b = Matrix::from_array([[3.], [-1.], [0.], [0.]]);
     assert_eq!(b, a.kernel_base_modifying().unwrap());
 
-    let mut a = Matrix::from_array([[1., 3., 1., 3.], [2., 6., 1., 5.], [0., 0., 1., 1.]]);
-    let b = Matrix::from_array([[3., 2.], [-1., 0.], [0., 1.], [0., -1.]]);
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    let mut a = Matrix::from_array([[1., 3., 1., 3.], 
+                                    [2., 6., 1., 5.], 
+                                    [0., 0., 1., 1.]]);
+                                    
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    let b = Matrix::from_array([[3., 2.], 
+                                [-1., 0.], 
+                                [0., 1.], 
+                                [0., -1.]]);
     assert_eq!(b, a.kernel_base_modifying().unwrap());
 }
 
 #[test]
 fn test_kernel_base_f2() {
     type F2 = ZnEl<2>;
-    let a_int = Matrix::from_array([[1, 0, 1], [1, 1, 1], [0, 0, 0]]);
+
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    let a_int = Matrix::from_array([[1, 0, 1], 
+                                    [1, 1, 1], 
+                                    [0, 0, 0]]);
     let a = Matrix::from_fn(3, 3, |i, j| F2::project(*a_int.at(i, j)));
     let b = Matrix::from_array([[F2::ONE], [F2::ZERO], [F2::ONE]]);
     assert_eq!(b, a.kernel_base().unwrap());

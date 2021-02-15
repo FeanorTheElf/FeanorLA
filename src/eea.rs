@@ -3,9 +3,11 @@ use super::alg::*;
 use std::mem::swap;
 
 ///
-/// For a, b computes s, t, d such that s*a + t*b = d is a greatest common divisor of a and b.
-/// d is only unique up to units, and s, t are not unique at all. No guarantees are given on which
-/// of these solutions is returned. For integers, see signed_eea which gives more guarantees.
+/// For a, b computes s, t, d such that `s*a + t*b == d` is a greatest 
+/// common divisor of a and b. d is only unique up to units, and s, t 
+/// are not unique at all. No guarantees are given on which
+/// of these solutions is returned. For integers, see signed_eea 
+/// which gives more guarantees.
 /// 
 /// The given ring must be euclidean
 /// 
@@ -32,15 +34,25 @@ pub fn eea<R: Ring>(ring: &R, fst: R::El, snd: R::El) -> (R::El, R::El, R::El)
 }
 
 /// 
-/// For integers a, b finds the smallest integers s, t so that `s*a + t*b = gcd(a, b)` is the greatest common divisor of a, b.
+/// For integers a, b finds the smallest integers s, t so that 
+/// `s*a + t*b == gcd(a, b)` is the greatest common divisor of a, b.
 /// 
-/// Details: s and t are not unique, this function will return the smallest tuple (s, t) (ordered by the total ordering
-/// given by `(s, t) ≤ (u, v) :<=> |s| ≤ |u| and |t| ≤ |v|`). In the case |a| = |b|, there are two minimal elements, in this case, it is 
-/// unspecified whether this function returns (±1, 0, a) or (0, ±1, a). We define the greatest common divisor gcd(a, b) as the minimal
-/// element of the set of integers dividing a and b (ordered by divisibility), whose sign matches the sign of a.
+/// Details: s and t are not unique, this function will return 
+/// the smallest tuple (s, t) (ordered by the total ordering
+/// given by `(s, t) ≤ (u, v) :<=> |s| ≤ |u| and |t| ≤ |v|`). 
+/// In the case |a| = |b|, there are two minimal elements, in this case, it is 
+/// unspecified whether this function returns (±1, 0, a) or (0, ±1, a). 
+/// We define the greatest common divisor gcd(a, b) as the minimal
+/// element of the set of integers dividing a and b (ordered by divisibility), 
+/// whose sign matches the sign of a.
 /// 
-/// In particular, have `signed_gcd(6, 8) == 2`, `signed_gcd(0, 0) == 0`, `signed_gcd(0, x) == |x|`, `signed_gcd(x, 0) == x`, `signed_gcd(-1, 1) == -1`, `signed_gcd(1, -1) == 1`
-/// and therefore `signed_eea(6, 8) == (-1, 1, 2)`, `signed_eea(-6, 8) == (-1, -1, -2)`, `signed_eea(8, -6) == (1, 1, 2)`, `signed_eea(0, 0) == (0, 0, 0)`
+/// In particular, have `signed_gcd(6, 8) == 2`, `signed_gcd(0, 0) == 0`, 
+/// `signed_gcd(0, x) == |x|`, `signed_gcd(x, 0) == x`, 
+/// `signed_gcd(-1, 1) == -1`, `signed_gcd(1, -1) == 1`
+/// and therefore `signed_eea(6, 8) == (-1, 1, 2)`, 
+/// `signed_eea(-6, 8) == (-1, -1, -2)`, 
+/// `signed_eea(8, -6) == (1, 1, 2)`, 
+/// `signed_eea(0, 0) == (0, 0, 0)`
 /// 
 pub fn signed_eea<Int: Integer + Copy>(fst: Int, snd: Int) -> (Int, Int, Int) {
     if fst == Int::zero() {
@@ -55,7 +67,8 @@ pub fn signed_eea<Int: Integer + Copy>(fst: Int, snd: Int) -> (Int, Int, Int) {
 
     let (s, t, d) = eea(&StaticRing::<RingAxiomsEuclideanRing, Int>::RING, fst, snd);
     
-    // the sign is not consistent (potentially toggled each iteration), so normalize here
+    // the sign is not consistent (potentially toggled each iteration), 
+    // so normalize here
     if (d < Int::zero()) == (fst < Int::zero()) {
         return (s, t, d);
     } else {

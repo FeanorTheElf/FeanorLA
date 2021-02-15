@@ -60,9 +60,13 @@ impl<T> MatrixOwned<T> {
         }
     }
 
-    pub fn from_array<const R: usize, const C: usize>(array: [[T; C]; R]) -> MatrixOwned<T> 
+    pub fn from_array<const R: usize, const C: usize>(
+        array: [[T; C]; R]
+    ) -> MatrixOwned<T> 
     {
-        let data = std::array::IntoIter::new(array).flat_map(|row| std::array::IntoIter::new(row)).collect::<Vec<T>>().into_boxed_slice();
+        let data = std::array::IntoIter::new(array).flat_map(|row| 
+            std::array::IntoIter::new(row)
+        ).collect::<Vec<T>>().into_boxed_slice();
         Self::from_data(data, C)
     }
 }

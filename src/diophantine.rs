@@ -3,13 +3,16 @@ use super::eea::{signed_eea, signed_gcd};
 
 type Item = i32;
 
-pub fn diophantine_solve<M, V>(A: Matrix<M, Item>, b: Vector<V, Item>) -> Option<Vector<VectorOwned<Item>, Item>> 
+pub fn diophantine_solve<M, V>(
+    A: Matrix<M, Item>, 
+    b: Vector<V, Item>
+) -> Option<Vector<VectorOwned<Item>, Item>> 
     where M: MatrixView<Item>, V: VectorView<Item>
 {
     let mut smith_A = A.to_owned();
     let mut iL = Matrix::identity(A.row_count(), A.row_count());
     let mut iR = Matrix::identity(A.col_count(), A.col_count());
-    smith(
+    partial_smith(
         smith_A.as_mut(),
         iL.as_mut(),
         iR.as_mut(),
@@ -38,13 +41,20 @@ pub fn diophantine_solve<M, V>(A: Matrix<M, Item>, b: Vector<V, Item>) -> Option
 /// Instead of L and R, this function works on their
 /// inverses iL and iR.
 ///
-pub fn smith<M, N, K>(mut A: Matrix<M, Item>, mut iL: Matrix<N, Item>, mut iR: Matrix<K, Item>, pivot: usize) 
+pub fn partial_smith<M, N, K>(
+    mut A: Matrix<M, Item>, 
+    mut iL: Matrix<N, Item>, 
+    mut iR: Matrix<K, Item>, 
+    pivot: usize
+) 
     where M: MatrixViewMut<Item>, N: MatrixViewMut<Item>, K: MatrixViewMut<Item>
 {
     if pivot == A.row_count() || pivot == A.col_count() {
         return;
     }
-    let is_zero_matrix = swap_pivot_entry_if_zero(A.as_mut(), iL.as_mut(), iR.as_mut(), pivot);
+    let is_zero_matrix = swap_pivot_entry_if_zero(
+        A.as_mut(), iL.as_mut(), iR.as_mut(), pivot
+    );
     // pivot must be != 0
     if is_zero_matrix {
         return;
@@ -52,12 +62,13 @@ pub fn smith<M, N, K>(mut A: Matrix<M, Item>, mut iL: Matrix<N, Item>, mut iR: M
     // pivot must divide all entries on pivot row and pivot column
     let mut changed = true;
     while changed {
-        changed = transform_pivot_gcd_col(A.as_mut(), iL.as_mut(), pivot) || transform_pivot_gcd_row(A.as_mut(), iR.as_mut(), pivot);
+        changed = transform_pivot_gcd_col(A.as_mut(), iL.as_mut(), pivot) || 
+            transform_pivot_gcd_row(A.as_mut(), iR.as_mut(), pivot);
     }
     // eliminate the entries on pivot row and pivot column
     eliminate_col(A.as_mut(), iL.as_mut(), pivot);
     eliminate_row(A.as_mut(), iR.as_mut(), pivot);
-    smith(A, iL, iR, pivot + 1);
+    partial_smith(A, iL, iR, pivot + 1);
 }
 
 fn eliminate_col<M, N>(mut A: Matrix<M, Item>, mut iL: Matrix<N, Item>, pivot: usize)
@@ -80,13 +91,19 @@ fn eliminate_row<M, N>(mut A: Matrix<M, Item>, mut iR: Matrix<N, Item>, pivot: u
     }
 }
 
-fn transform_pivot_gcd_col<M, N>(mut A: Matrix<M, Item>, mut iL: Matrix<N, Item>, pivot: usize) -> bool
+fn transform_pivot_gcd_col<M, N>(
+    mut A: Matrix<M, Item>, 
+    mut iL: Matrix<N, Item>, 
+    pivot: usize
+) -> bool
     where M: MatrixViewMut<Item>, N: MatrixViewMut<Item>
 {
     let pivot_row = pivot;
     let pivot_col = pivot;
     let mut current =
-        find_smallest_gcd_entry_in_pivot_col(A.submatrix_mut(pivot..A.row_count(), pivot..A.col_count()));
+        find_smallest_gcd_entry_in_pivot_col(
+            A.submatrix_mut(pivot..A.row_count(), pivot..A.col_count())
+        );
     if current == 0 {
         return false;
     }
@@ -98,18 +115,26 @@ fn transform_pivot_gcd_col<M, N>(mut A: Matrix<M, Item>, mut iL: Matrix<N, Item>
         A.transform_two_dims_left(pivot_row, pivot_row + current, &transform);
         iL.transform_two_dims_left(pivot_row, pivot_row + current, &transform);
         current =
-            find_smallest_gcd_entry_in_pivot_col(A.submatrix_mut(pivot..A.row_count(), pivot..A.col_count()));
+            find_smallest_gcd_entry_in_pivot_col(
+                A.submatrix_mut(pivot..A.row_count(), pivot..A.col_count())
+            );
     }
     return true;
 }
 
-fn transform_pivot_gcd_row<M, N>(mut A: Matrix<M, Item>, mut iR: Matrix<N, Item>, pivot: usize) -> bool 
+fn transform_pivot_gcd_row<M, N>(
+    mut A: Matrix<M, Item>, 
+    mut iR: Matrix<N, Item>, 
+    pivot: usize
+) -> bool 
     where M: MatrixViewMut<Item>, N: MatrixViewMut<Item>
 {
     let pivot_row = pivot;
     let pivot_col = pivot;
     let mut current =
-        find_smallest_gcd_entry_in_pivot_row(A.submatrix_mut(pivot..A.row_count(), pivot..A.col_count()));
+        find_smallest_gcd_entry_in_pivot_row(
+            A.submatrix_mut(pivot..A.row_count(), pivot..A.col_count())
+        );
     if current == 0 {
         return false;
     }
@@ -121,7 +146,9 @@ fn transform_pivot_gcd_row<M, N>(mut A: Matrix<M, Item>, mut iR: Matrix<N, Item>
         A.transform_two_dims_right(pivot_col, pivot_col + current, &transform);
         iR.transform_two_dims_left(pivot_col, pivot_col + current, &transform);
         current =
-            find_smallest_gcd_entry_in_pivot_row(A.submatrix_mut(pivot..A.row_count(), pivot..A.col_count()));
+            find_smallest_gcd_entry_in_pivot_row(
+                A.submatrix_mut(pivot..A.row_count(), pivot..A.col_count())
+            );
     }
     return true;
 }
@@ -146,13 +173,17 @@ where
 fn find_smallest_gcd_entry_in_pivot_row<M>(A: Matrix<M, Item>) -> usize 
     where M: MatrixViewMut<Item>
 {
-    find_min(0..A.col_count(), |col: &usize| signed_gcd(*A.at(0, 0), *A.at(0, *col))).unwrap()
+    find_min(0..A.col_count(), |col: &usize| 
+        signed_gcd(*A.at(0, 0), *A.at(0, *col))
+    ).unwrap()
 }
 
 fn find_smallest_gcd_entry_in_pivot_col<M>(A: Matrix<M, Item>) -> usize
     where M: MatrixViewMut<Item>
 {
-    find_min(0..A.row_count(), |row: &usize| signed_gcd(*A.at(0, 0), *A.at(*row, 0))).unwrap()
+    find_min(0..A.row_count(), |row: &usize| 
+        signed_gcd(*A.at(0, 0), *A.at(*row, 0))
+    ).unwrap()
 }
 
 fn swap_pivot_entry_if_zero<M, N, K>(

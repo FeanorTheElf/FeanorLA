@@ -80,9 +80,21 @@ use super::macros::ApproxEq;
 
 #[test]
 fn test_qr() {
-    let mut m = Matrix::from_array([[1., 0., 1.], [1., 1., 1.], [0., 2., 2.]]);
-    let q = Matrix::from_array([[-0.707, 0.236, 0.667], [-0.707, -0.236, -0.667], [0., -0.943, 0.333]]);
-    let r = Matrix::from_array([[-1.414, -0.707, -1.414], [0., -2.121, -1.886], [0., 0., 0.667]]);
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    let mut m = Matrix::from_array([[1., 0., 1.], 
+                                    [1., 1., 1.], 
+                                    [0., 2., 2.]]);
+    
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    let q = Matrix::from_array([[-0.707, 0.236,  0.667], 
+                                [-0.707, -0.236, -0.667], 
+                                [0.,     -0.943, 0.333]]);
+
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    let r = Matrix::from_array([[-1.414, -0.707, -1.414], 
+                                [0.,     -2.121, -1.886], 
+                                [0.,     0.,     0.667]]);
+                                
     let actual_q = qr_decompose(m.as_mut());
     assert_approx_eq!(q, &actual_q, 0.005);
     assert_approx_eq!(r, &m, 0.005);

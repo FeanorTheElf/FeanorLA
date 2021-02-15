@@ -12,7 +12,8 @@ use oorandom;
 /// Miller-Rabin primality test.
 /// 
 /// If n is a prime, this returns true.
-/// If n is not a prime, this returns false with probability greater or equal than 1 - 4^k
+/// If n is not a prime, this returns false with probability greater or 
+/// equal than 1 - 4^k
 /// 
 pub fn is_prime(n: &BigInt, k: usize) -> bool {
     let mut hasher = DefaultHasher::new();
@@ -24,10 +25,13 @@ pub fn is_prime(n: &BigInt, k: usize) -> bool {
     let ring = QuotientRingZ::new(n.clone());
 
     // Admitted, there is no calculation behind this choice
-    const STATISTICAL_DISTANCE_BOUND: usize = 5;
+    const STATISTICAL_DISTANCE_ERROR_BOUND: usize = 5;
 
     for _i in 0..k {
-        let a = ring.project(BigInt::get_uniformly_random(|| ((rng.rand_u32() as u64) << 32) | (rng.rand_u32() as u64), &n, STATISTICAL_DISTANCE_BOUND));
+        let a = ring.project(BigInt::get_uniformly_random(
+            || ((rng.rand_u32() as u64) << 32) | (rng.rand_u32() as u64), &n, 
+            STATISTICAL_DISTANCE_ERROR_BOUND
+        ));
         let mut current = ring.pow_big(a.clone(), d.clone());
         let mut miller_rabin_condition = ring.is_one(&current);
         for _r in 0..s {
@@ -93,9 +97,30 @@ fn test_is_prime() {
 
 #[test]
 fn test_factor() {
-    assert_eq!(vec![BigInt::from(2u64), BigInt::from(2u64), BigInt::from(3u64), BigInt::from(37u64)], factor(BigInt::from(12 * 37 as u64)));
-    assert_eq!(vec![BigInt::from(641u64), BigInt::from(6700417u64)], factor(BigInt::from(4294967297u64)));
+    assert_eq!(vec![
+        BigInt::from(2u64), 
+        BigInt::from(2u64), 
+        BigInt::from(3u64), 
+        BigInt::from(37u64)
+    ], factor(BigInt::from(12 * 37 as u64)));
+
+    assert_eq!(vec![
+        BigInt::from(641u64), 
+        BigInt::from(6700417u64)
+    ], factor(BigInt::from(4294967297u64)));
+
+    assert_eq!(vec![
+        BigInt::from(237689u64), 
+        BigInt::from(717653u64)
+    ], factor(BigInt::from(237689 * 717653 as u64)));
+}
+
+#[cfg(release)]
+#[test]
+fn test_factor_release() {
     let f6 = BigInt::power_of_two(64) + 1;
-    assert_eq!(vec![BigInt::from(67280421310721u64), BigInt::from(274177u64)], factor(f6));
-    assert_eq!(vec![BigInt::from(237689u64), BigInt::from(717653u64)], factor(BigInt::from(237689 * 717653 as u64)));
+    assert_eq!(vec![
+        BigInt::from(67280421310721u64), 
+        BigInt::from(274177u64)
+    ], factor(f6));
 }

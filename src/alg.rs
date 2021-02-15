@@ -1,4 +1,7 @@
-use std::ops::{ Add, Mul, Sub, Neg, Div, Rem, AddAssign, MulAssign, DivAssign, SubAssign, RemAssign };
+use std::ops::{ 
+    Add, Mul, Sub, Neg, Div, Rem, AddAssign, MulAssign, 
+    DivAssign, SubAssign, RemAssign 
+};
 
 use super::bigint::*;
 
@@ -172,8 +175,8 @@ impl Root for f64 {
 
 ///
 /// Note that the Ring axioms are mutually exclusive, so a ring providing
-/// euclidean division should be RingAxiomsEuclideanRing but not RingAxiomsIntegralRing
-/// even though it is integral
+/// euclidean division should be RingAxiomsEuclideanRing but not 
+/// RingAxiomsIntegralRing even though it is integral
 /// 
 pub trait RingAxioms {
     fn is_integral() -> bool;
@@ -215,16 +218,21 @@ impl RingAxioms for RingAxiomsField {
 /// 
 /// Multiplication must be commutative
 /// 
-pub trait RingEl: Clone + Sized + Add<Output = Self> + Mul<Output = Self> + AddAssign + PartialEq + Zero + One + Neg<Output = Self> + Sub<Output = Self> + SubAssign {
-
+pub trait RingEl: 
+    Clone + Sized + Add<Output = Self> + Mul<Output = Self> + 
+    AddAssign + PartialEq + Zero + One + Neg<Output = Self> + 
+    Sub<Output = Self> + SubAssign 
+{
     type Axioms: RingAxioms;
 }
 
 ///
 /// Division must satisfy the invariant x = (x/y) * y + (x%y)
 /// 
-pub trait EuclideanRingEl: RingEl<Axioms = RingAxiomsEuclideanRing> + Rem<Output = Self> + RemAssign + Div<Output = Self> + DivAssign {
-
+pub trait EuclideanRingEl: 
+    RingEl<Axioms = RingAxiomsEuclideanRing> + Rem<Output = Self> + 
+    RemAssign + Div<Output = Self> + DivAssign 
+{
     ///
     /// Computes (returned, self) := (self / rhs, self % rhs) and returns returned.
     /// Can be faster than computing both separately
@@ -232,7 +240,9 @@ pub trait EuclideanRingEl: RingEl<Axioms = RingAxiomsEuclideanRing> + Rem<Output
     fn div_rem(&mut self, rhs: Self) -> Self;
 }
 
-pub trait FieldEl: RingEl<Axioms = RingAxiomsField> + MulAssign + Div<Output = Self> + DivAssign {}
+pub trait FieldEl: 
+    RingEl<Axioms = RingAxiomsField> + MulAssign + Div<Output = Self> + DivAssign 
+{}
 
 impl RingEl for i8 {
     type Axioms = RingAxiomsEuclideanRing;
@@ -326,10 +336,11 @@ pub trait Ring {
     type El: Sized + Clone;
 
     //
-    // Design rationale: Types that are cheap to copy can be used with the op()-functions,
-    // for types that are expensive to copy, one can use the op_ref()-functions. However,
-    // as each op() / op_ref() function returns the result by value, for big types, is is
-    // usually most efficient to clone at least one parameter and potentially reuse the memory.
+    // Design rationale: Types that are cheap to copy can be used with the 
+    // op()-functions, for types that are expensive to copy, one can use the 
+    // op_ref()-functions. However, as each op() / op_ref() function returns 
+    // the result by value, for big types, is is usually most efficient to 
+    // clone at least one parameter and potentially reuse the memory.
     //
     // If an operation can improve efficience by consuming both parameters, one should
     // explicitly implement the default-implemented op()-functions.
@@ -397,14 +408,21 @@ pub trait Ring {
     /// must always hold.
     /// 
     fn euclidean_div_rem(&self, lhs: Self::El, rhs: Self::El) -> (Self::El, Self::El);
+
     ///
     /// May panic if the ring is not euclidean
     /// 
-    fn euclidean_rem(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.euclidean_div_rem(lhs, rhs).1 }
+    fn euclidean_rem(&self, lhs: Self::El, rhs: Self::El) -> Self::El { 
+        self.euclidean_div_rem(lhs, rhs).1 
+    }
+
     ///
     /// May panic if the ring is not euclidean
     /// 
-    fn euclidean_div(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.euclidean_div_rem(lhs, rhs).0 }
+    fn euclidean_div(&self, lhs: Self::El, rhs: Self::El) -> Self::El {
+        self.euclidean_div_rem(lhs, rhs).0
+    }
+
     ///
     /// May panic if the ring is not a field. If it does not panic, the result
     /// must be valid. For a non-field ring, it therefore must panic if rhs does not
@@ -423,7 +441,9 @@ pub struct StaticRing<Axioms, T>
 impl<A, T> StaticRing<A, T> 
     where A: RingAxioms, T: RingEl<Axioms = A>
 {
-    pub const RING: StaticRing<A, T> = StaticRing { element: std::marker::PhantomData };
+    pub const RING: StaticRing<A, T> = StaticRing { 
+        element: std::marker::PhantomData 
+    };
 }
 
 impl<T> Ring for StaticRing<T::Axioms, T>

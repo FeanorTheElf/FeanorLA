@@ -109,7 +109,12 @@ impl One for r64 {
 }
 
 macro_rules! assign_or_reduce_on_failure {
-    ($e:expr => $target:expr; $reduce_fst:stmt; $reduce_snd:stmt; $reduce_trd:stmt; $reduce_fth:stmt) => {
+    ($e:expr => $target:expr; 
+        $reduce_fst:stmt; 
+        $reduce_snd:stmt; 
+        $reduce_trd:stmt; 
+        $reduce_fth:stmt) => 
+    {
         if let Some(value) = $e {
             $target = value;
         } else {
@@ -160,18 +165,28 @@ impl AddAssign<r64> for r64 {
         // inf + inf or -inf + -inf
         if self.denominator == 0
             && rhs.denominator == 0
-            && (self.numerator > 0 && rhs.numerator > 0 || self.numerator < 0 && rhs.numerator < 0)
+            && (
+                self.numerator > 0 && rhs.numerator > 0 || 
+                self.numerator < 0 && rhs.numerator < 0
+            )
         {
             return;
         }
-        assign_or_reduce_on_failure!(self.numerator.checked_mul(rhs.denominator) => self.numerator; self.reduce(); rhs.reduce());
-        assign_or_reduce_on_failure!(self.denominator.checked_mul(rhs.numerator) => rhs.numerator; self.reduce(); {
+        assign_or_reduce_on_failure!(
+            self.numerator.checked_mul(rhs.denominator) => self.numerator; 
+            self.reduce(); rhs.reduce());
+        assign_or_reduce_on_failure!(
+            self.denominator.checked_mul(rhs.numerator) => rhs.numerator; 
+            self.reduce(); 
+        {
             let ggT = signed_gcd(rhs.denominator, rhs.numerator);
             rhs.denominator /= ggT;
             rhs.numerator /= ggT;
             self.numerator /= ggT;
         });
-        assign_or_reduce_on_failure!(self.numerator.checked_add(rhs.numerator) => self.numerator; {
+        assign_or_reduce_on_failure!(
+            self.numerator.checked_add(rhs.numerator) => self.numerator; 
+        {
             let ggT = signed_gcd(self.denominator, self.numerator);
             self.denominator /= ggT;
             self.numerator /= ggT;
@@ -182,7 +197,10 @@ impl AddAssign<r64> for r64 {
             rhs.numerator /= ggT;
             self.numerator /= ggT;
         });
-        assign_or_reduce_on_failure!(self.denominator.checked_mul(rhs.denominator) => self.denominator; self.reduce(); {
+        assign_or_reduce_on_failure!(
+            self.denominator.checked_mul(rhs.denominator) => self.denominator; 
+            self.reduce(); 
+        {
             let ggT = signed_gcd(self.numerator, rhs.denominator);
             self.numerator /= ggT;
             rhs.denominator /= ggT;
@@ -192,8 +210,15 @@ impl AddAssign<r64> for r64 {
 
 impl MulAssign<r64> for r64 {
     fn mul_assign(&mut self, mut rhs: r64) {
-        assign_or_reduce_on_failure!(self.numerator.checked_mul(rhs.numerator) => self.numerator; self.reduce(); rhs.reduce());
-        assign_or_reduce_on_failure!(self.denominator.checked_mul(rhs.denominator) => self.denominator; self.reduce(); {
+        assign_or_reduce_on_failure!(
+            self.numerator.checked_mul(rhs.numerator) => self.numerator; 
+            self.reduce(); 
+            rhs.reduce()
+        );
+        assign_or_reduce_on_failure!(
+            self.denominator.checked_mul(rhs.denominator) => self.denominator; 
+            self.reduce(); 
+        {
             let ggT = signed_gcd(rhs.numerator, rhs.denominator);
             rhs.denominator /= ggT;
             self.numerator /= ggT;
