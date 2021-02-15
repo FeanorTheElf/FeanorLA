@@ -747,7 +747,7 @@ fn test_mul() {
 
 #[test]
 fn test_kernel_base() {
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[rustfmt::skip]
     let mut a = Matrix::from_array([[1., 3., 1., 3.], 
                                     [2., 6., 1., 2.], 
                                     [0., 0., 1., 1.]]);
@@ -755,12 +755,12 @@ fn test_kernel_base() {
     let b = Matrix::from_array([[3.], [-1.], [0.], [0.]]);
     assert_eq!(b, a.kernel_base_modifying().unwrap());
 
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[rustfmt::skip]
     let mut a = Matrix::from_array([[1., 3., 1., 3.], 
                                     [2., 6., 1., 5.], 
                                     [0., 0., 1., 1.]]);
                                     
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[rustfmt::skip]
     let b = Matrix::from_array([[3., 2.], 
                                 [-1., 0.], 
                                 [0., 1.], 
@@ -772,7 +772,7 @@ fn test_kernel_base() {
 fn test_kernel_base_f2() {
     type F2 = ZnEl<2>;
 
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[rustfmt::skip]
     let a_int = Matrix::from_array([[1, 0, 1], 
                                     [1, 1, 1], 
                                     [0, 0, 0]]);
