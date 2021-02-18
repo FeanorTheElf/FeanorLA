@@ -1,18 +1,15 @@
 use super::super::la::mat::*;
 
-#[cfg(test)]
 pub trait ApproxEq {
     fn approx_eq(&self, rhs: &Self, delta: f64) -> bool;
 }
 
-#[cfg(test)]
 impl ApproxEq for f64 {
     fn approx_eq(&self, rhs: &Self, delta: f64) -> bool {
         (self - rhs).abs() < delta
     }
 }
 
-#[cfg(test)]
 impl<M, T> ApproxEq for Matrix<M, T>
     where M: MatrixView<T>, T: ApproxEq
 {
@@ -28,7 +25,6 @@ impl<M, T> ApproxEq for Matrix<M, T>
     }
 }
 
-#[cfg(test)]
 impl<V, T> ApproxEq for Vector<V, T>
     where V: VectorView<T>, T: ApproxEq
 {
@@ -42,7 +38,6 @@ impl<V, T> ApproxEq for Vector<V, T>
     }
 }
 
-#[cfg(test)]
 macro_rules! assert_approx_eq {
     ($left:expr, $right:expr, $delta:expr) => {
         if !($left).approx_eq(($right), ($delta))

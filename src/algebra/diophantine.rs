@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 use super::super::la::mat::*;
+use super::super::alg::*;
 use super::eea::{signed_eea, signed_gcd};
 
 type Item = i32;
@@ -92,12 +93,12 @@ fn eliminate_row<M, N>(mut A: Matrix<M, Item>, mut iR: Matrix<N, Item>, pivot: u
     }
 }
 
-fn transform_pivot_gcd_col<M, N>(
-    mut A: Matrix<M, Item>, 
-    mut iL: Matrix<N, Item>, 
+fn transform_pivot_gcd_col<M, N, T>(
+    mut A: Matrix<M, T>, 
+    mut iL: Matrix<N, T>, 
     pivot: usize
 ) -> bool
-    where M: MatrixViewMut<Item>, N: MatrixViewMut<Item>
+    where M: MatrixViewMut<T>, N: MatrixViewMut<T>, T: Integer
 {
     let pivot_row = pivot;
     let pivot_col = pivot;
@@ -109,10 +110,10 @@ fn transform_pivot_gcd_col<M, N>(
         return false;
     }
     while current != 0 {
-        let (a, b) = (*A.at(pivot_row, pivot_col), *A.at(pivot_row + current, pivot_col));
-        let (s, t, _) = signed_eea(a, b);
-        let gcd = s * a + t * b;
-        let transform = [s, t, -b / gcd, a / gcd];
+        let (a, b) = (A.at(pivot_row, pivot_col).clone(), A.at(pivot_row + current, pivot_col).clone());
+        let (s, t, _) = signed_eea(a.clone(), b.clone());
+        let gcd = s.clone() * a.clone() + t.clone() * b.clone();
+        let transform = [s, t, -b / gcd.clone(), a / gcd];
         A.transform_two_dims_left(pivot_row, pivot_row + current, &transform);
         iL.transform_two_dims_left(pivot_row, pivot_row + current, &transform);
         current =
@@ -123,12 +124,12 @@ fn transform_pivot_gcd_col<M, N>(
     return true;
 }
 
-fn transform_pivot_gcd_row<M, N>(
-    mut A: Matrix<M, Item>, 
-    mut iR: Matrix<N, Item>, 
+fn transform_pivot_gcd_row<M, N, T>(
+    mut A: Matrix<M, T>, 
+    mut iR: Matrix<N, T>, 
     pivot: usize
 ) -> bool 
-    where M: MatrixViewMut<Item>, N: MatrixViewMut<Item>
+    where M: MatrixViewMut<T>, N: MatrixViewMut<T>, T: Integer
 {
     let pivot_row = pivot;
     let pivot_col = pivot;
@@ -140,10 +141,10 @@ fn transform_pivot_gcd_row<M, N>(
         return false;
     }
     while current != 0 {
-        let (a, b) = (*A.at(pivot_row, pivot_col), *A.at(pivot_row, pivot_col + current));
-        let (s, t, _) = signed_eea(a, b);
-        let gcd = s * a + t * b;
-        let transform = [s, -b / gcd, t, a / gcd];
+        let (a, b) = (A.at(pivot_row, pivot_col).clone(), A.at(pivot_row, pivot_col + current).clone());
+        let (s, t, _) = signed_eea(a.clone(), b.clone());
+        let gcd = s.clone() * a.clone() + t.clone() * b.clone();
+        let transform = [s, -b / gcd.clone(), t, a / gcd];
         A.transform_two_dims_right(pivot_col, pivot_col + current, &transform);
         iR.transform_two_dims_left(pivot_col, pivot_col + current, &transform);
         current =
@@ -154,13 +155,14 @@ fn transform_pivot_gcd_row<M, N>(
     return true;
 }
 
-fn find_min<T, I, F>(mut it: I, mut f: F) -> Option<T>
+fn find_min<T, I, F, Int>(mut it: I, mut f: F) -> Option<T>
 where
     I: Iterator<Item = T>,
-    F: FnMut(&T) -> i32,
+    F: FnMut(&T) -> Int,
+    Int: Integer
 {
     let mut result: T = it.next()?;
-    let mut current_val: i32 = f(&result);
+    let mut current_val: Int = f(&result);
     for item in it {
         let value = f(&item);
         if value < current_val {
@@ -171,29 +173,29 @@ where
     return Some(result);
 }
 
-fn find_smallest_gcd_entry_in_pivot_row<M>(A: Matrix<M, Item>) -> usize 
-    where M: MatrixViewMut<Item>
+fn find_smallest_gcd_entry_in_pivot_row<M, T>(A: Matrix<M, T>) -> usize 
+    where M: MatrixViewMut<T>, T: Integer
 {
     find_min(0..A.col_count(), |col: &usize| 
-        signed_gcd(*A.at(0, 0), *A.at(0, *col))
+        signed_gcd(A.at(0, 0).clone(), A.at(0, *col).clone())
     ).unwrap()
 }
 
-fn find_smallest_gcd_entry_in_pivot_col<M>(A: Matrix<M, Item>) -> usize
-    where M: MatrixViewMut<Item>
+fn find_smallest_gcd_entry_in_pivot_col<M, T>(A: Matrix<M, T>) -> usize
+    where M: MatrixViewMut<T>, T: Integer
 {
     find_min(0..A.row_count(), |row: &usize| 
-        signed_gcd(*A.at(0, 0), *A.at(*row, 0))
+        signed_gcd(A.at(0, 0).clone(), A.at(*row, 0).clone())
     ).unwrap()
 }
 
-fn swap_pivot_entry_if_zero<M, N, K>(
-    mut A: Matrix<M, Item>,
-    mut iL: Matrix<N, Item>,
-    mut iR: Matrix<K, Item>,
+fn swap_pivot_entry_if_zero<M, N, K, T>(
+    mut A: Matrix<M, T>,
+    mut iL: Matrix<N, T>,
+    mut iR: Matrix<K, T>,
     pivot: usize,
 ) -> bool 
-    where M: MatrixViewMut<Item>, N: MatrixViewMut<Item>, K: MatrixViewMut<Item>
+    where M: MatrixViewMut<T>, N: MatrixViewMut<T>, K: MatrixViewMut<T>, T: Integer
 {
     let pivot_row = pivot;
     let pivot_col = pivot;
@@ -210,12 +212,12 @@ fn swap_pivot_entry_if_zero<M, N, K>(
     }
 }
 
-fn find_not_zero<M>(mat: Matrix<M, Item>) -> Option<(usize, usize)> 
-    where M: MatrixView<Item>
+fn find_not_zero<M, T>(mat: Matrix<M, T>) -> Option<(usize, usize)> 
+    where M: MatrixView<T>, T: Integer
 {
     for row in 0..mat.row_count() {
         for col in 0..mat.col_count() {
-            if *mat.at(row, col) != 0 {
+            if *mat.at(row, col) != T::zero() {
                 return Some((row, col));
             }
         }

@@ -54,7 +54,7 @@ pub fn eea<R: Ring>(ring: &R, fst: R::El, snd: R::El) -> (R::El, R::El, R::El)
 /// `signed_eea(8, -6) == (1, 1, 2)`, 
 /// `signed_eea(0, 0) == (0, 0, 0)`
 /// 
-pub fn signed_eea<Int: Integer + Copy>(fst: Int, snd: Int) -> (Int, Int, Int) {
+pub fn signed_eea<Int: Integer>(fst: Int, snd: Int) -> (Int, Int, Int) {
     if fst == Int::zero() {
         if snd == Int::zero() {
             return (Int::zero(), Int::zero(), Int::zero());
@@ -64,12 +64,13 @@ pub fn signed_eea<Int: Integer + Copy>(fst: Int, snd: Int) -> (Int, Int, Int) {
             return (Int::zero(), Int::one(), snd);
         }
     }
+    let fst_negative = fst < Int::zero();
 
     let (s, t, d) = eea(&StaticRing::<RingAxiomsEuclideanRing, Int>::RING, fst, snd);
     
     // the sign is not consistent (potentially toggled each iteration), 
     // so normalize here
-    if (d < Int::zero()) == (fst < Int::zero()) {
+    if (d < Int::zero()) == fst_negative {
         return (s, t, d);
     } else {
         return (-s, -t, -d);
@@ -132,7 +133,7 @@ pub fn gcd<R: Ring>(ring: &R, a: R::El, b: R::El) -> R::El
 /// sign of b is irrelevant
 /// gcd(0, 0) = 0
 /// 
-pub fn signed_gcd<Int: Integer + Copy>(a: Int, b: Int) -> Int {
+pub fn signed_gcd<Int: Integer>(a: Int, b: Int) -> Int {
     let (_, _, d) = signed_eea(a, b);
     return d;
 }
