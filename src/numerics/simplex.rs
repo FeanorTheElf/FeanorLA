@@ -1,4 +1,5 @@
-use super::prelude::*;
+use super::super::la::mat::*;
+use super::super::alg::*;
 use std::ops::MulAssign;
 use std::vec::Vec;
 

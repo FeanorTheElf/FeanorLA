@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
-use super::prelude::*;
+use super::super::la::mat::*;
+use super::super::alg::*;
 use std::ops::AddAssign;
 
 fn two<T>() -> T

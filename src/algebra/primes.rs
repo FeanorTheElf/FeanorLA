@@ -15,6 +15,8 @@ use oorandom;
 /// If n is not a prime, this returns false with probability greater or 
 /// equal than 1 - 4^k
 /// 
+/// Complexity O(k log(n)^3)
+/// 
 pub fn is_prime(n: &BigInt, k: usize) -> bool {
     let mut hasher = DefaultHasher::new();
     n.hash(&mut hasher);

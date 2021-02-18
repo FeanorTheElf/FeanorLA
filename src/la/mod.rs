@@ -7,11 +7,3 @@ pub mod matrix_vector;
 pub mod submatrix;
 pub mod vec;
 pub mod mat;
-
-#[cfg(test)]
-#[macro_use]
-pub mod macros;
-
-pub mod qr;
-pub mod simplex;
-pub mod prelude;

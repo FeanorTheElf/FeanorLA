@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-use super::super::la::prelude::*;
+use super::super::la::mat::*;
 use super::eea::{signed_eea, signed_gcd};
 
 type Item = i32;

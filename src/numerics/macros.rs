@@ -1,4 +1,4 @@
-use super::mat::*;
+use super::super::la::mat::*;
 
 #[cfg(test)]
 pub trait ApproxEq {

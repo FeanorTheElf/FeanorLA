@@ -217,6 +217,8 @@ impl BigInt {
     /// will be returned as d = (u * 2 ^ block_bits + l) * 2 ^ (k * block_bits) 
     /// where the return value is (u, l, k)
     /// 
+    /// Complexity O(log(n))
+    /// 
     fn division_step(
         &mut self, 
         rhs: &BigInt, 
@@ -293,6 +295,8 @@ impl BigInt {
     /// Calculates abs(self) = abs(self) % abs(rhs) and returns the quotient
     /// of the division abs(self) / abs(rhs). The sign bit of self is ignored
     /// and left unchanged.
+    /// 
+    /// Complexity O(log(n)^2)
     /// 
     fn abs_division(&mut self, rhs: &BigInt) -> BigInt {
         assert!(!rhs.is_zero());
@@ -385,6 +389,9 @@ impl BigInt {
         }
     }
 
+    ///
+    /// Complexity O(log(n))
+    /// 
     fn abs_multiplication_small(&mut self, factor: u64) {
         if let Some(d) = self.highest_set_block() {
             let mut buffer: u64 = 0;
@@ -405,6 +412,8 @@ impl BigInt {
     /// Calculates abs(self) += summand * (1 << BLOCK_BITS)^block_offset
     /// 
     /// the sign bit will be left unchanged.
+    /// 
+    /// Amortized complexity O(1)
     /// 
     fn abs_addition_small(&mut self, summand: u64) {
         if self.data.len() > 0 {
@@ -585,7 +594,7 @@ impl BigInt {
         assert!(*end_exclusive > 0);
         let k = statistical_distance_bound + end_exclusive.log2_floor();
         let random_blocks = k / Self::BLOCK_BITS + 1;
-        // generate a truly random number in the range from 0 to 2^k 
+        // generate a uniform random number in the range from 0 to 2^k 
         // and take it modulo end_exclusive the number of bigints 
         // between 0 and 2^k that give a fixed x differs at most by one. 
         // Therefore the probability difference to get any to distinct 

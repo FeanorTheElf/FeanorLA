@@ -11,5 +11,6 @@ extern crate test;
 
 pub mod alg;
 pub mod la;
+pub mod numerics;
 pub mod algebra;
 pub mod combinatorics;
