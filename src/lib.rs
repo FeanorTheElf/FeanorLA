@@ -9,6 +9,7 @@
 #[cfg(test)]
 extern crate test;
 
+#[macro_use]
 pub mod alg;
 pub mod la;
 pub mod numerics;

@@ -56,7 +56,7 @@ pub fn factor(mut n: BigInt) -> Vec<BigInt> {
 
     n = n.abs();
     
-    if n < QUADRATIC_SIEVE_BOUND as u64 {
+    if n < QUADRATIC_SIEVE_BOUND {
         let mut n_int = n.to_int().unwrap();
         let potential_divisors = gen_primes((n_int as f64).sqrt() as i64 + 1);
         let mut result = Vec::new();
@@ -66,7 +66,7 @@ pub fn factor(mut n: BigInt) -> Vec<BigInt> {
                 result.push(BigInt::from(p));
             }
         }
-        if n != 1u64 {
+        if n != 1 {
             result.push(BigInt::from(n_int));
         }
         return result;
@@ -75,8 +75,8 @@ pub fn factor(mut n: BigInt) -> Vec<BigInt> {
             return vec![n];
         } else {
             let first_factor = quadratic_sieve(&n);
-            let other_factor = n.div_rem(&first_factor);
-            debug_assert!(first_factor != 1u64 && other_factor != 1u64);
+            let other_factor = n.euclidean_div_rem(&first_factor);
+            debug_assert!(first_factor != 1 && other_factor != 1);
             let mut result = factor(first_factor);
             result.extend(factor(other_factor).into_iter());
             return result;

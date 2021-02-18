@@ -245,6 +245,6 @@ fn test_quadratic_sieve() {
     let f5 = BigInt::power_of_two(32) + 1;
     let factor = quadratic_sieve(&f5);
     assert!(factor != f5);
-    assert!(factor != 1u64);
-    assert_eq!(f5 % factor, 0u64);
+    assert!(factor != 1);
+    assert_eq!(f5 % factor, 0);
 }

@@ -30,8 +30,6 @@ impl BigInt {
     const BLOCK_BITS: usize = 64;
     pub const ZERO: BigInt = BigInt { data: Vec::new(), negative: false };
 
-    pub const RING: StaticRing::<RingAxiomsEuclideanRing, BigInt> = StaticRing::<RingAxiomsEuclideanRing, BigInt>::RING;
-
     pub fn power_of_two(n: usize) -> BigInt {
         let blocks = n / Self::BLOCK_BITS;
         let shift = n % Self::BLOCK_BITS;
@@ -481,7 +479,7 @@ impl BigInt {
         return result;
     }
 
-    pub fn div_rem(&mut self, rhs: &BigInt) -> BigInt {
+    pub fn euclidean_div_rem(&mut self, rhs: &BigInt) -> BigInt {
         let mut quotient = self.abs_division(rhs);
         quotient.negative = self.negative ^ rhs.negative;
         return quotient;
@@ -677,30 +675,80 @@ impl From<u64> for BigInt {
     }
 }
 
-impl PartialEq for BigInt {
+pub struct BigIntRing;
 
-    fn eq(&self, rhs: &BigInt) -> bool {
-        let highest_block = self.highest_set_block();
+impl BigInt {
+    pub const RING: BigIntRing = BigIntRing {};
+}
+
+impl Ring for BigIntRing {
+
+    type El = BigInt;
+
+    fn add_ref(&self, mut lhs: Self::El, rhs: &Self::El) -> Self::El {
+        if lhs.negative == rhs.negative {
+            lhs.abs_addition(rhs, 0);
+        } else if lhs.abs_compare(&rhs) != Ordering::Less {
+            lhs.abs_subtraction(rhs, 0);
+        } else {
+            let mut result = rhs.clone();
+            result.abs_subtraction(&lhs, 0);
+            std::mem::swap(&mut lhs, &mut result);
+        }
+        return lhs;
+    }
+
+    fn mul_ref(&self, mut lhs: Self::El, rhs: &Self::El) -> Self::El {
+        let sign = lhs.negative ^ rhs.negative;
+        lhs = lhs.abs_multiplication(rhs);
+        lhs.negative = sign;
+        return lhs;
+    }
+
+    fn neg(&self, mut val: Self::El) -> Self::El {
+        val.negative = !val.negative;
+        return val;
+    }
+
+    fn zero(&self) -> Self::El {
+        return BigInt::ZERO.clone();
+    }
+
+    fn one(&self) -> Self::El {
+        return BigInt {
+            negative: false,
+            data: vec![1]
+        };
+    }
+
+    fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+        let highest_block = lhs.highest_set_block();
         if highest_block != rhs.highest_set_block() {
             return false;
         }
         if let Some(d) = highest_block {
             for i in 0..=d {
-                if self.data[i] != rhs.data[i] {
+                if lhs.data[i] != rhs.data[i] {
                     return false;
                 }
             }
         }
         return true;
     }
-}
 
-impl PartialEq<u64> for BigInt {
+    fn is_zero(&self, val: &Self::El) -> bool { self.eq(val, &BigInt::ZERO) }
 
-    fn eq(&self, rhs: &u64) -> bool {
-        (self.highest_set_block() == Some(0) && 
-            self.data[0] == *rhs && !self.negative
-        ) || (self.is_zero() && *rhs == 0)
+    fn is_integral(&self) -> bool { true }
+    fn is_euclidean(&self) -> bool { true }
+    fn is_field(&self) -> bool { false }
+    
+    fn euclidean_div_rem(&self, mut lhs: Self::El, rhs: Self::El) -> (Self::El, Self::El) {
+        let quotient = lhs.euclidean_div_rem(&rhs);
+        return (quotient, lhs);
+    }
+
+    fn div(&self, _lhs: Self::El, _rhs: Self::El) -> Self::El {
+        panic!("Not a field!");
     }
 }
 
@@ -716,15 +764,19 @@ impl PartialEq<i64> for BigInt {
     }
 }
 
-impl Eq for BigInt {}
+impl PartialOrd<i64> for BigInt {
 
-impl PartialOrd<u64> for BigInt {
-
-    fn partial_cmp(&self, rhs: &u64) -> Option<Ordering> {
-        if self.negative && !self.is_zero() {
+    fn partial_cmp(&self, rhs: &i64) -> Option<Ordering> {
+        if self.is_zero() && *rhs == 0 {
+            Some(Ordering::Equal)
+        } else if self.negative && *rhs < 0 {
+            Some(self.abs_compare_small((-*rhs) as u64).reverse())
+        } else if self.negative && *rhs >= 0 {
             Some(Ordering::Less)
+        } else if !self.negative && *rhs < 0 {
+            Some(Ordering::Greater)
         } else {
-            Some(self.abs_compare_small(*rhs))
+            Some(self.abs_compare_small(*rhs as u64))
         }
     }
 }
@@ -752,43 +804,12 @@ impl Ord for BigInt {
     }
 }
 
-impl<T> Add<T> for BigInt 
-    where BigInt: AddAssign<T>
-{
+impl Add<i64> for BigInt {
     type Output = BigInt;
 
-    fn add(mut self, rhs: T) -> Self::Output {
+    fn add(mut self, rhs: i64) -> Self::Output {
         self += rhs;
         return self;
-    }
-}
-
-impl AddAssign<BigInt> for BigInt {
-
-    fn add_assign(&mut self, mut rhs: BigInt) {
-        if self.negative == rhs.negative {
-            self.abs_addition(&rhs, 0);
-        } else if self.abs_compare(&rhs) != Ordering::Less {
-            self.abs_subtraction(&rhs, 0);
-        } else {
-            rhs.abs_subtraction(&self, 0);
-            std::mem::swap(self, &mut rhs);
-        }
-    }
-}
-
-impl AddAssign<&BigInt> for BigInt {
-
-    fn add_assign(&mut self, rhs: &BigInt) {
-        if self.negative == rhs.negative {
-            self.abs_addition(rhs, 0);
-        } else if self.abs_compare(&rhs) != Ordering::Less {
-            self.abs_subtraction(rhs, 0);
-        } else {
-            let mut result = rhs.clone();
-            result.abs_subtraction(&self, 0);
-            std::mem::swap(self, &mut result);
-        }
     }
 }
 
@@ -807,34 +828,12 @@ impl AddAssign<i64> for BigInt {
     }
 }
 
-impl<T> Sub<T> for BigInt 
-    where BigInt: SubAssign<T>
-{
+impl Sub<i64> for BigInt {
     type Output = BigInt;
 
-    fn sub(mut self, rhs: T) -> Self::Output {
+    fn sub(mut self, rhs: i64) -> Self::Output {
         self -= rhs;
         return self;
-    }
-}
-
-impl SubAssign for BigInt {
-
-    fn sub_assign(&mut self, rhs: BigInt) {
-        self.negative = !self.negative;
-        self.add_assign(rhs);
-        self.negative = !self.negative;
-        self.normalize();
-    }
-}
-
-impl SubAssign<&BigInt> for BigInt {
-
-    fn sub_assign(&mut self, rhs: &BigInt) {
-        self.negative = !self.negative;
-        *self += rhs;
-        self.negative = !self.negative;
-        self.normalize();
     }
 }
 
@@ -847,32 +846,12 @@ impl SubAssign<i64> for BigInt {
     }
 }
 
-impl<T> Mul<T> for BigInt 
-    where BigInt: MulAssign<T>
-{
+impl Mul<i64> for BigInt {
     type Output = BigInt;
 
-    fn mul(mut self, rhs: T) -> Self::Output {
+    fn mul(mut self, rhs: i64) -> Self::Output {
         self *= rhs;
         return self;
-    }
-}
-
-impl MulAssign for BigInt {
-
-    fn mul_assign(&mut self, rhs: BigInt) {
-        let sign = self.negative ^ rhs.negative;
-        *self = self.abs_multiplication(&rhs);
-        self.negative = sign;
-    }
-}
-
-impl MulAssign<&BigInt> for BigInt {
-
-    fn mul_assign(&mut self, rhs: &BigInt) {
-        let sign = self.negative ^ rhs.negative;
-        *self = self.abs_multiplication(rhs);
-        self.negative = sign;
     }
 }
 
@@ -884,62 +863,12 @@ impl MulAssign<i64> for BigInt {
     }
 }
 
-impl<T> Div<T> for BigInt
-    where BigInt: DivAssign<T>
-{
+impl Div<i64> for BigInt {
+
     type Output = BigInt;
 
-    fn div(mut self, rhs: T) -> BigInt {
-        self /= rhs;
-        return self;
-    }
-}
-
-impl DivAssign for BigInt {
-
-    fn div_assign(&mut self, rhs: BigInt) {
-        *self = self.div_rem(&rhs);
-    }
-}
-
-impl DivAssign<&BigInt> for BigInt {
-
-    fn div_assign(&mut self, rhs: &BigInt) {
-        *self = self.div_rem(rhs);
-    }
-}
-
-impl DivAssign<u64> for BigInt {
-
-    fn div_assign(&mut self, rhs: u64) {
-        self.abs_division_small(rhs);
-    }
-}
-
-impl<T> Rem<T> for BigInt 
-    where BigInt: RemAssign<T>
-{
-    type Output = BigInt;
-
-    fn rem(mut self, rhs: T) -> BigInt {
-        self %= rhs;
-        return self;
-    }
-}
-
-impl RemAssign for BigInt {
-
-    fn rem_assign(&mut self, rhs: BigInt) {
-        self.div_rem(&rhs);
-        self.normalize();
-    }
-}
-
-impl RemAssign<&BigInt> for BigInt {
-
-    fn rem_assign(&mut self, rhs: &BigInt) {
-        self.div_rem(&rhs);
-        self.normalize();
+    fn div(self, rhs: i64) -> BigInt {
+        self.div_rem_small(rhs).0
     }
 }
 
@@ -975,32 +904,9 @@ impl Shr<usize> for BigInt {
     }
 }
 
-impl One for BigInt {
+impl_euclidean_ring_el!{ BigInt: BigInt::RING }
 
-    fn one() -> BigInt {
-        BigInt {
-            negative: false,
-            data: vec![1]
-        }
-    }
-}
-
-impl Zero for BigInt {
-
-    fn zero() -> BigInt {
-        BigInt::ZERO.clone()
-    }
-}
-
-impl Neg for BigInt {
-
-    type Output = BigInt;
-
-    fn neg(mut self) -> BigInt {
-        self.negative = !self.negative;
-        self
-    }
-}
+impl Eq for BigInt {}
 
 impl Hash for BigInt {
 
@@ -1038,19 +944,6 @@ impl std::fmt::Display for BigInt {
             write!(f, "0")?;
         }
         return Ok(());
-    }
-}
-
-impl RingEl for BigInt {
-
-    type Axioms = RingAxiomsEuclideanRing;
-}
-
-impl EuclideanRingEl for BigInt {
-
-    fn div_rem(&mut self, rhs: Self) -> Self
-    {
-        self.div_rem(&rhs)
     }
 }
 
@@ -1121,7 +1014,7 @@ fn test_abs_subtraction_with_carry() {
     let mut x = BigInt::from_str_radix("1000000000000000000", 16).unwrap();
     let y =      BigInt::from_str_radix("FFFFFFFFFFFFFFFF00", 16).unwrap();
     x.abs_subtraction(&y, 0);
-    assert_eq!(x, 256u64);
+    assert_eq!(x, 256);
 }
 
 #[test]
@@ -1305,7 +1198,7 @@ fn test_eq() {
     let a = "98711".parse::<BigInt>().unwrap();
     let mut b = a.clone();
     b.data.push(0);
-    assert!(a == 98711u64);
+    assert!(a == 98711);
     assert!(a == b);
     assert!(b == a);
     assert!(calculate_hash(&a) == calculate_hash(&b));

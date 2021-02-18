@@ -58,7 +58,7 @@ impl QuotientRingZ {
     /// 
     pub fn invert(&self, x: BigInt) -> Result<BigInt, BigInt> {
         let (s, _t, d) = eea(&BigInt::RING, x, self.modulus.clone());
-        if d != 1u64 && d != -1i64 {
+        if d != 1 && d != -1i64 {
             Err(d)
         } else {
             Ok(s)

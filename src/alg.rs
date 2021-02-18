@@ -520,3 +520,196 @@ impl<T> Ring for StaticRing<RingAxiomsField, T>
 fn test_pow() {
     assert_eq!(81 * 81 * 3, StaticRing::<RingAxiomsEuclideanRing, i64>::RING.pow(3, 9));
 }
+
+// Clone + Sized + Add<Output = Self> + Mul<Output = Self> + 
+// AddAssign + PartialEq + Zero + One + Neg<Output = Self> + 
+// Sub<Output = Self> + SubAssign 
+
+macro_rules! impl_euclidean_ring_el {
+    ($t:ty: $ring_constant:expr) => {
+        impl std::ops::Add for $t {
+            type Output = $t;
+
+            fn add(self, rhs: $t) -> Self::Output {
+                ($ring_constant).add(self, rhs)
+            }
+        }
+
+        impl std::ops::Add<&$t> for $t {
+            type Output = $t;
+
+            fn add(self, rhs: &$t) -> Self::Output {
+                ($ring_constant).add_ref(self, rhs)
+            }
+        }
+
+        impl std::ops::Add<$t> for &$t {
+            type Output = $t;
+
+            fn add(self, rhs: $t) -> Self::Output {
+                ($ring_constant).add_ref(rhs, self)
+            }
+        }
+
+        impl std::ops::AddAssign for $t {
+
+            fn add_assign(&mut self, rhs: $t) {
+                take_mut::take(self, |v| ($ring_constant).add(v, rhs));
+            }
+        }
+
+        impl std::ops::AddAssign<&$t> for $t {
+
+            fn add_assign(&mut self, rhs: &$t) {
+                take_mut::take(self, |v| ($ring_constant).add_ref(v, rhs));
+            }
+        }
+
+        impl std::ops::Mul for $t {
+            type Output = $t;
+
+            fn mul(self, rhs: $t) -> Self::Output {
+                ($ring_constant).mul(self, rhs)
+            }
+        }
+
+        impl std::ops::Mul<&$t> for $t {
+            type Output = $t;
+
+            fn mul(self, rhs: &$t) -> Self::Output {
+                ($ring_constant).mul_ref(self, rhs)
+            }
+        }
+
+        impl std::ops::Mul<$t> for &$t {
+            type Output = $t;
+
+            fn mul(self, rhs: $t) -> Self::Output {
+                ($ring_constant).mul_ref(rhs, self)
+            }
+        }
+
+        impl std::ops::MulAssign for $t {
+
+            fn mul_assign(&mut self, rhs: $t) {
+                take_mut::take(self, |v| ($ring_constant).mul(v, rhs));
+            }
+        }
+
+        impl std::ops::MulAssign<&$t> for $t {
+
+            fn mul_assign(&mut self, rhs: &$t) {
+                take_mut::take(self, |v| ($ring_constant).mul_ref(v, rhs));
+            }
+        }
+
+        impl std::ops::Sub for $t {
+            type Output = $t;
+
+            fn sub(self, rhs: $t) -> Self::Output {
+                ($ring_constant).sub(self, rhs)
+            }
+        }
+
+        impl std::ops::Sub<&$t> for $t {
+            type Output = $t;
+
+            fn sub(self, rhs: &$t) -> Self::Output {
+                ($ring_constant).sub_ref_snd(self, rhs)
+            }
+        }
+
+        impl std::ops::Sub<$t> for &$t {
+            type Output = $t;
+
+            fn sub(self, rhs: $t) -> Self::Output {
+                ($ring_constant).sub_ref_fst(self, rhs)
+            }
+        }
+
+        impl std::ops::SubAssign for $t {
+
+            fn sub_assign(&mut self, rhs: $t) {
+                take_mut::take(self, |v| ($ring_constant).sub(v, rhs));
+            }
+        }
+
+        impl std::ops::SubAssign<&$t> for $t {
+
+            fn sub_assign(&mut self, rhs: &$t) {
+                take_mut::take(self, |v| ($ring_constant).sub_ref_snd(v, rhs));
+            }
+        }
+
+        impl std::ops::Div for $t {
+            type Output = $t;
+
+            fn div(self, rhs: $t) -> Self::Output {
+                ($ring_constant).euclidean_div(self, rhs)
+            }
+        }
+
+        impl std::ops::Rem for $t {
+            type Output = $t;
+
+            fn rem(self, rhs: $t) -> Self::Output {
+                ($ring_constant).euclidean_rem(self, rhs)
+            }
+        }
+
+        impl std::ops::RemAssign for $t {
+            fn rem_assign(&mut self, rhs: $t) {
+                take_mut::take(self, |v| ($ring_constant).euclidean_rem(v, rhs));
+            }
+        }
+
+        impl std::ops::DivAssign for $t {
+            fn div_assign(&mut self, rhs: $t) {
+                take_mut::take(self, |v| ($ring_constant).euclidean_div(v, rhs));
+            }
+        }
+
+        impl PartialEq for $t {
+            fn eq(&self, rhs: &$t) -> bool {
+                ($ring_constant).eq(self, rhs)
+            }
+        }
+
+        impl std::ops::Neg for $t {
+            type Output = $t;
+
+            fn neg(self) -> Self::Output {
+                ($ring_constant).neg(self)
+            }
+        }
+
+        impl Zero for $t {
+            fn zero() -> $t {
+                ($ring_constant).zero()
+            }
+        }
+
+        impl One for $t {
+            fn one() -> $t {
+                ($ring_constant).one()
+            }
+        }
+
+        impl RingEl for $t {
+            type Axioms = RingAxiomsEuclideanRing;
+        }
+
+        impl EuclideanRingEl for $t {
+
+            fn div_rem(&mut self, rhs: $t) -> $t {
+                let mut result: Option<$t> = None;
+                take_mut::take(self, |v| {
+                    let (quo, rem) = ($ring_constant).euclidean_div_rem(v, rhs);
+                    result = Some(quo);
+                    return rem;
+                });
+                return result.unwrap();
+            }
+        }
+    };
+}
