@@ -368,10 +368,10 @@ pub trait Ring {
         self.add(lhs, self.neg(rhs))
     }
 
-    fn pow(&self, basis: Self::El, exp: u64) -> Self::El 
+    fn pow(&self, basis: Self::El, exp: u32) -> Self::El 
         where Self::El: Clone
     {
-        self.pow_big(basis, BigInt::from(exp))
+        self.pow_big(basis, BigInt::from(exp as i64))
     }
 
     fn pow_big(&self, basis: Self::El, exp: BigInt) -> Self::El 
@@ -520,10 +520,6 @@ impl<T> Ring for StaticRing<RingAxiomsField, T>
 fn test_pow() {
     assert_eq!(81 * 81 * 3, StaticRing::<RingAxiomsEuclideanRing, i64>::RING.pow(3, 9));
 }
-
-// Clone + Sized + Add<Output = Self> + Mul<Output = Self> + 
-// AddAssign + PartialEq + Zero + One + Neg<Output = Self> + 
-// Sub<Output = Self> + SubAssign 
 
 macro_rules! impl_euclidean_ring_el {
     ($t:ty: $ring_constant:expr) => {

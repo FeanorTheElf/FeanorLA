@@ -118,6 +118,8 @@ fn test_signed_eea() {
 pub fn gcd<R: Ring>(ring: &R, a: R::El, b: R::El) -> R::El 
     where R::El: Clone
 {
+    assert!(ring.is_euclidean());
+    
     let (_, _, d) = eea(ring, a, b);
     return d;
 }

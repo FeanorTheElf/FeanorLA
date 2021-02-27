@@ -145,7 +145,7 @@ fn check_congruent_square<V>(
     for i in 0..factor_base.len() {
         let power = *y_powers.at(i);
         debug_assert!(power % 2 == 0);
-        y *= BigInt::from(factor_base[i]).pow(power as u64 / 2);
+        y *= BigInt::from(factor_base[i]).pow(power / 2);
     }
 
     let factor = gcd(&BigInt::RING, n.clone(), x.clone() - y.clone());

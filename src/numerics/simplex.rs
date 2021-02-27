@@ -8,16 +8,16 @@ type BasicVars = Box<[usize]>;
 #[derive(Debug, PartialEq)]
 pub struct SystemUnbounded;
 
-/*
- * Optimize c^T x with x >= 0 and Ax=b
- * table: (0 | c^T)
- *        (b |  A )
- *
- * Returns Err if problem is unbounded,
- * otherwise table (0 | c^T)
- *                 (b |  A )
- * with
- */
+///
+/// Optimize c^T x with x >= 0 and Ax=b
+/// table: (0 | c^T)
+///        (b |  A )
+/// 
+/// Returns Err if problem is unbounded,
+/// otherwise table (0 | c^T)
+///                 (b |  A )
+/// with
+///
 fn simplex<M, T>(mut table: Matrix<M, T>, basic_vars: &mut BasicVars) -> Result<(), SystemUnbounded> 
     where M: MatrixMutRowIter<T>, T: FieldEl + PartialOrd + Clone + 'static
 {

@@ -561,7 +561,7 @@ impl BigInt {
         }
     }
 
-    pub fn pow(self, power: u64) -> BigInt {
+    pub fn pow(self, power: u32) -> BigInt {
         Self::RING.pow(self, power)
     }
 
@@ -662,15 +662,6 @@ impl From<i64> for BigInt {
                 negative: false,
                 data: vec![val as u64]
             }
-        }
-    }
-}
-
-impl From<u64> for BigInt {
-    fn from(val: u64) -> BigInt {
-        BigInt {
-            negative: false,
-            data: vec![val]
         }
     }
 }

@@ -86,10 +86,10 @@ pub fn factor(mut n: BigInt) -> Vec<BigInt> {
 
 #[test]
 fn test_is_prime() {
-    assert_eq!(true, is_prime(&BigInt::from(97u64), 5));
-    assert_eq!(true, is_prime(&BigInt::from(65537u64), 5));
-    assert_eq!(false, is_prime(&BigInt::from(91u64), 5));
-    assert_eq!(false, is_prime(&BigInt::from(3589u64), 5));
+    assert_eq!(true, is_prime(&BigInt::from(97), 5));
+    assert_eq!(true, is_prime(&BigInt::from(65537), 5));
+    assert_eq!(false, is_prime(&BigInt::from(91), 5));
+    assert_eq!(false, is_prime(&BigInt::from(3589), 5));
     assert_eq!(true, is_prime(&"125347695556857218151067929142222014224821".parse::<BigInt>().unwrap(), 5));
     assert_eq!(false, is_prime(&"3724981".parse::<BigInt>().unwrap(), 5));
     assert_eq!(false, is_prime(&"3724981832962".parse::<BigInt>().unwrap(), 5));
@@ -100,21 +100,21 @@ fn test_is_prime() {
 #[test]
 fn test_factor() {
     assert_eq!(vec![
-        BigInt::from(2u64), 
-        BigInt::from(2u64), 
-        BigInt::from(3u64), 
-        BigInt::from(37u64)
-    ], factor(BigInt::from(12 * 37 as u64)));
+        BigInt::from(2), 
+        BigInt::from(2), 
+        BigInt::from(3), 
+        BigInt::from(37)
+    ], factor(BigInt::from(12 * 37)));
 
     assert_eq!(vec![
-        BigInt::from(641u64), 
-        BigInt::from(6700417u64)
-    ], factor(BigInt::from(4294967297u64)));
+        BigInt::from(641), 
+        BigInt::from(6700417)
+    ], factor(BigInt::from(4294967297)));
 
     assert_eq!(vec![
-        BigInt::from(237689u64), 
-        BigInt::from(717653u64)
-    ], factor(BigInt::from(237689 * 717653 as u64)));
+        BigInt::from(237689), 
+        BigInt::from(717653)
+    ], factor(BigInt::from(237689 * 717653)));
 }
 
 #[cfg(release)]
@@ -122,7 +122,7 @@ fn test_factor() {
 fn test_factor_release() {
     let f6 = BigInt::power_of_two(64) + 1;
     assert_eq!(vec![
-        BigInt::from(67280421310721u64), 
-        BigInt::from(274177u64)
+        BigInt::from(67280421310721), 
+        BigInt::from(274177)
     ], factor(f6));
 }
