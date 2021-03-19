@@ -521,7 +521,7 @@ impl<T> Ring for StaticRingImpl<RingAxiomsField, T>
 }
 
 
-pub type StaticRing<R: RingEl> = StaticRingImpl<R::Axioms, R>;
+pub type StaticRing<R> = StaticRingImpl<<R as RingEl>::Axioms, R>;
 
 
 #[test]

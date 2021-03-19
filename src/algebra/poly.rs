@@ -1,4 +1,5 @@
 use super::super::alg::*;
+use super::super::alg_env::*;
 use super::eea::eea;
 
 use std::ops::{AddAssign, MulAssign, SubAssign, DivAssign, Add, Mul, Sub, Div, Neg};
@@ -175,8 +176,12 @@ fn test_binomial_formula() {
     let x = ring.adjoint("X");
     let y = ring.adjoint("Y");
     
-    let x2_2xy_y2 = ring.add(ring.mul(x.clone(), x.clone()), ring.add(ring.mul(x.clone(), ring.mul(y.clone(), ring.from(2))), ring.mul(y.clone(), y.clone())));
-    let x_y_square = ring.mul(ring.add(x.clone(), y.clone()), ring.add(x.clone(), y.clone()));
+    let x2_2xy_y2 = fixed_ring_env!{ &ring; x, y; {
+        (x * x) + (x * y + x * y) + (y * y)
+    }};
+    let x_y_square = fixed_ring_env!{ &ring; x, y; {
+        (x + y) * (x + y)
+    }};
 
     assert!(ring.eq(&x2_2xy_y2, &x_y_square));
     assert!(!ring.eq(&x2_2xy_y2, &x));
