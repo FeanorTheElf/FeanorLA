@@ -66,7 +66,7 @@ pub fn signed_eea<Int: Integer>(fst: Int, snd: Int) -> (Int, Int, Int) {
     }
     let fst_negative = fst < Int::zero();
 
-    let (s, t, d) = eea(&StaticRing::<RingAxiomsEuclideanRing, Int>::RING, fst, snd);
+    let (s, t, d) = eea(&StaticRing::<Int>::RING, fst, snd);
     
     // the sign is not consistent (potentially toggled each iteration), 
     // so normalize here

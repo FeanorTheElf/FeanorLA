@@ -221,7 +221,7 @@ impl RingAxioms for RingAxiomsField {
 pub trait RingEl: 
     Clone + Sized + Add<Output = Self> + Mul<Output = Self> + 
     AddAssign + PartialEq + Zero + One + Neg<Output = Self> + 
-    Sub<Output = Self> + SubAssign 
+    Sub<Output = Self> + SubAssign + std::fmt::Debug
 {
     type Axioms: RingAxioms;
 }
@@ -333,7 +333,7 @@ impl Float for f32 {}
 impl Float for f64 {}
 
 pub trait Ring {
-    type El: Sized + Clone;
+    type El: Sized + Clone + std::fmt::Debug;
 
     //
     // Design rationale: Types that are cheap to copy can be used with the 
@@ -430,23 +430,27 @@ pub trait Ring {
     /// also panic nevertheless.
     /// 
     fn div(&self, lhs: Self::El, rhs: Self::El) -> Self::El;
+
+    fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", el)
+    }
 }
 
-pub struct StaticRing<Axioms, T> 
+pub struct StaticRingImpl<Axioms, T> 
     where Axioms: RingAxioms, T: RingEl<Axioms = Axioms>
 {
     element: std::marker::PhantomData<T>
 }
 
-impl<A, T> StaticRing<A, T> 
+impl<A, T> StaticRingImpl<A, T> 
     where A: RingAxioms, T: RingEl<Axioms = A>
 {
-    pub const RING: StaticRing<A, T> = StaticRing { 
+    pub const RING: StaticRingImpl<A, T> = StaticRingImpl { 
         element: std::marker::PhantomData 
     };
 }
 
-impl<T> Ring for StaticRing<T::Axioms, T>
+impl<T> Ring for StaticRingImpl<T::Axioms, T>
     where T: RingEl
 {
     type El = T;
@@ -479,13 +483,13 @@ impl<T> Ring for StaticRing<T::Axioms, T>
     }
 }
 
-impl<T> Ring for StaticRing<RingAxiomsIntegralRing, T> 
+impl<T> Ring for StaticRingImpl<RingAxiomsIntegralRing, T> 
     where T: RingEl<Axioms = RingAxiomsIntegralRing>
 {
     fn is_integral(&self) -> bool { true }
 }
 
-impl<T> Ring for StaticRing<RingAxiomsEuclideanRing, T> 
+impl<T> Ring for StaticRingImpl<RingAxiomsEuclideanRing, T> 
     where T: EuclideanRingEl
 {
     fn is_integral(&self) -> bool { true }
@@ -505,7 +509,7 @@ impl<T> Ring for StaticRing<RingAxiomsEuclideanRing, T>
     }
 }
 
-impl<T> Ring for StaticRing<RingAxiomsField, T> 
+impl<T> Ring for StaticRingImpl<RingAxiomsField, T> 
     where T: FieldEl
 {
     fn is_integral(&self) -> bool { true }
@@ -516,9 +520,13 @@ impl<T> Ring for StaticRing<RingAxiomsField, T>
     }
 }
 
+
+pub type StaticRing<R: RingEl> = StaticRingImpl<R::Axioms, R>;
+
+
 #[test]
 fn test_pow() {
-    assert_eq!(81 * 81 * 3, StaticRing::<RingAxiomsEuclideanRing, i64>::RING.pow(3, 9));
+    assert_eq!(81 * 81 * 3, StaticRing::<i64>::RING.pow(3, 9));
 }
 
 macro_rules! impl_euclidean_ring_el {
@@ -688,6 +696,12 @@ macro_rules! impl_euclidean_ring_el {
         impl One for $t {
             fn one() -> $t {
                 ($ring_constant).one()
+            }
+        }
+
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                ($ring_constant).format(self, f)
             }
         }
 

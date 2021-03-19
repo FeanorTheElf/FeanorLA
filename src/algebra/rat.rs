@@ -28,27 +28,27 @@ pub struct r64 {
     denominator: i64,
 }
 
-pub const NAN: r64 = r64 {
-    numerator: 0,
-    denominator: 0,
-};
-
-pub const INFINITY: r64 = r64 {
-    numerator: 1,
-    denominator: 0,
-};
-
-pub const ZERO: r64 = r64 {
-    numerator: 0,
-    denominator: 1,
-};
-
-pub const ONE: r64 = r64 {
-    numerator: 1,
-    denominator: 1,
-};
-
 impl r64 {
+    pub const NAN: r64 = r64 {
+        numerator: 0,
+        denominator: 0,
+    };
+    
+    pub const INFINITY: r64 = r64 {
+        numerator: 1,
+        denominator: 0,
+    };
+    
+    pub const ZERO: r64 = r64 {
+        numerator: 0,
+        denominator: 1,
+    };
+    
+    pub const ONE: r64 = r64 {
+        numerator: 1,
+        denominator: 1,
+    };
+    
     pub fn new(numerator: i64, denominator: i64) -> r64 {
         r64 {
             numerator: numerator,
@@ -97,13 +97,13 @@ impl<'a> From<&'a i32> for r64 {
 
 impl Zero for r64 {
     fn zero() -> Self {
-        ZERO
+        r64::ZERO
     }
 }
 
 impl One for r64 {
     fn one() -> Self {
-        ONE
+        r64::ONE
     }
 }
 
@@ -424,47 +424,47 @@ fn test_real_overflow() {
 
 #[test]
 fn test_cmp_nan_inf() {
-    assert_eq!(INFINITY, r64::from(1) / r64::from(0));
-    assert_eq!(-INFINITY, r64::from(-2) / r64::from(0));
-    assert_eq!(INFINITY, INFINITY);
-    assert_eq!(-INFINITY, -INFINITY);
-    assert_ne!(INFINITY, -INFINITY);
-    assert_ne!(-INFINITY, INFINITY);
-    assert_ne!(r64::from(0), INFINITY);
-    assert_ne!(r64::from(1), INFINITY);
-    assert_ne!(r64::from(0), -INFINITY);
-    assert_ne!(r64::from(-1), -INFINITY);
-    assert_ne!(NAN, NAN);
-    assert_ne!(INFINITY, NAN);
-    assert_ne!(NAN, -INFINITY);
+    assert_eq!(r64::INFINITY, r64::from(1) / r64::from(0));
+    assert_eq!(-r64::INFINITY, r64::from(-2) / r64::from(0));
+    assert_eq!(r64::INFINITY, r64::INFINITY);
+    assert_eq!(-r64::INFINITY, -r64::INFINITY);
+    assert_ne!(r64::INFINITY, -r64::INFINITY);
+    assert_ne!(-r64::INFINITY, r64::INFINITY);
+    assert_ne!(r64::from(0), r64::INFINITY);
+    assert_ne!(r64::from(1), r64::INFINITY);
+    assert_ne!(r64::from(0), -r64::INFINITY);
+    assert_ne!(r64::from(-1), -r64::INFINITY);
+    assert_ne!(r64::NAN, r64::NAN);
+    assert_ne!(r64::INFINITY, r64::NAN);
+    assert_ne!(r64::NAN, -r64::INFINITY);
     assert_eq!(r64::from(0), r64::from(0));
     assert_ne!(r64::from(0), r64::from(1));
 }
 
 #[test]
 fn test_calculate_nan_inf() {
-    assert_eq!(INFINITY, INFINITY + INFINITY);
-    assert!((INFINITY - INFINITY).is_nan());
-    assert_eq!(-INFINITY, r64::from(1) - INFINITY);
-    assert_eq!(-INFINITY, -INFINITY - INFINITY);
-    assert_eq!(INFINITY, r64::from(-100) * -INFINITY);
-    assert_eq!(-INFINITY, r64::from(-3) * INFINITY);
-    assert!((INFINITY * r64::from(0)).is_nan());
-    assert!((-INFINITY * r64::from(0)).is_nan());
+    assert_eq!(r64::INFINITY, r64::INFINITY + r64::INFINITY);
+    assert!((r64::INFINITY - r64::INFINITY).is_nan());
+    assert_eq!(-r64::INFINITY, r64::from(1) - r64::INFINITY);
+    assert_eq!(-r64::INFINITY, -r64::INFINITY - r64::INFINITY);
+    assert_eq!(r64::INFINITY, r64::from(-100) * -r64::INFINITY);
+    assert_eq!(-r64::INFINITY, r64::from(-3) * r64::INFINITY);
+    assert!((r64::INFINITY * r64::from(0)).is_nan());
+    assert!((-r64::INFINITY * r64::from(0)).is_nan());
 }
 
 #[test]
 fn test_ord_nan_inf() {
-    assert!(-INFINITY < INFINITY);
-    assert!(r64::from(10) < INFINITY);
-    assert!(r64::from(0) < INFINITY);
-    assert!(r64::from(-10) < INFINITY);
-    assert!(r64::from(10) > -INFINITY);
-    assert!(r64::from(0) > -INFINITY);
-    assert!(r64::from(-10) > -INFINITY);
-    assert!(!(r64::from(0) < NAN));
-    assert!(!(r64::from(0) == NAN));
-    assert!(!(r64::from(0) > NAN));
+    assert!(-r64::INFINITY < r64::INFINITY);
+    assert!(r64::from(10) < r64::INFINITY);
+    assert!(r64::from(0) < r64::INFINITY);
+    assert!(r64::from(-10) < r64::INFINITY);
+    assert!(r64::from(10) > -r64::INFINITY);
+    assert!(r64::from(0) > -r64::INFINITY);
+    assert!(r64::from(-10) > -r64::INFINITY);
+    assert!(!(r64::from(0) < r64::NAN));
+    assert!(!(r64::from(0) == r64::NAN));
+    assert!(!(r64::from(0) > r64::NAN));
 }
 
 #[test]

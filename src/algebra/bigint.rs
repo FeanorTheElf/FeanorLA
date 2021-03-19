@@ -741,6 +741,31 @@ impl Ring for BigIntRing {
     fn div(&self, _lhs: Self::El, _rhs: Self::El) -> Self::El {
         panic!("Not a field!");
     }
+
+    fn format(&self, el: &BigInt, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if el.negative {
+            write!(f, "-")?;
+        }
+        let mut copy = el.clone();
+        let mut remainders: Vec<u64> = Vec::with_capacity(
+            (el.highest_set_block().unwrap_or(0) + 1) * BigInt::BLOCK_BITS / 3
+        );
+        while !copy.is_zero() {
+            let rem = copy.abs_division_small(BIG_POWER_TEN);
+            remainders.push(rem);
+        }
+        remainders.reverse();
+        let mut it = remainders.into_iter();
+        if let Some(fst) = it.next() {
+            write!(f, "{}", fst)?;
+            for rem in it {
+                write!(f, "{:0>width$}", rem, width = BIG_POWER_TEN_ZEROS as usize)?;
+            }
+        } else {
+            write!(f, "0")?;
+        }
+        return Ok(());
+    }
 }
 
 impl PartialEq<i64> for BigInt {
@@ -908,33 +933,6 @@ impl Hash for BigInt {
                 hasher.write_u64(self.data[i])
             }
         }
-    }
-}
-
-impl std::fmt::Display for BigInt {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if self.negative {
-            write!(f, "-")?;
-        }
-        let mut copy = self.clone();
-        let mut remainders: Vec<u64> = Vec::with_capacity(
-            (self.highest_set_block().unwrap_or(0) + 1) * Self::BLOCK_BITS / 3
-        );
-        while !copy.is_zero() {
-            let rem = copy.abs_division_small(BIG_POWER_TEN);
-            remainders.push(rem);
-        }
-        remainders.reverse();
-        let mut it = remainders.into_iter();
-        if let Some(fst) = it.next() {
-            write!(f, "{}", fst)?;
-            for rem in it {
-                write!(f, "{:0>width$}", rem, width = BIG_POWER_TEN_ZEROS as usize)?;
-            }
-        } else {
-            write!(f, "0")?;
-        }
-        return Ok(());
     }
 }
 
