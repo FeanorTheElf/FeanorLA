@@ -325,13 +325,12 @@ impl Integer for i64 {}
 impl Integer for i128 {}
 
 ///
-/// For types that may have rounding errors
+/// Trait to represent a ring as a collection of operations on the elements.
+/// More abstract functionality (global properties, like ideals) is not provided, 
+/// this is mainly an interface that can be used for algorithms that deal with
+/// ring elements.
 /// 
-pub trait Float: Clone + PartialEq + PartialOrd + FieldEl {}
-
-impl Float for f32 {}
-impl Float for f64 {}
-
+/// 
 pub trait Ring {
     type El: Sized + Clone + std::fmt::Debug;
 
@@ -352,6 +351,25 @@ pub trait Ring {
     fn zero(&self) -> Self::El;
     fn one(&self) -> Self::El;
     fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool;
+
+    ///
+    /// Returns a ring element that can be used as drop-in if one needs some 
+    /// unspecified element. This is used only in very exceptional cases.
+    /// Best do not touch this - chances are, you will never encounter it.
+    /// 
+    /// # Example
+    /// 
+    /// A default implementation of add_assign might move out the value from the
+    /// mutable reference, then call add_ref and fill the result in again. However,
+    /// if the underlying add-call panics, there is no value to fill in again.
+    /// Usually, this is irrelevant, as the variable on which add_assign is called
+    /// goes out of scope by the panic, if however the panic is caught (might requrie
+    /// unsafe code due to UnwindSafe ???), this is not the case and the value can
+    /// be accessed later. In this case, it will be filled with invalid().
+    /// 
+    fn unspecified_element(&self) -> Self::El {
+        self.zero()
+    }
 
     fn sub_ref_fst(&self, lhs: &Self::El, rhs: Self::El) -> Self::El {
         self.add_ref(self.neg(rhs), lhs)
@@ -558,14 +576,14 @@ macro_rules! impl_euclidean_ring_el {
         impl std::ops::AddAssign for $t {
 
             fn add_assign(&mut self, rhs: $t) {
-                take_mut::take(self, |v| ($ring_constant).add(v, rhs));
+                take_mut::take_or_recover(self, || ($ring_constant).unspecified_element(), |v| ($ring_constant).add(v, rhs));
             }
         }
 
         impl std::ops::AddAssign<&$t> for $t {
 
             fn add_assign(&mut self, rhs: &$t) {
-                take_mut::take(self, |v| ($ring_constant).add_ref(v, rhs));
+                take_mut::take_or_recover(self, || ($ring_constant).unspecified_element(), |v| ($ring_constant).add_ref(v, rhs));
             }
         }
 
@@ -596,14 +614,14 @@ macro_rules! impl_euclidean_ring_el {
         impl std::ops::MulAssign for $t {
 
             fn mul_assign(&mut self, rhs: $t) {
-                take_mut::take(self, |v| ($ring_constant).mul(v, rhs));
+                take_mut::take_or_recover(self, || ($ring_constant).unspecified_element(), |v| ($ring_constant).mul(v, rhs));
             }
         }
 
         impl std::ops::MulAssign<&$t> for $t {
 
             fn mul_assign(&mut self, rhs: &$t) {
-                take_mut::take(self, |v| ($ring_constant).mul_ref(v, rhs));
+                take_mut::take_or_recover(self, || ($ring_constant).unspecified_element(), |v| ($ring_constant).mul_ref(v, rhs));
             }
         }
 
@@ -634,14 +652,14 @@ macro_rules! impl_euclidean_ring_el {
         impl std::ops::SubAssign for $t {
 
             fn sub_assign(&mut self, rhs: $t) {
-                take_mut::take(self, |v| ($ring_constant).sub(v, rhs));
+                take_mut::take_or_recover(self, || ($ring_constant).unspecified_element(), |v| ($ring_constant).sub(v, rhs));
             }
         }
 
         impl std::ops::SubAssign<&$t> for $t {
 
             fn sub_assign(&mut self, rhs: &$t) {
-                take_mut::take(self, |v| ($ring_constant).sub_ref_snd(v, rhs));
+                take_mut::take_or_recover(self, || ($ring_constant).unspecified_element(), |v| ($ring_constant).sub_ref_snd(v, rhs));
             }
         }
 
@@ -663,13 +681,13 @@ macro_rules! impl_euclidean_ring_el {
 
         impl std::ops::RemAssign for $t {
             fn rem_assign(&mut self, rhs: $t) {
-                take_mut::take(self, |v| ($ring_constant).euclidean_rem(v, rhs));
+                take_mut::take_or_recover(self, || ($ring_constant).unspecified_element(), |v| ($ring_constant).euclidean_rem(v, rhs));
             }
         }
 
         impl std::ops::DivAssign for $t {
             fn div_assign(&mut self, rhs: $t) {
-                take_mut::take(self, |v| ($ring_constant).euclidean_div(v, rhs));
+                take_mut::take_or_recover(self, || ($ring_constant).unspecified_element(), |v| ($ring_constant).euclidean_div(v, rhs));
             }
         }
 
@@ -713,7 +731,7 @@ macro_rules! impl_euclidean_ring_el {
 
             fn div_rem(&mut self, rhs: $t) -> $t {
                 let mut result: Option<$t> = None;
-                take_mut::take(self, |v| {
+                take_mut::take_or_recover(self, || ($ring_constant).unspecified_element(), |v| {
                     let (quo, rem) = ($ring_constant).euclidean_div_rem(v, rhs);
                     result = Some(quo);
                     return rem;

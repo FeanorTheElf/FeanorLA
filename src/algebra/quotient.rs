@@ -36,7 +36,7 @@ impl QuotientRingZ {
         return n;
     }
 
-    pub fn project(&self, n: BigInt) -> BigInt {
+    pub fn project(&self, n: BigInt) -> <Self as Ring>::El {
         let mut red_n = if n < self.modulus {
             n
         } else if n.log2_floor() + 1 < 2 * self.modulus.log2_floor() {
@@ -49,7 +49,7 @@ impl QuotientRingZ {
             red_n += &self.modulus;
         }
         debug_assert!(red_n < self.modulus);
-        return red_n;
+        return QuotientRingZEl(red_n);
     }
 
     ///
@@ -66,11 +66,14 @@ impl QuotientRingZ {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct QuotientRingZEl(BigInt);
+
 impl Ring for QuotientRingZ {
 
-    type El = BigInt;
+    type El = QuotientRingZEl;
 
-    fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
+    fn add_ref(&self, QuotientRingZEl(lhs): Self::El, QuotientRingZEl(rhs): &Self::El) -> Self::El {
         assert!(lhs < self.modulus);
         assert!(rhs < &self.modulus);
 
@@ -80,20 +83,20 @@ impl Ring for QuotientRingZ {
         }
 
         assert!(result < self.modulus);
-        return result;
+        return QuotientRingZEl(result);
     }
 
-    fn mul_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
+    fn mul_ref(&self, QuotientRingZEl(lhs): Self::El, QuotientRingZEl(rhs): &Self::El) -> Self::El {
         assert!(lhs < self.modulus);
         assert!(rhs < &self.modulus);
 
         let result = self.project_leq_n_square(lhs * rhs);
 
         assert!(result < self.modulus);
-        return result;
+        return QuotientRingZEl(result);
     }
 
-    fn neg(&self, val: Self::El) -> Self::El {
+    fn neg(&self, QuotientRingZEl(val): Self::El) -> Self::El {
         assert!(val < self.modulus);
 
         let mut result = -val;
@@ -102,18 +105,18 @@ impl Ring for QuotientRingZ {
         }
 
         assert!(result < self.modulus);
-        return result;
+        return QuotientRingZEl(result);
     }
 
     fn zero(&self) -> Self::El {
-        BigInt::zero()
+        QuotientRingZEl(BigInt::zero())
     }
 
     fn one(&self) -> Self::El {
-        BigInt::one()
+        QuotientRingZEl(BigInt::one())
     }
 
-    fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+    fn eq(&self, QuotientRingZEl(lhs): &Self::El, QuotientRingZEl(rhs): &Self::El) -> bool {
         assert!(lhs < &self.modulus);
         assert!(rhs < &self.modulus);
         lhs == rhs
@@ -139,11 +142,15 @@ impl Ring for QuotientRingZ {
         panic!("Not a euclidean domain!");
     }
 
-    fn div(&self, lhs: Self::El, rhs: Self::El) -> Self::El { 
+    fn div(&self, QuotientRingZEl(lhs): Self::El, QuotientRingZEl(rhs): Self::El) -> Self::El { 
         match self.invert(rhs) {
             Err(factor) => panic!("Tried to divide in Z/{}Z, however this is not a field and the divisor is not invertible (the modulus has the nontrivial factor {})", self.modulus, factor),
-            Ok(inverse) => self.mul(lhs, inverse)
+            Ok(inverse) => self.mul(QuotientRingZEl(lhs), QuotientRingZEl(inverse))
         }
+    }
+
+    fn format(&self, QuotientRingZEl(el): &Self::El, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{} mod {}", el, self.modulus)
     }
 }
 
@@ -151,5 +158,5 @@ impl Ring for QuotientRingZ {
 fn test_mul() {
     let z257 = QuotientRingZ::new(BigInt::from_str_radix("257", 10).unwrap());
     let x = BigInt::from_str_radix("256", 10).unwrap();
-    assert_eq!(BigInt::one(), z257.mul(x.clone(), x));
+    assert!(z257.eq(&z257.one(), &z257.mul(z257.project(x.clone()), z257.project(x))));
 }

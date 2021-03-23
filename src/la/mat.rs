@@ -761,22 +761,9 @@ fn test_kernel_base() {
                                     [0., 0., 1., 1.]]);
                                     
     #[rustfmt::skip]
-    let b = Matrix::from_array([[3., 2.], 
+    let b = Matrix::from_array([[3.,  2.], 
                                 [-1., 0.], 
-                                [0., 1.], 
+                                [0.,  1.], 
                                 [0., -1.]]);
     assert_eq!(b, a.kernel_base_modifying().unwrap());
-}
-
-#[test]
-fn test_kernel_base_f2() {
-    type F2 = ZnEl<2>;
-
-    #[rustfmt::skip]
-    let a_int = Matrix::from_array([[1, 0, 1], 
-                                    [1, 1, 1], 
-                                    [0, 0, 0]]);
-    let a = Matrix::from_fn(3, 3, |i, j| F2::project(*a_int.at(i, j)));
-    let b = Matrix::from_array([[F2::ONE], [F2::ZERO], [F2::ONE]]);
-    assert_eq!(b, a.kernel_base().unwrap());
 }

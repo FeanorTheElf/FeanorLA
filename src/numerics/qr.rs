@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 use super::super::la::mat::*;
 use super::super::alg::*;
+use super::*;
 use std::ops::AddAssign;
 
 fn two<T>() -> T
@@ -55,6 +56,11 @@ fn sgn<T>(val: &T) -> T
     }
 }
 
+///
+/// Given a matrix A, calculates an orthonormal matirx Q and an 
+/// upper triangle matrix R such that A = QR. The matrix Q is returned
+/// and R is assigned to the input matrix.
+/// 
 pub fn qr_decompose<M, T>(mut A: Matrix<M, T>) -> Matrix<MatrixOwned<T>, T>
     where M: MatrixViewMut<T>, T: Float + Root
 {
@@ -65,11 +71,15 @@ pub fn qr_decompose<M, T>(mut A: Matrix<M, T>) -> Matrix<MatrixOwned<T>, T>
         let mut y = y_base.subvector_mut(k..);
         let x = A.submatrix(k.., k..=k);
         let gamma = two::<T>().clone() * x.frobenius_square().sqrt();
+
+        // by choosing this correctly, the addition for y1 involves two positive
+        // numbers, preventing catastrophic cancellation
         let sgn = sgn(x.at(0, 0));
         let y1 = (half.clone() + abs(x.at(0, 0).clone()) / gamma.clone()).sqrt();
         *y.at_mut(0) = y1.clone();
+        let factor = sgn.clone() / (gamma * y1);
         for i in 1..y.len() {
-            *y.at_mut(i) = sgn.clone() * x.at(i, 0).clone() / (gamma.clone() * y1.clone());
+            *y.at_mut(i) = factor.clone() * x.at(i, 0).clone();
         }
         householder_left(y.as_ref(), A.submatrix_mut(k.., k..));
         householder_right(y.as_ref(), Q.submatrix_mut(.., k..));
