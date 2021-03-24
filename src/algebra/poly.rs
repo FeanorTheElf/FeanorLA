@@ -1,8 +1,4 @@
 use super::super::alg::*;
-use super::super::alg_env::*;
-use super::eea::eea;
-
-use std::ops::{AddAssign, MulAssign, SubAssign, DivAssign, Add, Mul, Sub, Div, Neg};
 
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
@@ -18,6 +14,50 @@ pub struct MultivariatePolyRing<R>
 impl<R> MultivariatePolyRing<R>
     where R: Ring
 {
+    fn elevate_var_ring(&self, var: usize) -> PolyRing<&MultivariatePolyRing<R>> {
+        PolyRing::adjoint(self, self.var_names[var])
+    }
+
+    fn elevate_var(&self, var: usize, x: <Self as Ring>::El) -> <PolyRing<&MultivariatePolyRing<R>> as Ring>::El
+    {
+        self.assert_valid(&x);
+
+        let mut result = Vec::new();
+        for (mut key, coeff) in x.into_iter() {
+            let pow = *key.get(var).unwrap_or(&0);
+            if var < key.len() {
+                key[var] = 0;
+                key.truncate(
+                    key.len() - key.iter().rev().take_while(|x| **x == 0).count()
+                );
+            }
+            result.resize_with(result.len().max(pow + 1), || self.zero());
+            let v = &mut result[pow];
+            debug_assert!(v.get(&key).is_none());
+            v.insert(key, coeff);
+        }
+        for coeff in &result {
+            self.assert_valid(coeff);
+        }
+        return result;
+    }
+
+    fn de_elevate_var(&self, var: usize, x: <PolyRing<&MultivariatePolyRing<R>> as Ring>::El) -> <Self as Ring>::El {
+        let mut result = BTreeMap::new();
+        for (pow, coeff) in x.into_iter().enumerate() {
+            result.extend(coeff.into_iter().map(|(mut key, c)| {
+                if pow > 0 {
+                    key.resize(key.len().max(var + 1), 0);
+                    key[var] = pow;
+                }
+                return (key, c);
+            }));
+        }
+        
+        self.assert_valid(&result);
+        return result;
+    }
+
     pub fn from(&self, el: R::El) -> <Self as Ring>::El {
         let mut result = BTreeMap::new();
         result.insert(Vec::new(), el);
@@ -27,6 +67,14 @@ impl<R> MultivariatePolyRing<R>
     }
 
     fn assert_valid(&self, el: &<Self as Ring>::El) {
+        //
+        // We require that the power vector has no trailing zeros, as otherwise this
+        // would allow extremely blown-up polynomials (like n * X = 1 * X + ... + 1 * X) 
+        // and makes code simpler.
+        // Note that we do not require that the coefficients are non-zero, so the following
+        // are three perfectly valid representations of zero: {} and {[]: 0} and 
+        // {[]: 0, [0, 1]: 0}
+        //
         for key in el.keys() {
             debug_assert!(key.last().is_none() || *key.last().unwrap() != 0);
             debug_assert!(key.len() <= self.var_names.len());
@@ -112,6 +160,11 @@ impl<R> MultivariatePolyRing<R>
 impl<R> Ring for MultivariatePolyRing<R>
     where R: Ring
 {
+    ///
+    /// This contains all monomials as the power vector of the variables and
+    /// the corresonding coefficients.
+    /// For invariants, see `assert_valid()`.
+    /// 
     type El = BTreeMap<Vec<usize>, R::El>;
 
     fn add_ref(&self, mut lhs: Self::El, rhs: &Self::El) -> Self::El {
@@ -202,15 +255,22 @@ impl<R> Ring for MultivariatePolyRing<R>
         self.assert_valid(&lhs);
         self.assert_valid(&rhs);
 
-        if lhs.len() != rhs.len() {
-            return false;
-        }
-        for ((lhs_key, lhs_coeff), (rhs_key, rhs_coeff)) in lhs.iter().zip(rhs.iter()) {
-            if lhs_key != rhs_key || !self.base_ring.eq(lhs_coeff, rhs_coeff) {
-                return false;
+        let cmp = |a: &Self::El, b: &Self::El| {
+            for (key, lhs_coeff) in a.iter() {
+                if let Some(rhs_coeff) = b.get(key) {
+                    if !self.base_ring.eq(lhs_coeff, rhs_coeff) {
+                        return false;
+                    }
+                } else {
+                    if !self.base_ring.is_zero(lhs_coeff) {
+                        return false;
+                    }       
+                }
             }
-        }
-        return true;
+            return true;
+        };
+
+        return cmp(lhs, rhs) && cmp(rhs, lhs);
     }
 
     fn is_integral(&self) -> bool {
@@ -232,11 +292,35 @@ impl<R> Ring for MultivariatePolyRing<R>
     }
     
     fn euclidean_div_rem(&self, _lhs: Self::El, _rhs: &Self::El) -> (Self::El, Self::El) {
-        panic!("not euclidean")
+        panic!("Not euclidean!")
     }
 
-    fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
-        panic!("not a field")
+    fn div(&self, mut lhs: Self::El, rhs: &Self::El) -> Self::El {
+        assert!(!self.is_zero(rhs));
+        if let Some(division_var) = rhs.iter()
+            .filter_map(|(key, _coeff)| 
+                key.iter().enumerate().filter(|(_i, pow)| **pow != 0).map(|(i, _pow)| i).next()
+            ).min() 
+        {
+            let ring = self.elevate_var_ring(division_var);
+            let lhs_new = self.elevate_var(division_var, lhs);
+            let rhs_new = self.elevate_var(division_var, rhs.clone());
+            let result = ring.div(lhs_new, &rhs_new);
+            return self.de_elevate_var(division_var, result);
+        } else {
+            // rhs is only a scalar
+            debug_assert!(rhs.len() == 1);
+            let (key, scalar) = rhs.iter().next().unwrap();
+            debug_assert_eq!(Vec::<usize>::new(), *key);
+            for coeff in lhs.values_mut() {
+                take_mut::take_or_recover(
+                    coeff, 
+                    || self.base_ring.unspecified_element(), 
+                    |v| self.base_ring.div(v, &scalar)
+                );
+            }
+            return lhs;
+        }
     }
 
     fn format(&self, el: &<Self as Ring>::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
@@ -260,7 +344,7 @@ impl<R> Ring for MultivariatePolyRing<R>
             
             write_part(first.0, first.1, f)?;
             for el in it {
-                write!(f, " + ");
+                write!(f, " + ")?;
                 write_part(el.0, el.1, f)?;
             }
             return Ok(());
@@ -317,21 +401,23 @@ impl<R> PolyRing<R>
         assert!(!self.is_zero(rhs));
         let rhs_deg = self.deg(rhs).unwrap();
         let mut result = Vec::new();
+        result.resize_with(self.deg(lhs).unwrap_or(0), || self.base_ring.zero());
         while self.deg(lhs) >= self.deg(rhs) {
             let lhs_deg = self.deg(lhs).unwrap();
             let coeff = div_lc(&lhs[lhs_deg])?;
             let pow = lhs_deg - rhs_deg;
-            result.push(coeff);
+            result[pow] = coeff;
             for i in 0..=rhs_deg {
                 take_mut::take_or_recover(
                     &mut lhs[i + pow], 
                     || self.base_ring.unspecified_element(), 
-                    |v| self.base_ring.sub_ref_snd(v, &rhs[i])
+                    |v| self.base_ring.sub(v, self.base_ring.mul_ref(&result[pow], &rhs[i]))
                 );
             }
-            assert!(self.base_ring.is_zero(&lhs[lhs_deg]));
+            if !self.base_ring.is_zero(&lhs[lhs_deg]) {
+                panic!("Passed division function yielded the wrong result!");
+            }
         }
-        result.reverse();
         return Ok(result);
     }
 
@@ -432,7 +518,7 @@ impl<R> Ring for PolyRing<R>
     }
     
     fn euclidean_div_rem(&self, _lhs: Self::El, _rhs: &Self::El) -> (Self::El, Self::El) {
-        panic!("not euclidean")
+        panic!("Not a euclidean domain!")
     }
 
     ///
@@ -488,6 +574,9 @@ impl<R> Ring for PolyRing<R>
         }
     }
 }
+
+#[cfg(test)]
+use super::super::alg_env::*;
 
 #[test]
 fn test_binomial_formula() {
@@ -567,7 +656,7 @@ fn test_format() {
     let poly = fixed_ring_env!{ &ring; x, one; {
         x * x * x + (one + one) * x * x - one
     }};
-    assert_eq!("1 * X^3 + 2 * X^2 + -1", format!("{}", ring.display(&poly)));
+    assert_eq!("1 * X^3 + 2 * X^2 + -1", format!("{}", display_ring_el(&ring, &poly)));
 }
 
 #[test]
@@ -580,5 +669,90 @@ fn test_format_multivar_poly_ring() {
     let poly = fixed_ring_env!{ &ring; x, y, one; {
         x * x * x - y + (one + one) * y * x - one
     }};
-    assert_eq!("-1 + -1 * Y^1 + 2 * X^1 Y^1 + 1 * X^3", format!("{}", ring.display(&poly)));
+    assert_eq!("-1 + -1 * Y^1 + 2 * X^1 Y^1 + 1 * X^3", format!("{}", display_ring_el(&ring, &poly)));
+}
+
+#[test]
+fn test_poly_div() {
+    let ring = PolyRing::adjoint(StaticRing::<i32>::RING, "X");
+    let x = ring.unknown();
+    let one = ring.one();
+
+    let mut p = fixed_ring_env!{ &ring; x, one; {
+        x * x * x + x * x + x + one
+    }};
+    let q = fixed_ring_env!{ &ring; x, one; {
+        x + one
+    }};
+    let expected = fixed_ring_env!{ &ring; x, one; {
+        x * x + one
+    }};
+    let result = ring.poly_division(&mut p, &q, |x| Ok(*x)).unwrap();
+    println!("{} ?= 0", display_ring_el(&ring, &p));
+    assert!(ring.is_zero(&p));
+    println!("{} ?= {}", display_ring_el(&ring, &expected), display_ring_el(&ring, &result));
+    assert!(ring.eq(&expected, &result));
+}
+
+#[test]
+fn test_div_multivar_poly_ring() {
+    let mut ring = MultivariatePolyRing::new(StaticRing::<i32>::RING);
+    let x = ring.adjoint("X");
+    let y = ring.adjoint("Y");
+    let one = ring.one();
+
+    let a = fixed_ring_env!{ &ring; x, y; {
+        x + y
+    }};
+    let b = fixed_ring_env!{ &ring; x, one; {
+        (one + one) * x * x
+    }};
+    let c = fixed_ring_env!{ &ring; y, one; {
+        y + one
+    }};
+    let d = fixed_ring_env!{ &ring; x, y, one; {
+        (x + y + one) * (x - one)
+    }};
+    let p = fixed_ring_env!{ &ring; a, b, c, d; {
+        a * b * c * d
+    }};
+    let q = fixed_ring_env!{ &ring; a, c; {
+        a * c
+    }};
+    let expected = fixed_ring_env!{ &ring; b, d; {
+        b * d
+    }};
+    let result = ring.div(p, &q);
+    println!("{} ?= {}", display_ring_el(&ring, &expected), display_ring_el(&ring, &result));
+    assert!(ring.eq(&expected, &result));
+}
+
+#[test]
+fn test_elevate_var() {
+    let mut ring = MultivariatePolyRing::new(StaticRing::<i32>::RING);
+    let x = ring.adjoint("X");
+    let y = ring.adjoint("Y");
+    let one = ring.one();
+
+    let p: BTreeMap<Vec<usize>, <StaticRing::<i32> as Ring>::El> = fixed_ring_env!{ &ring; x, y, one; {
+        x * y + y * y * x * (one + one) + one + x
+    }};
+
+    let uni_ring = ring.elevate_var_ring(1);
+
+    let uni_y = uni_ring.unknown();
+    let uni_x = uni_ring.from(x);
+    let uni_one = uni_ring.one();
+
+    let expected = fixed_ring_env!{ &uni_ring; uni_y, uni_x, uni_one; {
+        uni_x * uni_y + uni_y * uni_y * uni_x * (uni_one + uni_one) + uni_one + uni_x
+    }};
+
+    let actual = ring.elevate_var(1, p.clone());
+    println!("{} ?= {}", display_ring_el(&uni_ring, &expected), display_ring_el(&uni_ring, &actual));
+    assert!(uni_ring.eq(&expected, &actual));
+
+    let original = ring.de_elevate_var(1, actual);
+    println!("{} ?= {}", display_ring_el(&ring, &p), display_ring_el(&ring, &original));
+    assert!(ring.eq(&p, &original));
 }

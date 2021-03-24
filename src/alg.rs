@@ -471,7 +471,7 @@ pub trait Ring {
     /// 
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El;
 
-    fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
+    fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, _in_prod: bool) -> std::fmt::Result {
         write!(f, "{:?}", el)
     }
 
@@ -481,12 +481,14 @@ pub trait Ring {
         write!(f, ")")?;
         return Ok(());
     }
+}
 
-    fn display<'a>(&'a self, el: &'a Self::El) -> RingElDisplay<'a, Self> {
-        RingElDisplay {
-            ring: self,
-            el: el
-        }
+pub fn display_ring_el<'a, R>(ring: &'a R, el: &'a R::El) -> RingElDisplay<'a, R> 
+    where R: Ring
+{
+    RingElDisplay {
+        ring: ring,
+        el: el
     }
 }
 
@@ -503,12 +505,63 @@ pub struct StaticRingImpl<Axioms, T>
     element: std::marker::PhantomData<T>
 }
 
+impl<Axioms, T> Copy for StaticRingImpl<Axioms, T> 
+    where Axioms: RingAxioms, T: RingEl<Axioms = Axioms>
+{}
+
+impl<Axioms, T> Clone for StaticRingImpl<Axioms, T> 
+    where Axioms: RingAxioms, T: RingEl<Axioms = Axioms>
+{
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
 impl<A, T> StaticRingImpl<A, T> 
     where A: RingAxioms, T: RingEl<Axioms = A>
 {
     pub const RING: StaticRingImpl<A, T> = StaticRingImpl { 
         element: std::marker::PhantomData 
     };
+}
+
+impl<'a, R: Ring> Ring for &'a R {
+    type El = R::El;
+
+    fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).add_ref(lhs, rhs) }
+    fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El { (**self).mul_ref(lhs, rhs) }
+    fn neg(&self, val: Self::El) -> Self::El { (**self).neg(val) }
+    fn zero(&self) -> Self::El { (**self).zero() }
+    fn one(&self) -> Self::El { (**self).one() }
+    fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool { (**self).eq(lhs, rhs) }
+    fn unspecified_element(&self) -> Self::El { (**self).unspecified_element() }
+    fn sub_ref_fst(&self, lhs: &Self::El, rhs: Self::El) -> Self::El { (**self).sub_ref_fst(lhs, rhs) }
+    fn sub_ref_snd(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).sub_ref_snd(lhs, rhs) }
+    fn add(&self, lhs: Self::El, rhs: Self::El) -> Self::El { (**self).add(lhs, rhs) }
+    fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El { (**self).mul(lhs, rhs) }
+    fn sub(&self, lhs: Self::El, rhs: Self::El) -> Self::El { (**self).sub(lhs, rhs) }
+    fn pow(&self, basis: Self::El, exp: u32) -> Self::El 
+        where Self::El: Clone
+    {
+        (**self).pow(basis, exp)
+    }
+    fn pow_big(&self, basis: Self::El, exp: BigInt) -> Self::El 
+        where Self::El: Clone
+    {
+        (**self).pow_big(basis, exp)
+    }
+    fn is_zero(&self, val: &Self::El) -> bool { (**self).is_zero(val) }
+    fn is_one(&self, val: &Self::El) -> bool { (**self).is_one(val) }
+    fn is_neg_one(&self, val: &Self::El) -> bool { (**self).is_neg_one(val) }
+    fn is_integral(&self) -> bool { (**self).is_integral() }
+    fn is_euclidean(&self) -> bool { (**self).is_euclidean() }
+    fn is_field(&self) -> bool { (**self).is_field() }
+    fn euclidean_div_rem(&self, lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) { (**self).euclidean_div_rem(lhs, rhs) }
+    fn euclidean_rem(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).euclidean_rem(lhs, rhs) }
+    fn euclidean_div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).euclidean_div(lhs, rhs) }
+    fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).div(lhs, rhs) }
+    fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result { (**self).format(el, f, in_prod) }
+    fn format_in_brackets(&self, el: &Self::El, f: &mut std::fmt::Formatter) -> std::fmt::Result { (**self).format_in_brackets(el, f) }
 }
 
 impl<T> Ring for StaticRingImpl<T::Axioms, T>
@@ -569,6 +622,22 @@ impl<T> Ring for StaticRingImpl<RingAxiomsEuclideanRing, T>
     
     fn euclidean_rem(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { 
         lhs % rhs.clone()
+    }
+
+    default fn div(&self, _lhs: Self::El, _rhs: &Self::El) -> Self::El { 
+        panic!("Not a field!");
+    }
+}
+
+impl<T> Ring for StaticRingImpl<RingAxiomsEuclideanRing, T> 
+    where T: Integer
+{
+    fn div(&self, mut lhs: Self::El, rhs: &Self::El) -> Self::El {
+        let result = lhs.div_rem(rhs.clone());
+        if !self.is_zero(&lhs) {
+            panic!("The integers are not a field and tried division by {:?} has remainder {:?}!", rhs, lhs);
+        }
+        return result;
     }
 }
 
