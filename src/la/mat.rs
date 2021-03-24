@@ -10,7 +10,7 @@ pub use super::matrix_vector::*;
 pub use super::matrix_row_col::*;
 
 use std::marker::PhantomData;
-use std::ops::{AddAssign, Add, Mul, RangeBounds, Bound, MulAssign};
+use std::ops::{AddAssign, Add, Mul, RangeBounds, Bound};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Matrix<M, T>
