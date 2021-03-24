@@ -324,6 +324,21 @@ impl Integer for i32 {}
 impl Integer for i64 {}
 impl Integer for i128 {}
 
+pub struct RingElDisplay<'a, R: ?Sized> 
+    where R: Ring
+{
+    ring: &'a R,
+    el: &'a R::El
+}
+
+impl<'a, R> std::fmt::Display for RingElDisplay<'a, R>
+where R: Ring
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.ring.format(self.el, f, false)
+    }
+}
+
 ///
 /// Trait to represent a ring as a collection of operations on the elements.
 /// More abstract functionality (global properties, like ideals) is not provided, 
@@ -336,17 +351,24 @@ pub trait Ring {
 
     //
     // Design rationale: Types that are cheap to copy can be used with the 
-    // op()-functions, for types that are expensive to copy, one can use the 
-    // op_ref()-functions. However, as each op() / op_ref() function returns 
-    // the result by value, for big types, is is usually most efficient to 
-    // clone at least one parameter and potentially reuse the memory.
+    // add/sub()-functions, for types that are expensive to copy, one can use the 
+    // add_ref/sub_ref()-functions. However, as each add/sub() / add_ref/sub_ref() 
+    // function returns the result by value, for big types, is is usually 
+    // most efficient to clone at least one parameter and potentially reuse 
+    // the memory.
     //
     // If an operation can improve efficience by consuming both parameters, one should
-    // explicitly implement the default-implemented op()-functions.
+    // explicitly implement the default-implemented add/sub()-functions.
+    //
+    // For multiplication, the situation is usually different: Mostly, multiplication
+    // is given by some kind of operation on a cartesian product of the
+    // components of lhs and rhs, with a following reduce. In this case, one usually
+    // cannot profit from getting the parameters by value. If this is not true, then
+    // one should implement the default-implemented mul()-function
     //
 
     fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El;
-    fn mul_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El;
+    fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El;
     fn neg(&self, val: Self::El) -> Self::El;
     fn zero(&self) -> Self::El;
     fn one(&self) -> Self::El;
@@ -380,7 +402,7 @@ pub trait Ring {
     }
 
     fn add(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.add_ref(lhs, &rhs) }
-    fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.mul_ref(lhs, &rhs) }
+    fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.mul_ref(&lhs, &rhs) }
 
     fn sub(&self, lhs: Self::El, rhs: Self::El) -> Self::El {
         self.add(lhs, self.neg(rhs))
@@ -404,7 +426,7 @@ pub trait Ring {
         let mut result = self.one();
         for i in 0..(exp.log2_floor() + 1) {
             if exp.is_bit_set(i) {
-                result = self.mul_ref(result, &power);
+                result = self.mul_ref(&result, &power);
             }
             power = self.mul(power.clone(), power);
         }
@@ -425,19 +447,19 @@ pub trait Ring {
     ///  lhs = quo * rhs + rem
     /// must always hold.
     /// 
-    fn euclidean_div_rem(&self, lhs: Self::El, rhs: Self::El) -> (Self::El, Self::El);
+    fn euclidean_div_rem(&self, lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El);
 
     ///
     /// May panic if the ring is not euclidean
     /// 
-    fn euclidean_rem(&self, lhs: Self::El, rhs: Self::El) -> Self::El { 
+    fn euclidean_rem(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { 
         self.euclidean_div_rem(lhs, rhs).1 
     }
 
     ///
     /// May panic if the ring is not euclidean
     /// 
-    fn euclidean_div(&self, lhs: Self::El, rhs: Self::El) -> Self::El {
+    fn euclidean_div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
         self.euclidean_div_rem(lhs, rhs).0
     }
 
@@ -447,13 +469,34 @@ pub trait Ring {
     /// divide lhs, and if it does, it may either compute the correct quotient but may
     /// also panic nevertheless.
     /// 
-    fn div(&self, lhs: Self::El, rhs: Self::El) -> Self::El;
+    fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El;
 
-    fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
         write!(f, "{:?}", el)
+    }
+
+    fn format_in_brackets(&self, el: &Self::El, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "(")?;
+        self.format(el, f, false)?;
+        write!(f, ")")?;
+        return Ok(());
+    }
+
+    fn display<'a>(&'a self, el: &'a Self::El) -> RingElDisplay<'a, Self> {
+        RingElDisplay {
+            ring: self,
+            el: el
+        }
     }
 }
 
+///
+/// Provides a global constant that represents the ring whose elements
+/// are the given type. The ring operations are derived from the RingEl
+/// implementation on the element type.
+/// 
+/// Use only for not-expensive-to-copy objects.
+/// 
 pub struct StaticRingImpl<Axioms, T> 
     where Axioms: RingAxioms, T: RingEl<Axioms = Axioms>
 {
@@ -474,7 +517,9 @@ impl<T> Ring for StaticRingImpl<T::Axioms, T>
     type El = T;
 
     fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { lhs + rhs.clone() }
-    fn mul_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { lhs * rhs.clone() }
+    fn add(&self, lhs: Self::El, rhs: Self::El) -> Self::El { lhs + rhs }
+    fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El { lhs.clone() * rhs.clone() }
+    fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El { lhs * rhs }
     fn neg(&self, val: Self::El) -> Self::El { -val }
     fn zero(&self) -> Self::El { T::zero() }
     fn one(&self) -> Self::El { T::one() }
@@ -484,19 +529,19 @@ impl<T> Ring for StaticRingImpl<T::Axioms, T>
     default fn is_euclidean(&self) -> bool { false }
     default fn is_field(&self) -> bool { false }
 
-    default fn euclidean_div_rem(&self, _lhs: Self::El, _rhs: Self::El) -> (Self::El, Self::El) { 
+    default fn euclidean_div_rem(&self, _lhs: Self::El, _rhs: &Self::El) -> (Self::El, Self::El) { 
         panic!("Not a euclidean domain!");
     }
 
-    default fn div(&self, _lhs: Self::El, _rhs: Self::El) -> Self::El { 
+    default fn div(&self, _lhs: Self::El, _rhs: &Self::El) -> Self::El { 
         panic!("Not a field!");
     }
 
-    default fn euclidean_div(&self, lhs: Self::El, rhs: Self::El) -> Self::El { 
+    default fn euclidean_div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { 
         self.euclidean_div_rem(lhs, rhs).0
     }
     
-    default fn euclidean_rem(&self, lhs: Self::El, rhs: Self::El) -> Self::El { 
+    default fn euclidean_rem(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { 
         self.euclidean_div_rem(lhs, rhs).1
     }
 }
@@ -513,17 +558,17 @@ impl<T> Ring for StaticRingImpl<RingAxiomsEuclideanRing, T>
     fn is_integral(&self) -> bool { true }
     fn is_euclidean(&self) -> bool { true }
 
-    fn euclidean_div_rem(&self, mut lhs: Self::El, rhs: Self::El) -> (Self::El, Self::El) { 
-        let quo = lhs.div_rem(rhs);
+    fn euclidean_div_rem(&self, mut lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) { 
+        let quo = lhs.div_rem(rhs.clone());
         return (quo, lhs);
     }
 
-    fn euclidean_div(&self, lhs: Self::El, rhs: Self::El) -> Self::El { 
-        lhs / rhs
+    fn euclidean_div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { 
+        lhs / rhs.clone()
     }
     
-    fn euclidean_rem(&self, lhs: Self::El, rhs: Self::El) -> Self::El { 
-        lhs % rhs
+    fn euclidean_rem(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { 
+        lhs % rhs.clone()
     }
 }
 
@@ -533,8 +578,8 @@ impl<T> Ring for StaticRingImpl<RingAxiomsField, T>
     fn is_integral(&self) -> bool { true }
     fn is_field(&self) -> bool { true }
 
-    fn div(&self, lhs: Self::El, rhs: Self::El) -> Self::El { 
-        lhs / rhs
+    fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { 
+        lhs / rhs.clone()
     }
 }
 
@@ -599,7 +644,7 @@ macro_rules! impl_euclidean_ring_el {
             type Output = $t;
 
             fn mul(self, rhs: &$t) -> Self::Output {
-                ($ring_constant).mul_ref(self, rhs)
+                ($ring_constant).mul_ref(&self, rhs)
             }
         }
 
@@ -607,7 +652,7 @@ macro_rules! impl_euclidean_ring_el {
             type Output = $t;
 
             fn mul(self, rhs: $t) -> Self::Output {
-                ($ring_constant).mul_ref(rhs, self)
+                ($ring_constant).mul_ref(&rhs, self)
             }
         }
 
@@ -621,7 +666,7 @@ macro_rules! impl_euclidean_ring_el {
         impl std::ops::MulAssign<&$t> for $t {
 
             fn mul_assign(&mut self, rhs: &$t) {
-                take_mut::take_or_recover(self, || ($ring_constant).unspecified_element(), |v| ($ring_constant).mul_ref(v, rhs));
+                *self = ($ring_constant).mul_ref(self, rhs);
             }
         }
 
@@ -667,7 +712,7 @@ macro_rules! impl_euclidean_ring_el {
             type Output = $t;
 
             fn div(self, rhs: $t) -> Self::Output {
-                ($ring_constant).euclidean_div(self, rhs)
+                ($ring_constant).euclidean_div(self, &rhs)
             }
         }
 
@@ -675,19 +720,19 @@ macro_rules! impl_euclidean_ring_el {
             type Output = $t;
 
             fn rem(self, rhs: $t) -> Self::Output {
-                ($ring_constant).euclidean_rem(self, rhs)
+                ($ring_constant).euclidean_rem(self, &rhs)
             }
         }
 
         impl std::ops::RemAssign for $t {
             fn rem_assign(&mut self, rhs: $t) {
-                take_mut::take_or_recover(self, || ($ring_constant).unspecified_element(), |v| ($ring_constant).euclidean_rem(v, rhs));
+                take_mut::take_or_recover(self, || ($ring_constant).unspecified_element(), |v| ($ring_constant).euclidean_rem(v, &rhs));
             }
         }
 
         impl std::ops::DivAssign for $t {
             fn div_assign(&mut self, rhs: $t) {
-                take_mut::take_or_recover(self, || ($ring_constant).unspecified_element(), |v| ($ring_constant).euclidean_div(v, rhs));
+                take_mut::take_or_recover(self, || ($ring_constant).unspecified_element(), |v| ($ring_constant).euclidean_div(v, &rhs));
             }
         }
 
@@ -719,7 +764,7 @@ macro_rules! impl_euclidean_ring_el {
 
         impl std::fmt::Display for $t {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                ($ring_constant).format(self, f)
+                ($ring_constant).format(self, f, false)
             }
         }
 
@@ -732,7 +777,7 @@ macro_rules! impl_euclidean_ring_el {
             fn div_rem(&mut self, rhs: $t) -> $t {
                 let mut result: Option<$t> = None;
                 take_mut::take_or_recover(self, || ($ring_constant).unspecified_element(), |v| {
-                    let (quo, rem) = ($ring_constant).euclidean_div_rem(v, rhs);
+                    let (quo, rem) = ($ring_constant).euclidean_div_rem(v, &rhs);
                     result = Some(quo);
                     return rem;
                 });

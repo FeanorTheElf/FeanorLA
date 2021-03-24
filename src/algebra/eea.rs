@@ -22,9 +22,9 @@ pub fn eea<R: Ring>(ring: &R, fst: R::El, snd: R::El) -> (R::El, R::El, R::El)
 
     // invariant: sa * a + ta * b = fst, sb * a + tb * b = snd
     while !ring.eq(&b, &ring.zero()) {
-        let (quot, rem) = ring.euclidean_div_rem(a, b.clone());
-        ta = ring.sub(ta, ring.mul_ref(quot.clone(), &tb));
-        sa = ring.sub(sa, ring.mul_ref(quot, &sb));
+        let (quot, rem) = ring.euclidean_div_rem(a, &b);
+        ta = ring.sub(ta, ring.mul_ref(&quot, &tb));
+        sa = ring.sub(sa, ring.mul_ref(&quot, &sb));
         a = rem;
         swap(&mut a, &mut b);
         swap(&mut sa, &mut sb);

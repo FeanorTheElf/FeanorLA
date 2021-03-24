@@ -86,11 +86,13 @@ impl Ring for QuotientRingZ {
         return QuotientRingZEl(result);
     }
 
-    fn mul_ref(&self, QuotientRingZEl(lhs): Self::El, QuotientRingZEl(rhs): &Self::El) -> Self::El {
-        assert!(lhs < self.modulus);
-        assert!(rhs < &self.modulus);
+    fn mul_ref(&self, QuotientRingZEl(lhs): &Self::El, QuotientRingZEl(rhs): &Self::El) -> Self::El {
+        assert!(*lhs < self.modulus);
+        assert!(*rhs < self.modulus);
 
-        let result = self.project_leq_n_square(lhs * rhs);
+        let result = self.project_leq_n_square(
+            BigInt::RING.mul_ref(lhs, rhs)
+        );
 
         assert!(result < self.modulus);
         return QuotientRingZEl(result);
@@ -134,22 +136,18 @@ impl Ring for QuotientRingZ {
         self.is_integral()
     }
 
-    fn euclidean_div_rem(
-        &self, _lhs: 
-        Self::El, _rhs: 
-        Self::El) -> (Self::El, Self::El) 
-    { 
+    fn euclidean_div_rem(&self, _lhs: Self::El, _rhs: &Self::El) -> (Self::El, Self::El) { 
         panic!("Not a euclidean domain!");
     }
 
-    fn div(&self, QuotientRingZEl(lhs): Self::El, QuotientRingZEl(rhs): Self::El) -> Self::El { 
-        match self.invert(rhs) {
+    fn div(&self, QuotientRingZEl(lhs): Self::El, QuotientRingZEl(rhs): &Self::El) -> Self::El { 
+        match self.invert(rhs.clone()) {
             Err(factor) => panic!("Tried to divide in Z/{}Z, however this is not a field and the divisor is not invertible (the modulus has the nontrivial factor {})", self.modulus, factor),
             Ok(inverse) => self.mul(QuotientRingZEl(lhs), QuotientRingZEl(inverse))
         }
     }
 
-    fn format(&self, QuotientRingZEl(el): &Self::El, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn format(&self, QuotientRingZEl(el): &Self::El, f: &mut std::fmt::Formatter, _in_prod: bool) -> std::fmt::Result {
         write!(f, "{} mod {}", el, self.modulus)
     }
 }

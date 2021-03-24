@@ -68,7 +68,7 @@ where R: Ring
     fn mul(self, rhs: Self) -> Self::Output {
         let res_el = {
             let vec = self.storage.borrow();
-            self.ring.mul_ref(vec[self.index].clone(), &vec[rhs.index])
+            self.ring.mul_ref(&vec[self.index], &vec[rhs.index])
         };
         return RingReferencingEl::create(self.ring, self.storage, res_el);
     }
@@ -111,9 +111,9 @@ where R: Ring
         let res_el = {
             let vec = self.storage.borrow();
             if self.ring.is_euclidean() {
-                self.ring.euclidean_div(vec[self.index].clone(), vec[rhs.index].clone())
+                self.ring.euclidean_div(vec[self.index].clone(), &vec[rhs.index])
             } else {
-                self.ring.div(vec[self.index].clone(), vec[rhs.index].clone())
+                self.ring.div(vec[self.index].clone(), &vec[rhs.index])
             }
         };
         return RingReferencingEl::create(self.ring, self.storage, res_el);
@@ -128,7 +128,7 @@ where R: Ring
     fn rem(self, rhs: Self) -> Self::Output {
         let res_el = {
             let vec = self.storage.borrow();
-            self.ring.euclidean_rem(vec[self.index].clone(), vec[rhs.index].clone())
+            self.ring.euclidean_rem(vec[self.index].clone(), &vec[rhs.index])
         };
         return RingReferencingEl::create(self.ring, self.storage, res_el);
     }
@@ -138,7 +138,7 @@ impl<'a, R> std::fmt::Display for RingReferencingEl<'a, R>
 where R: Ring
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        self.ring.format(&self.storage.borrow()[self.index], f)
+        self.ring.format(&self.storage.borrow()[self.index], f, false)
     }
 }
 
@@ -154,25 +154,14 @@ impl<'a, R> Eq for RingReferencingEl<'a, R>
 where R: Ring
 {}
 
-pub unsafe trait PostprocessOutput<T> {
+pub trait PostprocessOutput<T> {
 
     type Output;
 
     fn postprocess(self, vec: &Vec<T>) -> Self::Output;
 }
 
-unsafe impl<T, S> PostprocessOutput<T> for S {
-
-    default type Output = S;
-
-    default fn postprocess(self, _vec: &Vec<T>) -> Self::Output {
-        let result = unsafe { std::mem::transmute_copy(&self) };
-        std::mem::forget(self);
-        return result;
-    }
-}
-
-unsafe impl<'a, R> PostprocessOutput<R::El> for RingReferencingEl<'a, R> 
+impl<'a, R> PostprocessOutput<R::El> for RingReferencingEl<'a, R> 
     where R: Ring
 {
     type Output = R::El;

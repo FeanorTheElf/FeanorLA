@@ -689,11 +689,10 @@ impl Ring for BigIntRing {
         return lhs;
     }
 
-    fn mul_ref(&self, mut lhs: Self::El, rhs: &Self::El) -> Self::El {
-        let sign = lhs.negative ^ rhs.negative;
-        lhs = lhs.abs_multiplication(rhs);
-        lhs.negative = sign;
-        return lhs;
+    fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El {
+        let mut result = lhs.abs_multiplication(rhs);
+        result.negative = lhs.negative ^ rhs.negative;
+        return result;
     }
 
     fn neg(&self, mut val: Self::El) -> Self::El {
@@ -733,16 +732,24 @@ impl Ring for BigIntRing {
     fn is_euclidean(&self) -> bool { true }
     fn is_field(&self) -> bool { false }
     
-    fn euclidean_div_rem(&self, mut lhs: Self::El, rhs: Self::El) -> (Self::El, Self::El) {
-        let quotient = lhs.euclidean_div_rem(&rhs);
+    fn euclidean_div_rem(&self, mut lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) {
+        let quotient = lhs.euclidean_div_rem(rhs);
         return (quotient, lhs);
     }
 
-    fn div(&self, _lhs: Self::El, _rhs: Self::El) -> Self::El {
-        panic!("Not a field!");
+    fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
+        if *rhs == 1 {
+            return lhs;
+        } else if *rhs == -1 {
+            return -lhs;
+        } else if self.is_zero(rhs) {
+            panic!("division by zero")
+        } else {
+            panic!("Not a field!")
+        }
     }
 
-    fn format(&self, el: &BigInt, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn format(&self, el: &BigInt, f: &mut std::fmt::Formatter, _in_prod: bool) -> std::fmt::Result {
         if el.negative {
             write!(f, "-")?;
         }
