@@ -842,14 +842,14 @@ impl<M, T> std::fmt::Display for Matrix<M, T>
 use super::super::algebra::zn::*;
 
 #[test]
-#[ignore]
 fn test_mul_matrix() {
     let a: Matrix<_, i32> = Matrix::from_array([[0, 1], [1, 2]]);
-    let big: Matrix<_, Matrix<_, i32>> = Matrix::from_fn(2, 2, |_, _| a.clone());
-    let res: Matrix<MatrixOwned<Matrix<MatrixOwned<i32>, i32>>, Matrix<MatrixOwned<i32>, i32>> = unimplemented!();
+    let res = a.as_ref() * a.as_ref();
 
-    assert_eq!(2, *res.at(0, 0).at(0, 0));
-    assert_eq!(10, *res.at(0, 1).at(1, 1));
+    assert_eq!(1, *res.at(0, 0));
+    assert_eq!(2, *res.at(0, 1));
+    assert_eq!(2, *res.at(1, 0));
+    assert_eq!(5, *res.at(1, 1));
 }
 
 #[test]

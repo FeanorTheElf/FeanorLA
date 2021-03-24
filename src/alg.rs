@@ -340,11 +340,10 @@ where R: Ring
 }
 
 ///
-/// Trait to represent a ring as a collection of operations on the elements.
-/// More abstract functionality (global properties, like ideals) is not provided, 
-/// this is mainly an interface that can be used for algorithms that deal with
-/// ring elements.
-/// 
+/// Trait to represent a commutative ring with one as a collection of operations 
+/// on the elements. More abstract functionality (global properties, like ideals) 
+/// is not provided, this is mainly an interface that can be used for algorithms 
+/// that deal with ring elements.
 /// 
 pub trait Ring {
     type El: Sized + Clone + std::fmt::Debug;
@@ -368,6 +367,11 @@ pub trait Ring {
     //
 
     fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El;
+
+    ///
+    /// Calculates the product of lhs and rhs. Note that multiplication is assumed to
+    /// be commutative.
+    /// 
     fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El;
     fn neg(&self, val: Self::El) -> Self::El;
     fn zero(&self) -> Self::El;
@@ -437,37 +441,56 @@ pub trait Ring {
     fn is_one(&self, val: &Self::El) -> bool { self.eq(val, &self.one()) }
     fn is_neg_one(&self, val: &Self::El) -> bool { self.eq(val, &self.neg(self.one())) }
 
+    ///
+    /// Returns whether the ring is integral, so if there for all nonzero a, b it holds
+    /// that ab != 0. It it allowed to return false even for integral rings, as determining
+    /// whether the ring is integral might be computationally intractable. 
+    /// 
     fn is_integral(&self) -> bool;
+    ///
+    /// Returns whether the ring is euclidean, so whether the euclidean division and remainder
+    /// functions are implemented and behave correctly. It it allowed to return false even for 
+    /// euclidean rings, as determining whether the ring is euclidean might be computationally 
+    /// intractable, or (more likely) the euclidean division exist mathematically but cannot be 
+    /// computed efficiently.
+    /// 
     fn is_euclidean(&self) -> bool;
+    ///
+    /// Returns whether the ring is a field, so whether each nonzero element has a unique 
+    /// inverse. It it allowed to return false even for fields, as determining whether the 
+    /// ring is a field might be computationally intractable, or (more likely) the inverse
+    /// always exists but cannot be computed efficiently.
+    /// 
     fn is_field(&self) -> bool;
     
     ///
-    /// May panic if the ring is not euclidean. The first result is the quotient
-    /// and the second result the remainder. The inequality
+    /// May panic if the ring is not euclidean (meaning `is_euclidean() == true`). 
+    /// The first result is the quotient and the second result the remainder. 
+    /// The inequality
     ///  lhs = quo * rhs + rem
     /// must always hold.
     /// 
     fn euclidean_div_rem(&self, lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El);
 
     ///
-    /// May panic if the ring is not euclidean
+    /// May panic if the ring is not euclidean (meaning `is_euclidean() == true`).
     /// 
     fn euclidean_rem(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { 
         self.euclidean_div_rem(lhs, rhs).1 
     }
 
     ///
-    /// May panic if the ring is not euclidean
+    /// May panic if the ring is not euclidean (meaning `is_euclidean() == true`).
     /// 
     fn euclidean_div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
         self.euclidean_div_rem(lhs, rhs).0
     }
 
     ///
-    /// May panic if the ring is not a field. If it does not panic, the result
-    /// must be valid. For a non-field ring, it therefore must panic if rhs does not
-    /// divide lhs, and if it does, it may either compute the correct quotient but may
-    /// also panic nevertheless.
+    /// May panic if the ring is not a field (meaning `is_field() == true`). 
+    /// If it does not panic, the result must be valid. For a non-field ring, it therefore 
+    /// must panic if rhs does not divide lhs, and if it does, it may either compute the 
+    /// correct quotient but may also panic nevertheless.
     /// 
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El;
 
