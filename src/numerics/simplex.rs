@@ -107,10 +107,10 @@ fn eliminate<M, T>(mut table: Matrix<M, T>, row_index: usize, col_index: usize)
     for target_row_index in 0..table.row_count() {
         if target_row_index < row_index {
             let factor = table.at(target_row_index, col_index).clone();
-            table.transform_two_dims_left(target_row_index, row_index, &[T::one(), -factor, T::zero(), T::one()]);
+            table.transform_two_dims_left(target_row_index, row_index, &[T::one(), -factor, T::zero(), T::one()], &StaticRing::<T>::RING);
         } else if target_row_index > row_index {
             let factor = table.at(target_row_index, col_index).clone();
-            table.transform_two_dims_left(row_index, target_row_index, &[T::one(), T::zero(), -factor, T::one()]);
+            table.transform_two_dims_left(row_index, target_row_index, &[T::one(), T::zero(), -factor, T::one()], &StaticRing::<T>::RING);
         }
     }
 }
@@ -164,7 +164,7 @@ fn add_artificials<M, T>(table: Matrix<M, T>) -> (Matrix<MatrixOwned<T>, T>, Bas
         if *result.at(row_index, 0) < T::zero() {
             result.row_mut(row_index).mul_assign(-T::one());
         }
-        result.transform_two_dims_left(0, row_index, &[T::one(), T::one(), T::zero(), T::one()]);
+        result.transform_two_dims_left(0, row_index, &[T::one(), T::one(), T::zero(), T::one()], &StaticRing::<T>::RING);
     }
     for row_index in 1..rows {
         let basic_var_col = table.col_count() + row_index - 1;
