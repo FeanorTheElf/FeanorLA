@@ -1,5 +1,6 @@
 use super::super::alg::*;
 use super::super::la::mat::*;
+use super::super::la::ops::MatrixKernelBase;
 use super::bigint::*;
 use super::zn::*;
 use super::eea::*;
@@ -223,7 +224,7 @@ pub fn quadratic_sieve(n: &BigInt) -> BigInt {
         let matrix = Matrix::from_fn(factor_base.len(), relations.len(), |r, c| 
             F2::project(*relations[c].1.at(r) as i64)
         );
-        let solutions = matrix.kernel_base().unwrap();
+        let solutions = StaticRing::<F2>::RING.calc_matrix_kernel_space(matrix).unwrap();
 
         for i in 0..solutions.col_count() {
 

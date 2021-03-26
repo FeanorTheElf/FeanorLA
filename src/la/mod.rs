@@ -7,3 +7,4 @@ pub mod matrix_vector;
 pub mod submatrix;
 pub mod vec;
 pub mod mat;
+pub mod ops;

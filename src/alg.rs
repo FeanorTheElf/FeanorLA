@@ -515,39 +515,6 @@ pub fn display_ring_el<'a, R>(ring: &'a R, el: &'a R::El) -> RingElDisplay<'a, R
     }
 }
 
-///
-/// Provides a global constant that represents the ring whose elements
-/// are the given type. The ring operations are derived from the RingEl
-/// implementation on the element type.
-/// 
-/// Use only for not-expensive-to-copy objects.
-/// 
-pub struct StaticRingImpl<Axioms, T> 
-    where Axioms: RingAxioms, T: RingEl<Axioms = Axioms>
-{
-    element: std::marker::PhantomData<T>
-}
-
-impl<Axioms, T> Copy for StaticRingImpl<Axioms, T> 
-    where Axioms: RingAxioms, T: RingEl<Axioms = Axioms>
-{}
-
-impl<Axioms, T> Clone for StaticRingImpl<Axioms, T> 
-    where Axioms: RingAxioms, T: RingEl<Axioms = Axioms>
-{
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<A, T> StaticRingImpl<A, T> 
-    where A: RingAxioms, T: RingEl<Axioms = A>
-{
-    pub const RING: StaticRingImpl<A, T> = StaticRingImpl { 
-        element: std::marker::PhantomData 
-    };
-}
-
 impl<'a, R: Ring> Ring for &'a R {
     type El = R::El;
 
@@ -587,6 +554,38 @@ impl<'a, R: Ring> Ring for &'a R {
     fn format_in_brackets(&self, el: &Self::El, f: &mut std::fmt::Formatter) -> std::fmt::Result { (**self).format_in_brackets(el, f) }
 }
 
+///
+/// Provides a global constant that represents the ring whose elements
+/// are the given type. The ring operations are derived from the RingEl
+/// implementation on the element type.
+/// 
+/// Use only for not-expensive-to-copy objects.
+///
+pub struct StaticRingImpl<Axioms, T> 
+    where Axioms: RingAxioms, T: RingEl<Axioms = Axioms>
+{
+    element: std::marker::PhantomData<T>
+}
+
+impl<Axioms, T> Copy for StaticRingImpl<Axioms, T> 
+    where Axioms: RingAxioms, T: RingEl<Axioms = Axioms>
+{}
+
+impl<Axioms, T> Clone for StaticRingImpl<Axioms, T> 
+    where Axioms: RingAxioms, T: RingEl<Axioms = Axioms>
+{
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<A, T> StaticRingImpl<A, T> 
+    where A: RingAxioms, T: RingEl<Axioms = A>
+{
+    pub const RING: StaticRingImpl<A, T> = StaticRingImpl { 
+        element: std::marker::PhantomData 
+    };
+}
 impl<T> Ring for StaticRingImpl<T::Axioms, T>
     where T: RingEl
 {

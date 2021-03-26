@@ -1,7 +1,8 @@
 #![allow(non_snake_case)]
 use super::super::la::mat::*;
+use super::super::la::ops::MatrixFrobenius;
 use super::super::alg::*;
-use super::*;
+use super::super::float::*;
 use std::ops::AddAssign;
 
 fn two<T>() -> T
@@ -72,7 +73,7 @@ pub fn qr_decompose<M, T>(A: &mut Matrix<M, T>) -> Matrix<MatrixOwned<T>, T>
     for k in 0..A.col_count().min(A.row_count() - 1) {
         let mut y = y_base.subvector_mut(k..);
         let x = A.submatrix(k.., k..=k);
-        let gamma = two.clone() * x.frobenius_square(&StaticRing::<T>::RING).sqrt();
+        let gamma = two.clone() * StaticRing::<T>::RING.calc_matrix_frobenius_norm_square(x.as_ref()).sqrt();
 
         // by choosing this correctly, the addition for y1 involves two positive
         // numbers, preventing catastrophic cancellation

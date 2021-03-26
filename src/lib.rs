@@ -12,6 +12,7 @@ extern crate test;
 
 #[macro_use]
 pub mod alg;
+pub mod float;
 #[macro_use]
 pub mod alg_env;
 

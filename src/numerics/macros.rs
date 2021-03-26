@@ -1,4 +1,4 @@
-pub use crate::numerics::ApproxEq;
+pub use crate::float::ApproxEq;
 
 macro_rules! assert_approx_eq {
     ($left:expr, $right:expr, $delta:expr) => {
