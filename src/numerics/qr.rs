@@ -61,16 +61,18 @@ fn sgn<T>(val: &T) -> T
 /// upper triangle matrix R such that A = QR. The matrix Q is returned
 /// and R is assigned to the input matrix.
 /// 
-pub fn qr_decompose<M, T>(mut A: Matrix<M, T>) -> Matrix<MatrixOwned<T>, T>
-    where M: MatrixViewMut<T>, T: Float + Root
+pub fn qr_decompose<M, T>(A: &mut Matrix<M, T>) -> Matrix<MatrixOwned<T>, T>
+    where M: MatrixViewMut<T>, T: Float + Root + std::fmt::Display
 {
     let mut Q = Matrix::identity(A.row_count(), A.row_count());
     let mut y_base = Vector::zero(A.row_count());
     let half = T::one() / two::<T>();
-    for k in 0..(A.col_count().min(A.row_count()) - 1) {
+    let two = two::<T>();
+
+    for k in 0..A.col_count().min(A.row_count() - 1) {
         let mut y = y_base.subvector_mut(k..);
         let x = A.submatrix(k.., k..=k);
-        let gamma = two::<T>().clone() * x.frobenius_square(&StaticRing::<T>::RING).sqrt();
+        let gamma = two.clone() * x.frobenius_square(&StaticRing::<T>::RING).sqrt();
 
         // by choosing this correctly, the addition for y1 involves two positive
         // numbers, preventing catastrophic cancellation
@@ -98,16 +100,57 @@ fn test_qr() {
                                     [0., 2., 2.]]);
     
     #[rustfmt::skip]
-    let q = Matrix::from_array([[-0.707, 0.236,  0.667], 
+    let q = Matrix::from_array([[-0.707,  0.236,  0.667], 
                                 [-0.707, -0.236, -0.667], 
-                                [0.,     -0.943, 0.333]]);
+                                [0.,     -0.943,  0.333]]);
 
     #[rustfmt::skip]
     let r = Matrix::from_array([[-1.414, -0.707, -1.414], 
                                 [0.,     -2.121, -1.886], 
-                                [0.,     0.,     0.667]]);
+                                [0.,      0.,     0.667]]);
                                 
-    let actual_q = qr_decompose(m.as_mut());
+    let actual_q = qr_decompose(&mut m);
     assert_approx_eq!(q, &actual_q, 0.005);
     assert_approx_eq!(r, &m, 0.005);
+}
+
+#[test]
+fn test_qr_rows_ge_cols() {
+    #[rustfmt::skip]
+    let mut m = Matrix::from_array([[1., 0.], 
+                                    [1., 1.], 
+                                    [0., 2.]]);
+
+    #[rustfmt::skip]
+    let q = Matrix::from_array([[-0.707,  0.236,  0.666], 
+                                [-0.707, -0.236, -0.6666], 
+                                [0.,     -0.943,  0.333]]);
+    
+    #[rustfmt::skip]
+    let r = Matrix::from_array([[-1.414, -0.707], 
+                                [0.,     -2.121], 
+                                [0.,      0.]]);
+
+    let actual_q = qr_decompose(&mut m);
+    assert_approx_eq!(r, &m, 0.005);
+    assert_approx_eq!(q, &actual_q, 0.005);
+}
+
+#[test]
+fn test_qr_cols_ge_rows() {
+    #[rustfmt::skip]
+    let mut m = Matrix::from_array([[1., 0., 3.], 
+                                    [1., 1., 2.]]);
+
+    #[rustfmt::skip]
+    let q = Matrix::from_array([[-0.707, -0.707],
+                                [-0.707,  0.707]]);
+    
+    #[rustfmt::skip]
+    let r = Matrix::from_array([[-1.414, -0.707, -3.535],
+                                [ 0.   ,  0.707, -0.707]]);
+
+    let actual_q = qr_decompose(&mut m);
+    assert_approx_eq!(r, &m, 0.005);
+    assert_approx_eq!(q, &actual_q, 0.005);
 }

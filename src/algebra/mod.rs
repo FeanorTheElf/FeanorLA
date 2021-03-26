@@ -7,3 +7,4 @@ pub mod poly;
 pub mod sieve;
 pub mod primes;
 pub mod diophantine;
+pub mod ellipsoid;

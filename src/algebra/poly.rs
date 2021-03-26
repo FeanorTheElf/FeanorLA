@@ -105,14 +105,14 @@ impl<R> MultivariatePolyRing<R>
     /// Evaluates the given polynomial at the given values, i.e. calculates the
     /// value in the base ring of the expression one gets from replacing the
     /// i-th unknown by the i-th given value in the formal sum representation
-    /// of this polynomial.
+    /// of this polynomial. This algorithm is optimized for base rings in which
+    /// multiplication is expensive.
     /// 
     /// # Complexity
     /// 
-    /// Complexity is O(V * N) where V is the number of variables and N is the
-    /// number of monomials in the given polynomial. The number of multiplications
-    /// in the base ring is O(V * P) where P is the highest power of any variable
-    /// occuring in the polynomial.
+    /// Complexity is O(V * N + V * P * T) where V is the number of variables, N is
+    /// the number of monomials in the given polynomial, P is the highest power of a
+    /// variable and T is the complexity of a multiplication in the base ring.
     /// 
     pub fn evaluate_at(&self, mut poly: <Self as Ring>::El, values: &[R::El]) -> R::El {
         self.assert_valid(&poly);
@@ -187,12 +187,19 @@ impl<R> Ring for MultivariatePolyRing<R>
         return lhs;
     }
 
+    ///
+    /// # Complexity
+    /// 
+    /// The complexity is O(N^2 * V + N^2 * T) where N is the number of monomials
+    /// in lhs resp. rhs, V is the count of variables and T is the complexity of
+    /// a multiplication in the base ring of two coefficients.
+    /// 
     fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El {
         self.assert_valid(&lhs);
         self.assert_valid(&rhs);
 
         let mut result = self.zero();
-        for (lhs_vars, lhs_coeff) in lhs.into_iter() {
+        for (lhs_vars, lhs_coeff) in lhs.iter() {
             for (rhs_vars, rhs_coeff) in rhs.iter() {
                 let mut new_vars = lhs_vars.clone();
                 let common_index = rhs_vars.len().min(lhs_vars.len());
