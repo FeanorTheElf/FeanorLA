@@ -494,6 +494,18 @@ pub trait Ring {
     /// 
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El;
 
+    fn from_z(&self, x: i64) -> Self::El {
+        let mut result = self.zero();
+        for i in 0..x.abs() {
+            result = self.add(self.one(), result);
+        }
+        if x < 0 {
+            return self.neg(result);
+        } else {
+            return result;
+        }
+    }
+
     fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, _in_prod: bool) -> std::fmt::Result {
         write!(f, "{:?}", el)
     }
@@ -586,6 +598,7 @@ impl<A, T> StaticRingImpl<A, T>
         element: std::marker::PhantomData 
     };
 }
+
 impl<T> Ring for StaticRingImpl<T::Axioms, T>
     where T: RingEl
 {

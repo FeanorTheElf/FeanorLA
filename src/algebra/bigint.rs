@@ -749,6 +749,10 @@ impl Ring for BigIntRing {
         }
     }
 
+    fn from_z(&self, x: i64) -> BigInt {
+        BigInt::from(x)
+    }
+
     fn format(&self, el: &BigInt, f: &mut std::fmt::Formatter, _in_prod: bool) -> std::fmt::Result {
         if el.negative {
             write!(f, "-")?;

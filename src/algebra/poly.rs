@@ -1,4 +1,5 @@
 use super::super::alg::*;
+use super::super::la::mat::*;
 
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
@@ -14,6 +15,30 @@ pub struct MultivariatePolyRing<R>
 impl<R> MultivariatePolyRing<R>
     where R: Ring
 {
+    fn truncate_element_zeros(el: &mut Vec<usize>) {
+        el.truncate(
+            el.len() - el.iter().rev().take_while(|x| **x == 0).count()
+        );
+    }
+
+    pub fn derive(&self, el: &<Self as Ring>::El, var: usize) -> <Self as Ring>::El {
+        let mut result = BTreeMap::new();
+        for (key, coeff) in el {
+            if var < key.len() && key[var] > 0 {
+                let mut new_key = key.clone();
+                let new_coeff = self.base_ring.mul_ref(&self.base_ring.from_z(key[var] as i64), coeff);
+                new_key[var] -= 1;
+                Self::truncate_element_zeros(&mut new_key);
+                result.insert(new_key, new_coeff);
+            }
+        }
+        return result;
+    }
+
+    pub fn gradient(&self, el: &<Self as Ring>::El) -> Vector<VectorOwned<<Self as Ring>::El>, <Self as Ring>::El> {
+        Vector::from_fn(self.var_names.len(), |i| self.derive(el, i))
+    }
+
     fn elevate_var_ring(&self, var: usize) -> PolyRing<&MultivariatePolyRing<R>> {
         PolyRing::adjoint(self, self.var_names[var])
     }
@@ -27,9 +52,7 @@ impl<R> MultivariatePolyRing<R>
             let pow = *key.get(var).unwrap_or(&0);
             if var < key.len() {
                 key[var] = 0;
-                key.truncate(
-                    key.len() - key.iter().rev().take_while(|x| **x == 0).count()
-                );
+                Self::truncate_element_zeros(&mut key);
             }
             result.resize_with(result.len().max(pow + 1), || self.zero());
             let v = &mut result[pow];
@@ -372,6 +395,14 @@ pub struct PolyRing<R>
 impl<R> PolyRing<R>
     where R: Ring
 {
+    pub fn derive(&self, el: &<Self as Ring>::El) -> <Self as Ring>::El {
+        let mut result = Vec::with_capacity(el.len());
+        for i in 1..el.len() {
+            result.push(self.base_ring.mul_ref(&self.base_ring.from_z(i as i64), &el[i]));
+        }
+        return result;
+    }
+
     pub const fn adjoint(base_ring: R, var_name: &'static str) -> Self {
         PolyRing {
             base_ring, var_name
@@ -762,4 +793,24 @@ fn test_elevate_var() {
     let original = ring.de_elevate_var(1, actual);
     println!("{} ?= {}", display_ring_el(&ring, &p), display_ring_el(&ring, &original));
     assert!(ring.eq(&p, &original));
+}
+
+#[test]
+fn test_gradient() {
+    let mut ring = MultivariatePolyRing::new(StaticRing::<i32>::RING);
+    let x = ring.adjoint("X");
+    let y = ring.adjoint("Y");
+    let one = ring.one();
+
+    let p = fixed_ring_env!{ &ring; x, y, one; {
+        x + x * x * y + x * y + (one + one) * x * x * x
+    }};
+    let dx = fixed_ring_env!{ &ring; x, y, one; {
+        (one + y) + (one + one) * x * y + (one + one) * (one + one + one) * x * x
+    }};
+    let dy = fixed_ring_env!{ &ring; x; {
+        x * x + x
+    }};
+    assert_eq!(dx, ring.derive(&p, 0));
+    assert_eq!(dy, ring.derive(&p, 1));
 }

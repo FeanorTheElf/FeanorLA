@@ -122,6 +122,12 @@ impl<T> Vector<VectorOwned<T>, T> {
             VectorOwned::from_array(data)
         )
     }
+
+    pub fn from_fn<F>(len: usize, f: F) -> Self
+        where F: FnMut(usize) -> T
+    {
+        Vector::new(VectorOwned::from_fn(len, f))
+    }
 }
 
 impl<V, T> Vector<V, T>
