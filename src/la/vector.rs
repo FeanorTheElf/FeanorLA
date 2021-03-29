@@ -1,4 +1,3 @@
-use super::super::alg::*;
 use super::vector_view::*;
 use std::marker::PhantomData;
 
