@@ -1,6 +1,7 @@
 use super::super::alg::*;
 use super::vector_view::*;
 use super::matrix_vector::*;
+use super::constant::*;
 use super::ops::*;
 use super::vector::*;
 
@@ -155,10 +156,8 @@ impl<V, T> Eq for Vector<V, T>
 impl<V, T> Vector<V, T>
     where V: VectorView<T>, T: Clone
 {
-    pub fn to_owned(&self) -> Vector<VectorOwned<T>, T> {
-        Vector::new(
-            VectorOwned::from_fn(self.len(), |i| self.at(i).clone())
-        )
+    pub fn to_owned(self) -> Vector<VectorOwned<T>, T> {
+        Vector::new(self.data.to_owned())
     }
 }
 
@@ -245,11 +244,21 @@ impl<V, T> MulAssign<T> for Vector<V, T>
     }
 }
 
-impl<T> Vector<VectorOwned<T>, T>
+impl<T> Vector<VectorConstant<T>, T>
+    where T: std::fmt::Debug + Clone
+{
+    pub fn zero_ring<R>(len: usize, ring: &R) -> Self 
+        where R: Ring<El = T>
+    {
+        Vector::new(VectorConstant::new(len, ring.zero()))
+    }
+}
+
+impl<T> Vector<VectorConstant<T>, T>
     where T: Zero
 {
     pub fn zero(len: usize) -> Self {
-        Vector::new(VectorOwned::zero(len))
+        Vector::new(VectorConstant::new(len, T::zero()))
     }
 }
 

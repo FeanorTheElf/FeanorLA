@@ -53,7 +53,7 @@ fn around_zero_iter() -> impl Iterator<Item = i64> {
 type RelVec = Vector<VectorOwned<i32>, i32>;
 
 fn check_smooth(mut k: BigInt, factor_base: &Vec<i64>) -> Option<RelVec> {
-    let mut result = RelVec::zero(factor_base.len());
+    let mut result = Vector::zero(factor_base.len()).to_owned();
     assert!(factor_base[0] == -1);
     if k < 0 {
         *result.at_mut(0) = 1;
@@ -134,7 +134,7 @@ fn check_congruent_square<V>(
     where V: VectorView<ZnEl<2>>
 {
     let mut x = BigInt::one();
-    let mut y_powers = RelVec::zero(factor_base.len());
+    let mut y_powers = Vector::zero(factor_base.len()).to_owned();
     for (i, rel) in relations.iter().enumerate() {
         if *sol.at(i) == F2::ONE {
             x *= &rel.0;

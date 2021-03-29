@@ -8,6 +8,7 @@ pub use super::vector::*;
 pub use super::submatrix::*;
 pub use super::matrix_vector::*;
 pub use super::matrix_row_col::*;
+pub use super::constant::*;
 
 use std::marker::PhantomData;
 use std::ops::{AddAssign, Sub, SubAssign, MulAssign, Add, Mul, RangeBounds, Bound};
@@ -420,12 +421,24 @@ impl<M, T> MulAssign<T> for Matrix<M, T>
     }
 }
 
-impl<T> Matrix<MatrixOwned<T>, T>
+impl<T> Matrix<MatrixConstant<T>, T>
     where T: Zero
 {
     pub fn zero(rows: usize, cols: usize) -> Self {
         Matrix::new(
-            MatrixOwned::from_fn(rows, cols, |_, _| T::zero())
+            MatrixConstant::new(rows, cols, T::zero())
+        )
+    }
+}
+
+impl<T> Matrix<MatrixConstant<T>, T>
+    where T: std::fmt::Debug + Clone
+{
+    pub fn zero_ring<R>(rows: usize, cols: usize, ring: &R) -> Self 
+        where R: Ring<El = T>
+    {
+        Matrix::new(
+            MatrixConstant::new(rows, cols, ring.zero())
         )
     }
 }
@@ -433,14 +446,6 @@ impl<T> Matrix<MatrixOwned<T>, T>
 impl<T> Matrix<MatrixOwned<T>, T>
     where T: std::fmt::Debug + Clone
 {
-    pub fn zero_ring<R>(rows: usize, cols: usize, ring: &R) -> Self 
-        where R: Ring<El = T>
-    {
-        Matrix::new(
-            MatrixOwned::from_fn(rows, cols, |_, _| ring.zero())
-        )
-    }
-
     pub fn identity_ring<R>(rows: usize, cols: usize, ring: &R) -> Self 
         where R: Ring<El = T>
     {

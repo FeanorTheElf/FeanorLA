@@ -2,11 +2,6 @@ use super::super::alg::*;
 use super::vector_view::*;
 use std::marker::PhantomData;
 
-#[derive(Debug, Clone)]
-pub struct VectorOwned<T> {
-    data: Box<[T]>,
-}
-
 #[derive(Debug)]
 pub struct VectorRef<'a, V, T> 
     where V: VectorView<T>
@@ -35,33 +30,6 @@ impl<'a, V, T> Clone for VectorRef<'a, V, T>
 {
     fn clone(&self) -> Self {
         *self
-    }
-}
-
-impl<T> VectorView<T> for VectorOwned<T> {
-
-    fn len(&self) -> usize {
-        self.data.len()
-    }
-
-    fn at(&self, index: usize) -> &T {
-        &self.data[index]
-    }
-}
-
-impl<T> VectorViewMut<T> for VectorOwned<T> {
-
-    fn at_mut(&mut self, index: usize) -> &mut T {
-        &mut self.data[index]
-    }
-
-    fn swap(&mut self, i: usize, j: usize) {
-        self.assert_in_range(i);
-        self.assert_in_range(j);
-        if i == j {
-            return;
-        }
-        self.data.swap(i, j);
     }
 }
 
@@ -133,41 +101,6 @@ impl<'a, V, T> VectorRefMut<'a, V, T>
         }
     }
 }
-
-impl<T> VectorOwned<T> {
-
-    pub fn new(data: Box<[T]>) -> VectorOwned<T> {
-        VectorOwned { data }
-    }
-
-    pub fn from_fn<F>(len: usize, mut f: F) -> Self
-        where F: FnMut(usize) -> T
-    {
-        Self::new((0..len).map(|i| f(i)).collect::<Vec<_>>().into_boxed_slice())
-    }
-
-    pub fn from_array<const L: usize>(data: [T; L]) -> Self {
-        VectorOwned::new(std::array::IntoIter::new(data).collect::<Vec<_>>().into_boxed_slice())
-    }
-}
-
-impl<T> VectorOwned<T>
-    where T: Zero 
-{
-    pub fn zero(len: usize) -> VectorOwned<T> {
-        VectorOwned::new((0..len).map(|_| T::zero()).collect::<Vec<T>>().into_boxed_slice())
-    }
-}
-
-impl<T> VectorOwned<T>
-    where T: Zero + One 
-{
-    pub fn unit_vector(index: usize, len: usize) -> VectorOwned<T> {
-        assert!(index < len, "Expected index of 1-entry in unit vector to be within 0 and {}, got {}", len, index);
-        VectorOwned::new((0..len).map(|i| if i == index { T::one() } else { T::zero() }).collect::<Vec<T>>().into_boxed_slice())
-    }
-}
-
 
 #[derive(Debug)]
 pub struct VectorRestriction<V, T>

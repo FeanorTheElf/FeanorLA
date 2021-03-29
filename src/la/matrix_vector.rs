@@ -2,11 +2,24 @@ use super::matrix_view::*;
 use super::vector_view::*;
 use std::marker::PhantomData;
 
+#[derive(Debug)]
 pub struct ColumnVector<V, T>
     where V: VectorView<T>
 {
     base: V,
     element: PhantomData<T>
+}
+
+impl<V, T> Copy for ColumnVector<V, T>
+    where V: VectorView<T> + Copy
+{}
+
+impl<V, T> Clone for ColumnVector<V, T>
+    where V: VectorView<T> + Copy
+{
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl<V, T> ColumnVector<V, T>
@@ -54,11 +67,24 @@ impl<V, T> MatrixViewMut<T> for ColumnVector<V, T>
     }
 }
 
+#[derive(Debug)]
 pub struct RowVector<V, T>
     where V: VectorView<T>
 {
     base: V,
     element: PhantomData<T>
+}
+
+impl<V, T> Copy for RowVector<V, T>
+    where V: VectorView<T> + Copy
+{}
+
+impl<V, T> Clone for RowVector<V, T>
+    where V: VectorView<T> + Copy
+{
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl<V, T> RowVector<V, T>

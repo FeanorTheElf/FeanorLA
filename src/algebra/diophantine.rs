@@ -21,7 +21,7 @@ pub fn diophantine_solve<M, V>(
         0,
     );
     // x is solution of (L * smith_A) x = b, get result through r := R^-1 * x
-    let mut x = Vector::zero(A.col_count());
+    let mut x = Vector::zero(A.col_count()).to_owned();
     let c = iL * Matrix::col_vec(b);
     for i in 0..usize::min(x.len(), A.row_count()) {
         let entry = *smith_A.at(i, i);

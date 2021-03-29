@@ -1,7 +1,7 @@
 use super::alg::FieldEl;
 use super::la::mat::*;
 
-pub trait ApproxEq<D = Self> {
+pub trait ApproxEq<Rhs = Self, D = Self> {
     ///
     /// Checks whether self is approximately equal to rhs, with
     /// a relative or absolute error of at most delta.
@@ -24,10 +24,11 @@ pub trait ApproxEq<D = Self> {
     /// However, if those greater values are the result of longer
     /// computations, then clearly, this is the case.
     /// 
-    fn approx_eq(&self, rhs: &Self, delta: &D) -> bool;
+    fn approx_eq(&self, rhs: &Rhs, delta: &D) -> bool;
 }
 
-impl ApproxEq<f64> for f64 {
+impl ApproxEq for f64 {
+
     fn approx_eq(&self, rhs: &Self, delta: &f64) -> bool {
         if (self.abs() + rhs.abs()) < 100. * *delta {
             (self - rhs).abs() < *delta
@@ -37,7 +38,8 @@ impl ApproxEq<f64> for f64 {
     }
 }
 
-impl ApproxEq<f32> for f32 {
+impl ApproxEq for f32 {
+
     fn approx_eq(&self, rhs: &Self, delta: &f32) -> bool {
         if (self.abs() + rhs.abs()) < 100. * *delta {
             (self - rhs).abs() < *delta
@@ -47,10 +49,10 @@ impl ApproxEq<f32> for f32 {
     }
 }
 
-impl<M, T, D> ApproxEq<D> for Matrix<M, T>
-    where M: MatrixView<T>, T: ApproxEq<D>
+impl<M, N, T, D> ApproxEq<Matrix<N, T>, D> for Matrix<M, T>
+    where M: MatrixView<T>, N: MatrixView<T>, T: ApproxEq<T, D>
 {
-    fn approx_eq(&self, rhs: &Self, delta: &D) -> bool {
+    fn approx_eq(&self, rhs: &Matrix<N, T>, delta: &D) -> bool {
         for row in 0..self.row_count() {
             for col in 0..self.col_count() {
                 if !self.at(row, col).approx_eq(rhs.at(row, col), delta) {
@@ -62,10 +64,10 @@ impl<M, T, D> ApproxEq<D> for Matrix<M, T>
     }
 }
 
-impl<V, T, D> ApproxEq<D> for Vector<V, T>
-    where V: VectorView<T>, T: ApproxEq<D>
+impl<V, W, T, D> ApproxEq<Vector<W, T>, D> for Vector<V, T>
+    where V: VectorView<T>, W: VectorView<T>, T: ApproxEq<T, D>
 {
-    fn approx_eq(&self, rhs: &Self, delta: &D) -> bool {
+    fn approx_eq(&self, rhs: &Vector<W, T>, delta: &D) -> bool {
         for i in 0..self.len() {
             if !self.at(i).approx_eq(rhs.at(i), delta) {
                 return false;

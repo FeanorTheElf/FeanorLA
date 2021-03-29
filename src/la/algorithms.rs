@@ -281,7 +281,7 @@ impl<M, T> Matrix<M, T>
         }
         let upper_part = effective_matrix.row_count();
         let lower_part = effective_matrix.col_count() - effective_matrix.row_count();
-        let mut result = Matrix::zero_ring(upper_part + lower_part, lower_part, ring);
+        let mut result = Matrix::zero_ring(upper_part + lower_part, lower_part, ring).to_owned();
 
         // set to identity in the lower part
         for i in 0..lower_part {
