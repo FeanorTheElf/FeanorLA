@@ -168,8 +168,6 @@ impl<'b, M, T: 'static> MatrixMutRowIter<T> for MatrixRefMut<'b, M, T>
 {}
 
 #[cfg(test)]
-use super::matrix_owned::MatrixOwned;
-#[cfg(test)]
 use super::vector_view::*;
 
 #[test]

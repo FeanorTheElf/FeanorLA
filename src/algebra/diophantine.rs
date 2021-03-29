@@ -11,7 +11,7 @@ pub fn diophantine_solve<M, V>(
 ) -> Option<Vector<VectorOwned<Item>, Item>> 
     where M: MatrixView<Item>, V: VectorView<Item>
 {
-    let mut smith_A = A.to_owned();
+    let mut smith_A = A.as_ref().to_owned();
     let mut iL = Matrix::identity(A.row_count(), A.row_count());
     let mut iR = Matrix::identity(A.col_count(), A.col_count());
     partial_smith(

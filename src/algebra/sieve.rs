@@ -50,7 +50,7 @@ fn around_zero_iter() -> impl Iterator<Item = i64> {
     });
 }
 
-type RelVec = Vector<VectorOwned<u32>, u32>;
+type RelVec = Vector<VectorOwned<i32>, i32>;
 
 fn check_smooth(mut k: BigInt, factor_base: &Vec<i64>) -> Option<RelVec> {
     let mut result = RelVec::zero(factor_base.len());
@@ -146,7 +146,7 @@ fn check_congruent_square<V>(
     for i in 0..factor_base.len() {
         let power = *y_powers.at(i);
         debug_assert!(power % 2 == 0);
-        y *= BigInt::from(factor_base[i]).pow(power / 2);
+        y *= BigInt::from(factor_base[i]).pow(power as u32 / 2);
     }
 
     let factor = gcd(&BigInt::RING, n.clone(), x.clone() - y.clone());

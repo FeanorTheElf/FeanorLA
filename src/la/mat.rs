@@ -6,19 +6,30 @@ pub use super::vector_view::*;
 pub use super::vec::*;
 pub use super::vector::*;
 pub use super::submatrix::*;
-pub use super::matrix_owned::*;
 pub use super::matrix_vector::*;
 pub use super::matrix_row_col::*;
 
 use std::marker::PhantomData;
 use std::ops::{AddAssign, Sub, SubAssign, MulAssign, Add, Mul, RangeBounds, Bound};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct Matrix<M, T>
     where M: MatrixView<T>
 {
     data: M,
     element: PhantomData<T>
+}
+
+impl<M, T> Copy for Matrix<M, T>
+    where M: MatrixView<T> + Copy
+{}
+
+impl<M, T> Clone for Matrix<M, T>
+    where M: MatrixView<T> + Copy
+{
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl<M, T> Matrix<M, T>
@@ -220,10 +231,8 @@ impl<M, T> Matrix<M, T>
 impl<M, T> Matrix<M, T>
     where M: MatrixView<T>, T: Clone
 {
-    pub fn to_owned(&self) -> Matrix<MatrixOwned<T>, T> {
-        Matrix::new(
-            MatrixOwned::from_fn(self.row_count(), self.col_count(), |i, j| self.at(i, j).clone())
-        )
+    pub fn to_owned(self) -> Matrix<MatrixOwned<T>, T> {
+        Matrix::new(self.data.to_owned())
     }
 
     pub fn copy_vec(&self) -> Vector<VectorOwned<T>, T> {

@@ -496,7 +496,7 @@ pub trait Ring {
 
     fn from_z(&self, x: i64) -> Self::El {
         let mut result = self.zero();
-        for i in 0..x.abs() {
+        for _ in 0..x.abs() {
             result = self.add(self.one(), result);
         }
         if x < 0 {

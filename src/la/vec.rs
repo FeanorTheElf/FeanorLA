@@ -7,12 +7,24 @@ use super::vector::*;
 use std::marker::PhantomData;
 use std::ops::{AddAssign, Add, SubAssign, Sub, MulAssign, RangeBounds, Bound};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct Vector<V, T>
     where V: VectorView<T>
 {
     data: V,
     element: PhantomData<T>
+}
+
+impl<V, T> Copy for Vector<V, T>
+    where V: VectorView<T> + Copy
+{}
+
+impl<V, T> Clone for Vector<V, T>
+    where V: VectorView<T> + Copy
+{
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl<V, T> Vector<V, T>
