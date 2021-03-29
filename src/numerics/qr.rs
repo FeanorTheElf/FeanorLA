@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 use super::super::la::mat::*;
-use super::super::la::ops::MatrixFrobenius;
+use super::super::la::algorithms::MatrixFrobenius;
 use super::super::alg::*;
 use super::super::float::*;
 use std::ops::AddAssign;

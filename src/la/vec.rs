@@ -1,9 +1,11 @@
 use super::super::alg::*;
 use super::vector_view::*;
+use super::matrix_vector::*;
+use super::ops::*;
 use super::vector::*;
 
 use std::marker::PhantomData;
-use std::ops::{AddAssign, Add, Mul, MulAssign, RangeBounds, Bound};
+use std::ops::{AddAssign, Add, SubAssign, Sub, MulAssign, RangeBounds, Bound};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Vector<V, T>
@@ -78,13 +80,46 @@ impl<V, T> Vector<V, T>
             VectorRefMut::new(begin, end, &mut self.data)
         )
     }
-    
-    pub fn scale<U>(&mut self, rhs: U) 
-        where T: MulAssign<U>, U: Clone
+}
+
+impl<V, T> Vector<V, T>
+    where V: VectorViewMut<T>, T: Clone + std::fmt::Debug
+{
+    pub fn scale<R>(&mut self, rhs: &T, ring: &R) 
+        where R: Ring<El = T>
     {
-        for i in 0..self.len() {
-            *self.at_mut(i) *= rhs.clone();
-        }
+        <R as MatrixScale<_>>::scale_matrix(ring, rhs, &mut self.as_mut().as_column_vector());
+    }
+
+    pub fn add_assign<R, W>(&mut self, rhs: Vector<W, T>, ring: &R)
+        where R: Ring<El = T>, W: VectorView<T>
+    {
+        <R as MatrixAddAssign<_, _>>::add_assign_matrix(ring, &mut self.as_mut().as_column_vector(), rhs.as_ref().as_column_vector());
+    }
+
+    pub fn sub_assign<R, W>(&mut self, rhs: Vector<W, T>, ring: &R)
+        where R: Ring<El = T>, W: VectorView<T>
+    {
+        <R as MatrixAddAssign<_, _>>::sub_assign_matrix(ring, &mut self.as_mut().as_column_vector(), rhs.as_ref().as_column_vector());
+    }
+}
+impl<V, T> Vector<V, T>
+    where V: VectorView<T>, T: Clone + std::fmt::Debug
+{
+    pub fn add<R, W>(self, rhs: Vector<W, T>, ring: &R) -> Vector<VectorOwned<T>, T>
+        where R: Ring<El = T>, W: VectorView<T>
+    {
+        let mut result = self.to_owned();
+        <R as MatrixAddAssign<_, _>>::add_assign_matrix(ring, &mut result.as_mut().as_column_vector(), rhs.as_ref().as_column_vector());
+        return result;
+    }
+
+    pub fn sub<R, W>(self, rhs: Vector<W, T>, ring: &R) -> Vector<VectorOwned<T>, T>
+        where R: Ring<El = T>, W: VectorView<T>
+    {
+        let mut result = self.to_owned();
+        <R as MatrixAddAssign<_, _>>::sub_assign_matrix(ring, &mut result.as_mut().as_column_vector(), rhs.as_ref().as_column_vector());
+        return result;
     }
 }
 
@@ -131,6 +166,22 @@ impl<T> Vector<VectorOwned<T>, T> {
 }
 
 impl<V, T> Vector<V, T>
+    where V: VectorView<T>
+{
+    pub fn as_column_vector(self) -> ColumnVector<V, T> {
+        ColumnVector::new(self.data)
+    }
+}
+
+impl<V, T> Vector<V, T>
+    where V: VectorView<T>
+{
+    pub fn as_row_vector(self) -> RowVector<V, T> {
+        RowVector::new(self.data)
+    }
+}
+
+impl<V, T> Vector<V, T>
     where V: VectorViewMut<T>
 {
     pub fn at_mut(&mut self, i: usize) -> &mut T {
@@ -138,51 +189,47 @@ impl<V, T> Vector<V, T>
     }
 }
 
-impl<V, T, W, U> AddAssign<Vector<W, U>> for Vector<V, T>
-    where V: VectorViewMut<T>, W: VectorView<U>, U: Clone, T: AddAssign<U>
+impl<V, T, W> AddAssign<Vector<W, T>> for Vector<V, T>
+    where V: VectorViewMut<T>, W: VectorView<T>, T: RingEl
 {
-    fn add_assign(&mut self, rhs: Vector<W, U>) {
-        assert_eq!(self.len(), rhs.len());
-        for i in 0..self.len() {
-            *self.at_mut(i) += rhs.at(i).clone();
-        }
+    fn add_assign(&mut self, rhs: Vector<W, T>) {
+        self.add_assign(rhs, &StaticRing::<T>::RING)
     }
 }
 
-impl<V, T, W, U> Add<Vector<W, U>> for Vector<V, T>
-    where V: VectorView<T>, W: VectorView<U>, U: Clone, T: Add<U> + Clone
+impl<V, T, W> SubAssign<Vector<W, T>> for Vector<V, T>
+    where V: VectorViewMut<T>, W: VectorView<T>, T: RingEl
 {
-    type Output = Vector<VectorOwned<T::Output>, T::Output>;
-
-    fn add(self, rhs: Vector<W, U>) -> Self::Output {
-        // TODO: Implementation that does not require U, T: Clone
-        assert_eq!(self.len(), rhs.len());
-        Vector::new(
-            VectorOwned::from_fn(self.len(), |i| self.at(i).clone() + rhs.at(i).clone())
-        )
+    fn sub_assign(&mut self, rhs: Vector<W, T>) {
+        self.sub_assign(rhs, &StaticRing::<T>::RING)
     }
 }
 
-impl<V, T, U> MulAssign<U> for Vector<V, T>
-    where V: VectorViewMut<T>, U: Clone, T: MulAssign<U>
+impl<V, T, W> Add<Vector<W, T>> for Vector<V, T>
+    where V: VectorView<T>, W: VectorView<T>, T: RingEl
 {
-    fn mul_assign(&mut self, rhs: U) {
-        for i in 0..self.len() {
-            *self.at_mut(i) *= rhs.clone();
-        }
+    type Output = Vector<VectorOwned<T>, T>;
+
+    fn add(self, rhs: Vector<W, T>) -> Self::Output {
+        self.add(rhs, &StaticRing::<T>::RING)
     }
 }
 
-impl<V, T, U> Mul<U> for Vector<V, T>
-    where V: VectorView<T>, U: Clone, T: Mul<U> + Clone
+impl<V, T, W> Sub<Vector<W, T>> for Vector<V, T>
+    where V: VectorView<T>, W: VectorView<T>, T: RingEl
 {
-    type Output = Vector<VectorOwned<T::Output>, T::Output>;
+    type Output = Vector<VectorOwned<T>, T>;
 
-    fn mul(self, rhs: U) -> Self::Output {
-        // TODO: Implementation that does not require U, T: Clone
-        Vector::new(
-            VectorOwned::from_fn(self.len(), |i| self.at(i).clone() * rhs.clone())
-        )
+    fn sub(self, rhs: Vector<W, T>) -> Self::Output {
+        self.sub(rhs, &StaticRing::<T>::RING)
+    }
+}
+
+impl<V, T> MulAssign<T> for Vector<V, T>
+    where V: VectorViewMut<T>, T: RingEl
+{
+    fn mul_assign(&mut self, rhs: T) {
+        self.scale(&rhs, &StaticRing::<T>::RING)
     }
 }
 

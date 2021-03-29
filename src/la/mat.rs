@@ -1,4 +1,5 @@
 use super::super::alg::*;
+use super::ops::*;
 
 pub use super::matrix_view::*;
 pub use super::vector_view::*;
@@ -10,7 +11,7 @@ pub use super::matrix_vector::*;
 pub use super::matrix_row_col::*;
 
 use std::marker::PhantomData;
-use std::ops::{AddAssign, MulAssign, Add, Mul, RangeBounds, Bound};
+use std::ops::{AddAssign, Sub, SubAssign, MulAssign, Add, Mul, RangeBounds, Bound};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Matrix<M, T>
@@ -109,7 +110,7 @@ impl<V, T> Matrix<ColumnVector<V, T>, T>
     where V: VectorView<T>
 {
     pub fn col_vec(vector: Vector<V, T>) -> Self {
-        Matrix::new(ColumnVector::new(vector))
+        Matrix::new(vector.as_column_vector())
     }
 }
 
@@ -117,7 +118,7 @@ impl<V, T> Matrix<RowVector<V, T>, T>
     where V: VectorView<T>
 {
     pub fn row_vec(vector: Vector<V, T>) -> Self {
-        Matrix::new(RowVector::new(vector))
+        Matrix::new(vector.as_row_vector())
     }
 }
 
@@ -235,92 +236,13 @@ impl<M, T> Matrix<M, T>
     }
 }
 
-trait MatrixScale: Ring {
-    fn scale_matrix<M: MatrixViewMut<Self::El>>(&self, l: &Self::El, a: &mut Matrix<M, Self::El>);
-}
-
-impl<R: Ring> MatrixScale for R {
-    
-    default fn scale_matrix<M: MatrixViewMut<Self::El>>(&self, l: &Self::El, a: &mut Matrix<M, Self::El>)
-    {
-        for i in 0..a.row_count() {
-            for j in 0..a.col_count() {
-                *a.at_mut(i, j) = self.mul_ref(a.at(i, j), l);
-            }
-        }
-    }
-}
-
-trait MatrixMul: Ring {
-    fn mul_matrix<M: MatrixView<Self::El>, N: MatrixView<Self::El>>(&self, a: Matrix<M, Self::El>, b: Matrix<N, Self::El>) -> Matrix<MatrixOwned<Self::El>, Self::El>;
-}
-
-impl<R: Ring> MatrixMul for R {
-
-    default fn mul_matrix<M: MatrixView<Self::El>, N: MatrixView<Self::El>>(&self, a: Matrix<M, Self::El>, b: Matrix<N, Self::El>) -> Matrix<MatrixOwned<Self::El>, Self::El> {
-        assert_eq!(a.col_count(), b.row_count());
-        debug_assert!(a.col_count() > 0);
-        Matrix::new(
-            MatrixOwned::from_fn(a.row_count(), b.col_count(), |i, j| {
-                let mut it = (0..a.col_count()).map(|k| 
-                    self.mul_ref(a.at(i, k), b.at(k, j))
-                );
-                let initial = it.next().unwrap();
-                it.fold(initial, |a, b| self.add(a, b))
-            })
-        )
-    }
-}
-
-trait MatrixAddAssign: Ring {
-    fn add_assign_matrix<M: MatrixViewMut<Self::El>, N: MatrixView<Self::El>>(&self, a: &mut Matrix<M, Self::El>, b: Matrix<N, Self::El>);
-}
-
-impl<R: Ring> MatrixAddAssign for R {
-    
-    default fn add_assign_matrix<M: MatrixViewMut<Self::El>, N: MatrixView<Self::El>>(&self, a: &mut Matrix<M, Self::El>, b: Matrix<N, Self::El>) {
-        assert_eq!(a.row_count(), b.row_count());
-        assert_eq!(a.col_count(), b.col_count());
-        for row in 0..a.row_count() {
-            for col in 0..a.col_count() {
-                take_mut::take_or_recover(
-                    a.at_mut(row, col), 
-                    || self.unspecified_element(), 
-                    |v| self.add_ref(v, b.at(row, col))
-                );
-            }
-        }
-    }
-}
-
-pub trait MatrixEq: Ring {
-    fn eq_matrix<M: MatrixView<Self::El>, N: MatrixView<Self::El>>(&self, a: Matrix<M, Self::El>, b: Matrix<N, Self::El>) -> bool;
-}
-
-impl<R: Ring> MatrixEq for R {
-
-    default fn eq_matrix<M: MatrixView<Self::El>, N: MatrixView<Self::El>>(&self, a: Matrix<M, Self::El>, b: Matrix<N, Self::El>) -> bool {
-        assert_eq!(a.row_count(), b.row_count());
-        assert_eq!(a.col_count(), b.col_count());
-        for row in 0..a.row_count() {
-            for col in 0..a.col_count() {
-                if !self.eq(a.at(row, col), b.at(row, col)) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-}
-
 impl<M, T> Matrix<M, T>
     where M: MatrixView<T>, T: Clone + std::fmt::Debug
 {
-
     pub fn mul<R, N>(self, rhs: Matrix<N, T>, ring: &R) -> Matrix<MatrixOwned<T>, T>
         where R: Ring<El = T>, N: MatrixView<T>
     {
-        ring.mul_matrix(self, rhs)
+        Matrix::new(<R as MatrixMul<M, N>>::mul_matrix(ring, self.data, rhs.data))
     }
 
     pub fn add<R, N>(self, rhs: Matrix<N, T>, ring: &R) -> Matrix<MatrixOwned<T>, T>
@@ -331,10 +253,19 @@ impl<M, T> Matrix<M, T>
         return result;
     }
 
+
+    pub fn sub<R, N>(self, rhs: Matrix<N, T>, ring: &R) -> Matrix<MatrixOwned<T>, T>
+        where R: Ring<El = T>, N: MatrixView<T>
+    {
+        let mut result = self.to_owned();
+        result.sub_assign(rhs, ring);
+        return result;
+    }
+
     pub fn eq<R, N>(self, rhs: Matrix<N, T>, ring: &R) -> bool
         where R: Ring<El = T>, N: MatrixView<T>
     {
-        ring.eq_matrix(self, rhs)
+        <R as MatrixEq<M, N>>::eq_matrix(ring, self.data, rhs.data)
     }
 }
 
@@ -389,13 +320,19 @@ impl<M, T> Matrix<M, T>
     pub fn add_assign<R, N>(&mut self, rhs: Matrix<N, T>, ring: &R)
         where R: Ring<El = T>, N: MatrixView<T>
     {
-        ring.add_assign_matrix(self, rhs);
+        <R as MatrixAddAssign<M, N>>::add_assign_matrix(ring, &mut self.data, rhs.data);
+    }
+
+    pub fn sub_assign<R, N>(&mut self, rhs: Matrix<N, T>, ring: &R)
+        where R: Ring<El = T>, N: MatrixView<T>
+    {
+        <R as MatrixAddAssign<M, N>>::sub_assign_matrix(ring, &mut self.data, rhs.data);
     }
 
     pub fn scale<R>(&mut self, rhs: &T, ring: &R)
         where R: Ring<El = T>
     {
-        ring.scale_matrix(rhs, self);
+        <R as MatrixScale<M>>::scale_matrix(ring, rhs, &mut self.data);
     }
 }
 
@@ -428,6 +365,14 @@ impl<M, N, T> AddAssign<Matrix<N, T>> for Matrix<M, T>
     }
 }
 
+impl<M, N, T> SubAssign<Matrix<N, T>> for Matrix<M, T>
+    where M: MatrixViewMut<T>, N: MatrixView<T>, T: RingEl
+{
+    fn sub_assign(&mut self, rhs: Matrix<N, T>) {
+        self.sub_assign(rhs, &StaticRing::<T>::RING)
+    }
+}
+
 impl<M, N, T> Add<Matrix<N, T>> for Matrix<M, T>
     where M: MatrixViewMut<T>, N: MatrixView<T>, T: RingEl
 {
@@ -435,6 +380,16 @@ impl<M, N, T> Add<Matrix<N, T>> for Matrix<M, T>
 
     fn add(self, rhs: Matrix<N, T>) -> Self::Output {
         self.add(rhs, &StaticRing::<T>::RING)
+    }
+}
+
+impl<M, N, T> Sub<Matrix<N, T>> for Matrix<M, T>
+    where M: MatrixViewMut<T>, N: MatrixView<T>, T: RingEl
+{
+    type Output = Matrix<MatrixOwned<T>, T>;
+
+    fn sub(self, rhs: Matrix<N, T>) -> Self::Output {
+        self.sub(rhs, &StaticRing::<T>::RING)
     }
 }
 
