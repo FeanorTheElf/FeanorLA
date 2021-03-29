@@ -469,15 +469,16 @@ impl<T> Matrix<MatrixOwned<T>, T>
     }
 }
 
-impl<M, T> std::fmt::Display for Matrix<M, T> 
-    where M: MatrixView<T>, T: std::fmt::Display
+impl<M, T> Matrix<M, T> 
+    where M: MatrixView<T>
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let entries = (0..self.row_count()).flat_map(|row| 
-            (0..self.col_count()
-        ).map(move |col| 
-            format!("{}", self.at(row, col))
-        )).collect::<Vec<_>>();
+    fn format_raw<F>(&self, mut format_entry: F, f: &mut std::fmt::Formatter) -> std::fmt::Result 
+        where F: FnMut(&T) -> Result<String, std::fmt::Error>
+    {
+        let entries = (0..self.row_count())
+            .flat_map(|row| (0..self.col_count()).map(move |col| (row, col)))
+            .map(|(r, c)| format_entry(self.at(r, c)))
+            .collect::<Result<Vec<_>, _>>()?;
 
         let width = entries.iter().map(|s| s.chars().count()).max().unwrap();
         writeln!(f, "[")?;
@@ -495,6 +496,43 @@ impl<M, T> std::fmt::Display for Matrix<M, T>
         }
         write!(f, "]")?;
         return Ok(());
+    }
+}
+
+impl<M, T> std::fmt::Display for Matrix<M, T> 
+    where M: MatrixView<T>, T: std::fmt::Display
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.format_raw(|x| Ok(format!("{}", x)), f)
+    }
+}
+
+pub struct DisplayMatrix<M, T, R>
+    where M: MatrixView<T>, R: Ring<El = T>, T: Clone + std::fmt::Debug
+{
+    matrix: Matrix<M, T>,
+    ring: R
+}
+
+impl<M, T, R> std::fmt::Display for DisplayMatrix<M, T, R> 
+    where M: MatrixView<T>, R: Ring<El = T>, T: Clone + std::fmt::Debug
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.matrix.format_raw(|x| Ok(format!("{}", display_ring_el(&self.ring, x))), f)
+    }
+}
+
+
+impl<M, T> Matrix<M, T> 
+    where M: MatrixView<T>, T: std::fmt::Debug + Clone
+{
+    pub fn display<'a, 'b, R>(&'b self, ring: &'a R) -> DisplayMatrix<MatrixRef<'b, M, T>, T, &'a R> 
+        where R: Ring<El = T>
+    {
+        DisplayMatrix {
+            matrix: self.as_ref(),
+            ring: ring
+        }
     }
 }
 

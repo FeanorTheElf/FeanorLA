@@ -1,6 +1,7 @@
 use super::super::alg::*;
 use super::super::la::mat::*;
 
+use std::ops::Index;
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 
@@ -12,6 +13,8 @@ pub struct MultivariatePolyRing<R>
     var_names: Vec<&'static str>
 }
 
+pub struct Var(usize);
+
 impl<R> MultivariatePolyRing<R>
     where R: Ring
 {
@@ -21,7 +24,12 @@ impl<R> MultivariatePolyRing<R>
         );
     }
 
-    pub fn derive(&self, el: &<Self as Ring>::El, var: usize) -> <Self as Ring>::El {
+    pub fn get_var(&self, name: &'static str) -> Var {
+        Var(self.var_names.iter().enumerate().filter(|(_, x)| **x == name).next().unwrap().0)
+    }
+
+    pub fn derive(&self, el: &<Self as Ring>::El, variable: Var) -> <Self as Ring>::El {
+        let var = variable.0;
         let mut result = BTreeMap::new();
         for (key, coeff) in el {
             if var < key.len() && key[var] > 0 {
@@ -36,17 +44,18 @@ impl<R> MultivariatePolyRing<R>
     }
 
     pub fn gradient(&self, el: &<Self as Ring>::El) -> Vector<VectorOwned<<Self as Ring>::El>, <Self as Ring>::El> {
-        Vector::from_fn(self.var_names.len(), |i| self.derive(el, i))
+        Vector::from_fn(self.var_names.len(), |i| self.derive(el, Var(i)))
     }
 
-    fn elevate_var_ring(&self, var: usize) -> PolyRing<&MultivariatePolyRing<R>> {
-        PolyRing::adjoint(self, self.var_names[var])
+    fn elevate_var_ring(&self, var: Var) -> PolyRing<&MultivariatePolyRing<R>> {
+        PolyRing::adjoint(self, self.var_names[var.0])
     }
 
-    fn elevate_var(&self, var: usize, x: <Self as Ring>::El) -> <PolyRing<&MultivariatePolyRing<R>> as Ring>::El
+    fn elevate_var(&self, variable: Var, x: <Self as Ring>::El) -> <PolyRing<&MultivariatePolyRing<R>> as Ring>::El
     {
         self.assert_valid(&x);
 
+        let var = variable.0;
         let mut result = Vec::new();
         for (mut key, coeff) in x.into_iter() {
             let pow = *key.get(var).unwrap_or(&0);
@@ -65,7 +74,8 @@ impl<R> MultivariatePolyRing<R>
         return result;
     }
 
-    fn de_elevate_var(&self, var: usize, x: <PolyRing<&MultivariatePolyRing<R>> as Ring>::El) -> <Self as Ring>::El {
+    fn de_elevate_var(&self, variable: Var, x: <PolyRing<&MultivariatePolyRing<R>> as Ring>::El) -> <Self as Ring>::El {
+        let var = variable.0;
         let mut result = BTreeMap::new();
         for (pow, coeff) in x.into_iter().enumerate() {
             result.extend(coeff.into_iter().map(|(mut key, c)| {
@@ -137,7 +147,9 @@ impl<R> MultivariatePolyRing<R>
     /// the number of monomials in the given polynomial, P is the highest power of a
     /// variable and T is the complexity of a multiplication in the base ring.
     /// 
-    pub fn evaluate_at(&self, mut poly: <Self as Ring>::El, values: &[R::El]) -> R::El {
+    pub fn evaluate_at<V>(&self, mut poly: <Self as Ring>::El, values: &V) -> R::El 
+        where V: Index<usize, Output = R::El>
+    {
         self.assert_valid(&poly);
 
         if poly.len() == 0 {
@@ -177,6 +189,18 @@ impl<R> MultivariatePolyRing<R>
         return poly.into_iter()
             .map(|(_key, coeff)| coeff)
             .fold(self.base_ring.zero(), |a, b| self.base_ring.add(a, b));
+    }
+
+    pub fn evaluate_matrix_at<M, V>(&self, m: Matrix<M, <Self as Ring>::El>, vars: &V) -> Matrix<MatrixOwned<R::El>, R::El> 
+        where M: MatrixView<<Self as Ring>::El>, V: Index<usize, Output = R::El>
+    {
+        Matrix::from_fn(m.row_count(), m.col_count(), |i, j| self.evaluate_at(m.at(i, j).clone(), vars))
+    }
+
+    pub fn evaluate_vector_at<M, V>(&self, m: Vector<M, <Self as Ring>::El>, vars: &V) -> Vector<VectorOwned<R::El>, R::El> 
+        where M: VectorView<<Self as Ring>::El>, V: Index<usize, Output = R::El>
+    {
+        Vector::from_fn(m.len(), |i| self.evaluate_at(m.at(i).clone(), vars))
     }
 }
 
@@ -332,11 +356,11 @@ impl<R> Ring for MultivariatePolyRing<R>
                 key.iter().enumerate().filter(|(_i, pow)| **pow != 0).map(|(i, _pow)| i).next()
             ).min() 
         {
-            let ring = self.elevate_var_ring(division_var);
-            let lhs_new = self.elevate_var(division_var, lhs);
-            let rhs_new = self.elevate_var(division_var, rhs.clone());
+            let ring = self.elevate_var_ring(Var(division_var));
+            let lhs_new = self.elevate_var(Var(division_var), lhs);
+            let rhs_new = self.elevate_var(Var(division_var), rhs.clone());
             let result = ring.div(lhs_new, &rhs_new);
-            return self.de_elevate_var(division_var, result);
+            return self.de_elevate_var(Var(division_var), result);
         } else {
             // rhs is only a scalar
             debug_assert!(rhs.len() == 1);
@@ -655,8 +679,8 @@ fn test_evaluate_at() {
         (x * x * y) + (x * y * y + x * y * y) + x + thirteen
     }};
 
-    assert_eq!(14, ring.evaluate_at(poly.clone(), &[1, 0]));
-    assert_eq!(12 + 36 + 2 + 13, ring.evaluate_at(poly, &[2, 3]));
+    assert_eq!(14, ring.evaluate_at(poly.clone(), &vec![1, 0]));
+    assert_eq!(12 + 36 + 2 + 13, ring.evaluate_at(poly, &vec![2, 3]));
 }
 
 #[test]
@@ -776,7 +800,7 @@ fn test_elevate_var() {
         x * y + y * y * x * (one + one) + one + x
     }};
 
-    let uni_ring = ring.elevate_var_ring(1);
+    let uni_ring = ring.elevate_var_ring(Var(1));
 
     let uni_y = uni_ring.unknown();
     let uni_x = uni_ring.from(x);
@@ -786,11 +810,11 @@ fn test_elevate_var() {
         uni_x * uni_y + uni_y * uni_y * uni_x * (uni_one + uni_one) + uni_one + uni_x
     }};
 
-    let actual = ring.elevate_var(1, p.clone());
+    let actual = ring.elevate_var(Var(1), p.clone());
     println!("{} ?= {}", display_ring_el(&uni_ring, &expected), display_ring_el(&uni_ring, &actual));
     assert!(uni_ring.eq(&expected, &actual));
 
-    let original = ring.de_elevate_var(1, actual);
+    let original = ring.de_elevate_var(Var(1), actual);
     println!("{} ?= {}", display_ring_el(&ring, &p), display_ring_el(&ring, &original));
     assert!(ring.eq(&p, &original));
 }
@@ -811,6 +835,6 @@ fn test_gradient() {
     let dy = fixed_ring_env!{ &ring; x; {
         x * x + x
     }};
-    assert_eq!(dx, ring.derive(&p, 0));
-    assert_eq!(dy, ring.derive(&p, 1));
+    assert_eq!(dx, ring.derive(&p, ring.get_var("X")));
+    assert_eq!(dy, ring.derive(&p, ring.get_var("Y")));
 }

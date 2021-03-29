@@ -6,7 +6,7 @@ use super::ops::*;
 use super::vector::*;
 
 use std::marker::PhantomData;
-use std::ops::{AddAssign, Add, SubAssign, Sub, MulAssign, RangeBounds, Bound};
+use std::ops::{AddAssign, Add, SubAssign, Sub, MulAssign, RangeBounds, Bound, Index};
 
 #[derive(Debug)]
 pub struct Vector<V, T>
@@ -66,6 +66,16 @@ impl<V, T> Vector<V, T>
         return Vector::new(
             VectorRef::new(begin, end, &self.data)
         )
+    }
+}
+
+impl<V, T> Index<usize> for Vector<V, T>
+    where V: VectorView<T>
+{
+    type Output = T;
+
+    fn index(&self, i: usize) -> &T {
+        self.at(i)
     }
 }
 
