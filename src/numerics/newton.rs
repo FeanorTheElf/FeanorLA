@@ -1,17 +1,20 @@
 use super::super::float::*;
 use super::super::la::mat::*;
 
-#[derive(Debug, Clone, Copy)]
-pub struct NotConvergent;
-
 type Point<T> = Vector<VectorOwned<T>, T>;
 type PointRef<'a, T> = Vector<VectorRef<'a, VectorOwned<T>, T>, T>;
 
+#[derive(Debug)]
+pub struct NotConvergent<T>(pub Point<T>);
+
 ///
-/// The parameter `jacobian_solve` should on input x calculate a 
+/// Applies the Newton-method to find a root of the given function
+/// that maps from R^k to R^k.
+/// 
+/// The parameter `jacobian_solve` should on input x and y calculate a 
 /// (potentially least-squares) solution of the linear equation
-/// system J_f(x) y = f(x) where J_f(x) is the Jacobian matrix
-/// of f at the point x.
+/// system J_f(x) z = y where J_f(x) is the Jacobian matrix of f at 
+/// the point x.
 /// 
 pub fn newton_multidim<T, F, S>(
     mut function: F,
@@ -19,21 +22,20 @@ pub fn newton_multidim<T, F, S>(
     starting_point: Point<T>, 
     error: T, 
     max_iterations: usize
-) -> Result<Point<T>, NotConvergent>
+) -> Result<Point<T>, NotConvergent<T>>
     where T: Float,
         F: FnMut(PointRef<T>) -> Point<T>,
         S: FnMut(PointRef<T>, Point<T>) -> Point<T>
 {
-    let dim = starting_point.len();
     let mut current = starting_point.to_owned();
     for _ in 0..max_iterations {
         let value = function(current.as_ref());
-        if value.approx_eq(&Vector::zero(dim), &error) {
+        if value.approx_eq(&Vector::zero(value.len()), &error) {
             return Ok(current.to_owned());
         }
         current = current.as_ref() - jacobian_solve(current.as_ref(), value);
     }
-    return Err(NotConvergent);
+    return Err(NotConvergent(current));
 }
 
 #[cfg(test)]
