@@ -99,3 +99,22 @@ impl<R: Ring, M: MatrixView<Self::El>, N: MatrixView<Self::El>> MatrixEq<M, N> f
         return true;
     }
 }
+
+pub trait MatrixAssign<M, N>: Clone 
+    where M: MatrixViewMut<Self>, N: MatrixView<Self>
+{
+    fn assign_matrix(a: &mut M, b: N);
+}
+
+impl<T: Clone, M: MatrixViewMut<T>, N: MatrixView<T>> MatrixAssign<M, N> for T {
+    
+    default fn assign_matrix(a: &mut M, b: N) {
+        assert_eq!(a.row_count(), b.row_count());
+        assert_eq!(a.col_count(), b.col_count());
+        for row in 0..a.row_count() {
+            for col in 0..a.col_count() {
+                *a.at_mut(row, col) = b.at(row, col).clone();
+            }
+        }
+    }
+}

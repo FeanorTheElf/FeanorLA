@@ -247,6 +247,16 @@ impl<M, T> Matrix<M, T>
 }
 
 impl<M, T> Matrix<M, T>
+    where M: MatrixViewMut<T>, T: Clone
+{
+    pub fn assign<N>(&mut self, rhs: Matrix<N, T>) 
+        where N: MatrixView<T>
+    {
+        <T as MatrixAssign<M, N>>::assign_matrix(&mut self.data, rhs.data)
+    }
+}
+
+impl<M, T> Matrix<M, T>
     where M: MatrixView<T>, T: Clone + std::fmt::Debug
 {
     pub fn mul<R, N>(self, rhs: Matrix<N, T>, ring: &R) -> Matrix<MatrixOwned<T>, T>

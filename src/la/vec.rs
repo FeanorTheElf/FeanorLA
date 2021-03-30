@@ -69,6 +69,16 @@ impl<V, T> Vector<V, T>
     }
 }
 
+impl<V, T> Vector<V, T>
+    where V: VectorViewMut<T>, T: Clone
+{
+    pub fn assign<W>(&mut self, rhs: Vector<W, T>) 
+        where W: VectorView<T>
+    {
+        <T as MatrixAssign<_, _>>::assign_matrix(&mut self.as_mut().as_column_vector(), rhs.as_ref().as_column_vector())
+    }
+}
+
 impl<V, T> Index<usize> for Vector<V, T>
     where V: VectorView<T>
 {
