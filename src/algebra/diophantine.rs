@@ -87,9 +87,10 @@ fn eliminate_row<M, N>(mut A: Matrix<M, Item>, mut iR: Matrix<N, Item>, pivot: u
     where M: MatrixViewMut<Item>, N: MatrixViewMut<Item>
 {
     for col in (pivot + 1)..A.col_count() {
+        
         let transform = [1, -A.at(pivot, col) / A.at(pivot, pivot), 0, 1];
         A.transform_two_dims_right(pivot, col, &transform, &StaticRing::<Item>::RING);
-        iR.transform_two_dims_left(pivot, col, &transform, &StaticRing::<Item>::RING);
+        iR.transform_two_dims_right(pivot, col, &transform, &StaticRing::<Item>::RING);
     }
 }
 
@@ -286,4 +287,17 @@ fn test_diophantine_no_rational_solutions() {
     let b = Vector::from_array([2, 3, 4]);
     let x = diophantine_solve(A.as_ref(), b.as_ref());
     assert!(x.is_none());
+}
+
+#[test]
+fn test_partial_smith_4x2() {
+    #[rustfmt::skip]
+    let mut A = Matrix::from_array([[ 1,  1, -1, -1],
+                                    [ 1,  0, -1,  0]]);
+    let A_copy = A.clone();
+    let mut iL = Matrix::<_, i32>::identity(2, 2);
+    let mut iR = Matrix::<_, i32>::identity(4, 4);
+    partial_smith(A.as_mut(), iL.as_mut(), iR.as_mut(), 0);
+
+    assert_eq!(A, iL * A_copy * iR);
 }
