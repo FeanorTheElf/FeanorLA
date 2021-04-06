@@ -404,7 +404,7 @@ impl<M, N, T> Add<Matrix<N, T>> for Matrix<M, T>
 }
 
 impl<M, N, T> Sub<Matrix<N, T>> for Matrix<M, T>
-    where M: MatrixViewMut<T>, N: MatrixView<T>, T: RingEl
+    where M: MatrixView<T>, N: MatrixView<T>, T: RingEl
 {
     type Output = Matrix<MatrixOwned<T>, T>;
 
