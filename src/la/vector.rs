@@ -75,7 +75,7 @@ impl<'a, V, T> VectorRef<'a, V, T>
     where V: VectorView<T>
 {
     pub fn new(from: usize, to: usize, vector: &'a V) -> Self {
-        assert!(from < to);
+        assert!(from <= to);
         assert!(to <= vector.len());
         VectorRef {
             from: from,
@@ -90,7 +90,7 @@ impl<'a, V, T> VectorRefMut<'a, V, T>
     where V: VectorViewMut<T>
 {
     pub fn new(from: usize, to: usize, vector: &'a mut V) -> Self {
-        assert!(from < to);
+        assert!(from <= to);
         assert!(to <= vector.len());
         VectorRefMut {
             from: from,
@@ -118,7 +118,7 @@ impl<V, T> VectorRestriction<V, T>
     pub fn restrict(vector: V, from: usize, to: usize) -> Self {
         vector.assert_in_range(from);
         assert!(to <= vector.len());
-        assert!(from < to);
+        assert!(from <= to);
         VectorRestriction {
             base: vector,
             from: from,
