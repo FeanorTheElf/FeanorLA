@@ -585,3 +585,35 @@ fn test_mul() {
 
     assert_eq!(c, a * b);
 }
+
+#[test]
+fn test_zero_sized_matrix() {
+    let mut a: Matrix<_, i32> = Matrix::from_array([[], [], []]);
+    assert_eq!(3, a.row_count());
+    assert_eq!(0, a.col_count());
+
+    let b = a.as_ref();
+    assert_eq!(3, b.row_count());
+    assert_eq!(0, b.col_count());
+
+    let c = b.submatrix(..2, ..);
+    assert_eq!(2, c.row_count());
+    assert_eq!(0, c.col_count());
+
+    assert_eq!(Matrix::<_, i32>::zero(3, 0), a);
+
+    let mut d: Matrix<_, i32> = Matrix::zero(0, 5).to_owned();
+
+    assert_eq!(d.clone(), d);
+
+    assert_eq!(1, d.submatrix(.., 2..3).col_count());
+    assert_eq!(a.submatrix(..0, ..), d.submatrix(.., 5..));
+
+    assert_eq!(3, a.rows().count());
+    assert_eq!(3, a.rows_mut().count());
+    assert_eq!(0, d.rows().count());
+    assert_eq!(0, d.rows_mut().count());
+
+    assert_eq!(0, a.row(0).len());
+    assert_eq!(0, d.col(1).len());
+}

@@ -30,8 +30,8 @@ impl<'a, M, T> MatrixRef<'a, M, T>
     where M: MatrixView<T>
 {
     pub fn new(rows_begin: usize, rows_end: usize, cols_begin: usize, cols_end: usize, matrix: &'a M) -> Self {
-        assert!(rows_begin < rows_end);
-        assert!(cols_begin < cols_end);
+        assert!(rows_begin <= rows_end);
+        assert!(cols_begin <= cols_end);
         assert!(rows_end <= matrix.row_count());
         assert!(cols_end <= matrix.col_count());
         MatrixRef {
@@ -44,8 +44,8 @@ impl<'a, M, T> MatrixRefMut<'a, M, T>
     where M: MatrixViewMut<T>
 {
     pub fn new(rows_begin: usize, rows_end: usize, cols_begin: usize, cols_end: usize, matrix: &'a mut M) -> Self {
-        assert!(rows_begin < rows_end);
-        assert!(cols_begin < cols_end);
+        assert!(rows_begin <= rows_end);
+        assert!(cols_begin <= cols_end);
         assert!(rows_end <= matrix.row_count());
         assert!(cols_end <= matrix.col_count());
         MatrixRefMut {

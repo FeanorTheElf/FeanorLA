@@ -50,24 +50,25 @@ pub trait MatrixMutRowIter<T>: for<'a> LifetimeMatrixMutRowIter<'a, T> {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MatrixOwned<T> {
-    cols: usize,
+    col_count: usize,
+    row_count: usize,
     data: Box<[T]>,
 }
 
 impl<T> MatrixView<T> for MatrixOwned<T> {
     
     fn row_count(&self) -> usize {
-        self.data.len() / self.cols
+        self.row_count
     }
 
     fn col_count(&self) -> usize {
-        self.cols
+        self.col_count
     }
 
     fn at(&self, row: usize, col: usize) -> &T {
         self.assert_col_in_range(col);
         self.assert_row_in_range(row);
-        &self.data[row * self.cols + col]
+        &self.data[row * self.col_count + col]
     }
 
     fn to_owned(self) -> MatrixOwned<T> {
@@ -79,7 +80,7 @@ impl<T> MatrixViewMut<T> for MatrixOwned<T> {
     fn at_mut(&mut self, row: usize, col: usize) -> &mut T {
         self.assert_col_in_range(col);
         self.assert_row_in_range(row);
-        &mut self.data[row * self.cols + col]
+        &mut self.data[row * self.col_count() + col]
     }
 
     fn swap(&mut self, fst: (usize, usize), snd: (usize, usize)) {
@@ -90,24 +91,32 @@ impl<T> MatrixViewMut<T> for MatrixOwned<T> {
         if fst == snd {
             return;
         }
-        self.data.swap(fst.1 + fst.0 * self.cols, snd.1 + snd.0 * self.cols);
+        self.data.swap(fst.1 + fst.0 * self.col_count(), snd.1 + snd.0 * self.col_count());
     }
 }
 
 
 impl<T> MatrixOwned<T> {
 
-    pub fn from_data(data: Box<[T]>, cols: usize) -> MatrixOwned<T> {
-        assert!(data.len() > 0, "Cannot create matrix with zero elements");
-        assert!(
-            data.len() % cols == 0,
-            "Data length must be a multiple of column count, but got {} and {}",
-            data.len(),
-            cols
-        );
+    pub fn from_data(data: Box<[T]>, rows: usize, cols: usize) -> MatrixOwned<T> {
+        if cols == 0 {
+            assert!(
+                data.len() == 0,
+                "A zero-column matrix must have no data elements"
+            );
+        } else {
+            assert!(
+                data.len() % cols == 0,
+                "Data length must be a multiple of column count, but got {} and {}",
+                data.len(),
+                cols
+            );
+        }
+        assert!(data.len() == cols * rows);
         MatrixOwned {
             data: data,
-            cols: cols
+            col_count: cols,
+            row_count: rows
         }
     }
 
@@ -118,7 +127,7 @@ impl<T> MatrixOwned<T> {
         let data = std::array::IntoIter::new(array).flat_map(|row| 
             std::array::IntoIter::new(row)
         ).collect::<Vec<T>>().into_boxed_slice();
-        Self::from_data(data, C)
+        Self::from_data(data, R, C)
     }
 }
 
@@ -131,7 +140,7 @@ impl<T> FromFnCreateable<T> for MatrixOwned<T> {
         for row in 0..rows {
             data.extend((0..cols).map(|col| f(row, col)));
         }
-        return Self::from_data(data.into_boxed_slice(), cols);
+        return Self::from_data(data.into_boxed_slice(), rows, cols);
     }
 }
 
@@ -164,17 +173,40 @@ impl<'b, T> VectorViewMut<T> for OwnedMatrixRowMutRef<'b, T> {
     }
 }
 
-pub struct OwnedMatrixRowMutIter<'b, T> {
-    rows: std::slice::ChunksExactMut<'b, T>
+pub enum OwnedMatrixRowMutIter<'b, T> {
+    RealRows(std::slice::ChunksExactMut<'b, T>),
+    EmptyRows(usize)
+}
+
+trait EmptySlice: Sized {
+    const EMPTY_SLICE: [Self; 0];
+}
+
+impl<T> EmptySlice for T {
+    const EMPTY_SLICE: [T; 0] = [];
 }
 
 impl<'b, T> Iterator for OwnedMatrixRowMutIter<'b, T> {
     type Item = OwnedMatrixRowMutRef<'b, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.rows.next().map(|r| OwnedMatrixRowMutRef {
-            data: r
-        })
+        match self {
+            OwnedMatrixRowMutIter::RealRows(rows) => return rows.next().map(|r| OwnedMatrixRowMutRef {
+                data: r
+            }),
+            OwnedMatrixRowMutIter::EmptyRows(count) => {
+                if *count > 0 {
+                    *count -= 1;
+
+                    #[allow(const_item_mutation)]
+                    return Some(OwnedMatrixRowMutRef {
+                        data: &mut T::EMPTY_SLICE[..]
+                    });
+                } else {
+                    return None;
+                }
+            }
+        };
     }
 }
 
@@ -184,8 +216,10 @@ impl<'b, T: 'b> LifetimeMatrixMutRowIter<'b, T> for MatrixOwned<T> {
     type RowIter = OwnedMatrixRowMutIter<'b, T>;
     
     fn rows_mut(&'b mut self) -> OwnedMatrixRowMutIter<'b, T> {
-        OwnedMatrixRowMutIter {
-            rows: self.data.chunks_exact_mut(self.col_count())
+        if self.col_count() != 0 {
+            OwnedMatrixRowMutIter::RealRows(self.data.chunks_exact_mut(self.col_count()))
+        } else {
+            OwnedMatrixRowMutIter::EmptyRows(self.row_count)
         }
     }
 }
