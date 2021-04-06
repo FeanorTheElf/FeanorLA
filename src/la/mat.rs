@@ -26,10 +26,10 @@ impl<M, T> Copy for Matrix<M, T>
 {}
 
 impl<M, T> Clone for Matrix<M, T>
-    where M: MatrixView<T> + Copy
+    where M: MatrixView<T> + Clone
 {
     fn clone(&self) -> Self {
-        *self
+        Self::new(self.data.clone())
     }
 }
 
