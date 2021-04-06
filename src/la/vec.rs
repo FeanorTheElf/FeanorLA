@@ -21,10 +21,10 @@ impl<V, T> Copy for Vector<V, T>
 {}
 
 impl<V, T> Clone for Vector<V, T>
-    where V: VectorView<T> + Copy
+    where V: VectorView<T> + Clone
 {
     fn clone(&self) -> Self {
-        *self
+        Vector::new(self.data.clone())
     }
 }
 
