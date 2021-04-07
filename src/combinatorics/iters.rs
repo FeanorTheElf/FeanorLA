@@ -397,7 +397,7 @@ where I: Iterator + Clone, F: FnMut(&[I::Item]) -> T
 }
 
 pub fn multi_cartesian_product<J, F, T>(iters: J, converter: F) -> MultiProduct<J::Item, F, T>
-where J: ExactSizeIterator, J::Item: Iterator + Clone, F: FnMut(&[<J::Item as Iterator>::Item]) -> T
+where J: Iterator, J::Item: Iterator + Clone, F: FnMut(&[<J::Item as Iterator>::Item]) -> T
 {
     let base_iters = iters.collect::<Vec<_>>();
     let mut current_iters = base_iters.clone();
