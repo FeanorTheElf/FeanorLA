@@ -347,7 +347,7 @@ impl<I, J> std::iter::FusedIterator for Product<I, J>
     where I: Iterator, I::Item: Clone, J: Iterator + Clone
 {}
 
-pub fn product<I, J>(mut it1: I, it2: J) -> Product<I, J>
+pub fn cartesian_product<I, J>(mut it1: I, it2: J) -> Product<I, J>
     where I: Iterator, I::Item: Clone, J: Iterator + Clone
 {
     Product {
@@ -356,6 +356,81 @@ pub fn product<I, J>(mut it1: I, it2: J) -> Product<I, J>
         i: it1,
         j: it2
     }
+}
+
+pub struct MultiProduct<I, F, T> 
+    where I: Iterator + Clone, F: FnMut(&[I::Item]) -> T
+{
+    base_iters: Vec<I>,
+    current_iters: Vec<I>,
+    current: Vec<I::Item>,
+    converter: F,
+    done: bool
+}
+
+impl<I, F, T> Iterator for MultiProduct<I, F, T>
+where I: Iterator + Clone, F: FnMut(&[I::Item]) -> T
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.done {
+            return None;
+        }
+        let result = (self.converter)(&self.current[..]);
+        let mut i = self.base_iters.len();
+        self.done = true;
+        while i > 0 {
+            i = i - 1;
+            if let Some(val) = self.current_iters[i].next() {
+                self.current[i] = val;
+                self.done = false;
+                for j in (i + 1)..self.base_iters.len() {
+                    self.current_iters[j] = self.base_iters[j].clone();
+                    self.current[j] = self.current_iters[j].next().unwrap();
+                }
+                break;
+            }
+        }
+        return Some(result);
+    }
+}
+
+pub fn multi_cartesian_product<J, F, T>(iters: J, converter: F) -> MultiProduct<J::Item, F, T>
+where J: ExactSizeIterator, J::Item: Iterator + Clone, F: FnMut(&[<J::Item as Iterator>::Item]) -> T
+{
+    let base_iters = iters.collect::<Vec<_>>();
+    let mut current_iters = base_iters.clone();
+    let mut current = Vec::with_capacity(current_iters.len());
+    for it in current_iters.iter_mut() {
+        if let Some(v) = it.next() {
+            current.push(v);
+        } else {
+            return MultiProduct {
+                done: true,
+                converter: converter,
+                base_iters: base_iters,
+                current_iters: current_iters,
+                current: current
+            };
+        }
+    }
+    return MultiProduct {
+        done: false,
+        converter: converter,
+        base_iters: base_iters,
+        current_iters: current_iters,
+        current: current
+    };
+}
+
+macro_rules! static_cartesian_product {
+    () => {
+        std::iter::empty()
+    };
+    ($head:expr, $($tail:tt)*) => {
+        cartesian_product($head, cartesian_product!($($tail)*))
+    };
 }
 
 #[test]
@@ -417,11 +492,34 @@ fn test_subdivisions() {
 }
 
 #[test]
-fn test_product() {
+fn test_cartesian_product() {
     let a = [1, 2, 3];
     let b = [5, 6];
-    assert_eq!(6, product(a.iter(), b.iter()).count());
-    let mut it = product(a.iter(), b.iter());
+    assert_eq!(6, cartesian_product(a.iter(), b.iter()).count());
+    let mut it = cartesian_product(a.iter(), b.iter());
     it.next();
     assert_eq!((&1, &6), it.next().unwrap());
+}
+
+#[test]
+fn test_multi_cartesian_product() {
+    let a = [0, 1];
+    let b = [0, 1];
+    let c = [-1, 1];
+    let all = [a, b, c];
+    let it = multi_cartesian_product(
+        all.iter().map(|l| l.iter().map(|x| *x)), 
+        |x| [x[0], x[1], x[2]]
+    );
+    let expected = vec![
+        [0, 0, -1],
+        [0, 0, 1],
+        [0, 1, -1],
+        [0, 1, 1],
+        [1, 0, -1],
+        [1, 0, 1],
+        [1, 1, -1],
+        [1, 1, 1]
+    ];
+    assert_eq!(expected, it.collect::<Vec<_>>());
 }
