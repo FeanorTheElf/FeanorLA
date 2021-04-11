@@ -1,6 +1,7 @@
 use super::super::alg::*;
 use super::vector_view::*;
 use super::matrix_vector::*;
+use super::diagonal::*;
 use super::constant::*;
 use super::ops::*;
 use super::vector::*;
@@ -202,13 +203,13 @@ impl<V, T> Vector<V, T>
     pub fn as_column_vector(self) -> ColumnVector<V, T> {
         ColumnVector::new(self.data)
     }
-}
 
-impl<V, T> Vector<V, T>
-    where V: VectorView<T>
-{
     pub fn as_row_vector(self) -> RowVector<V, T> {
         RowVector::new(self.data)
+    }
+
+    pub fn as_diag_matrix(self, diag_index: i64, zero: T) -> DiagonalMatrix<V, T> {
+        DiagonalMatrix::new(self.data, diag_index, zero)
     }
 }
 

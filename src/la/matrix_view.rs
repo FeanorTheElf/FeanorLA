@@ -77,6 +77,7 @@ impl<T> MatrixView<T> for MatrixOwned<T> {
 }
 
 impl<T> MatrixViewMut<T> for MatrixOwned<T> {
+    
     fn at_mut(&mut self, row: usize, col: usize) -> &mut T {
         self.assert_col_in_range(col);
         self.assert_row_in_range(row);

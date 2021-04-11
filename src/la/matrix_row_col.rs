@@ -4,18 +4,18 @@ use super::vec::*;
 use std::marker::PhantomData;
 
 #[derive(Debug)]
-pub struct MatrixRow<'a, T, M>
+pub struct MatrixRow<T, M>
     where M: MatrixView<T> 
 {
     row: usize,
-    matrix: &'a M,
+    matrix: M,
     item: PhantomData<T>
 }
 
-impl<'a, T, M> MatrixRow<'a, T, M>
+impl<T, M> MatrixRow<T, M>
     where M: MatrixView<T> 
 {
-    pub fn new(matrix: &'a M, row: usize) -> Self {
+    pub fn new(matrix: M, row: usize) -> Self {
         MatrixRow {
             matrix: matrix,
             row: row,
@@ -24,18 +24,18 @@ impl<'a, T, M> MatrixRow<'a, T, M>
     }
 }
 
-impl<'a, T, M> Copy for MatrixRow<'a, T, M> 
-    where M: MatrixView<T> {}
+impl<'a, T, M> Copy for MatrixRow<T, M> 
+    where M: MatrixView<T> + Copy {}
 
-impl<'a, T, M> Clone for MatrixRow<'a, T, M>
-    where M: MatrixView<T> 
+impl<'a, T, M> Clone for MatrixRow<T, M>
+    where M: MatrixView<T> + Clone
 {
     fn clone(&self) -> Self {
-        *self
+        MatrixRow::new(self.matrix.clone(), self.row)
     }
 }
 
-impl<'a, T, M> VectorView<T> for MatrixRow<'a, T, M> 
+impl<'a, T, M> VectorView<T> for MatrixRow<T, M> 
     where M: MatrixView<T>
 {
     fn len(&self) -> usize {
@@ -48,26 +48,26 @@ impl<'a, T, M> VectorView<T> for MatrixRow<'a, T, M>
     }
 }
 
-pub struct MatrixRowIter<'a, T, M>
-    where M: MatrixView<T> 
+pub struct MatrixRowIter<T, M>
+    where M: MatrixView<T> + Copy
 {
-    current: MatrixRow<'a, T, M>
+    current: MatrixRow<T, M>
 }
 
-impl<'a, T, M> MatrixRowIter<'a, T, M>
-    where M: MatrixView<T> 
+impl<T, M> MatrixRowIter<T, M>
+    where M: MatrixView<T> + Copy
 {
-    pub fn new(matrix: &'a M) -> Self {
+    pub fn new(matrix: M) -> Self {
         MatrixRowIter {
             current: MatrixRow::new(matrix, 0)
         }
     }
 }
 
-impl<'a, T, M> Iterator for MatrixRowIter<'a, T, M> 
-    where M: MatrixView<T>
+impl<T, M> Iterator for MatrixRowIter<T, M> 
+    where M: MatrixView<T> + Copy
 {
-    type Item = Vector<MatrixRow<'a, T, M>, T>;
+    type Item = Vector<MatrixRow<T, M>, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let result = self.current;
@@ -80,11 +80,11 @@ impl<'a, T, M> Iterator for MatrixRowIter<'a, T, M>
     }
 }
 
-impl<'a, T, M> Copy for MatrixRowIter<'a, T, M> 
-    where M: MatrixView<T> {}
+impl<T, M> Copy for MatrixRowIter<T, M> 
+    where M: MatrixView<T> + Copy {}
 
-impl<'a, T, M> Clone for MatrixRowIter<'a, T, M>
-    where M: MatrixView<T> 
+impl<T, M> Clone for MatrixRowIter<T, M>
+    where M: MatrixView<T> + Copy
 {
     fn clone(&self) -> Self {
         *self
@@ -92,18 +92,18 @@ impl<'a, T, M> Clone for MatrixRowIter<'a, T, M>
 }
 
 #[derive(Debug)]
-pub struct MatrixCol<'a, T, M>
+pub struct MatrixCol<T, M>
     where M: MatrixView<T> 
 {
     col: usize,
-    matrix: &'a M,
+    matrix: M,
     item: PhantomData<T>
 }
 
-impl<'a, T, M> MatrixCol<'a, T, M>
+impl<T, M> MatrixCol<T, M>
     where M: MatrixView<T> 
 {
-    pub fn new(matrix: &'a M, col: usize) -> Self {
+    pub fn new(matrix: M, col: usize) -> Self {
         MatrixCol {
             col: col,
             matrix: matrix,
@@ -112,18 +112,18 @@ impl<'a, T, M> MatrixCol<'a, T, M>
     }
 }
 
-impl<'a, T, M> Copy for MatrixCol<'a, T, M> 
-    where M: MatrixView<T> {}
+impl<T, M> Copy for MatrixCol<T, M> 
+    where M: MatrixView<T> + Copy {}
 
-impl<'a, T, M> Clone for MatrixCol<'a, T, M>
-    where M: MatrixView<T> 
+impl<T, M> Clone for MatrixCol<T, M>
+    where M: MatrixView<T> + Clone
 {
     fn clone(&self) -> Self {
-        *self
+        MatrixCol::new(self.matrix.clone(), self.col)
     }
 }
 
-impl<'a, T, M> VectorView<T> for MatrixCol<'a, T, M> 
+impl<T, M> VectorView<T> for MatrixCol<T, M> 
     where M: MatrixView<T>
 {
     fn len(&self) -> usize {
@@ -136,26 +136,26 @@ impl<'a, T, M> VectorView<T> for MatrixCol<'a, T, M>
     }
 }
 
-pub struct MatrixColIter<'a, T, M>
-    where M: MatrixView<T> 
+pub struct MatrixColIter<T, M>
+    where M: MatrixView<T> + Copy
 {
-    current: MatrixCol<'a, T, M>
+    current: MatrixCol<T, M>
 }
 
-impl<'a, T, M> MatrixColIter<'a, T, M>
-    where M: MatrixView<T> 
+impl<T, M> MatrixColIter<T, M>
+    where M: MatrixView<T> + Copy
 {
-    pub fn new(matrix: &'a M) -> Self {
+    pub fn new(matrix: M) -> Self {
         MatrixColIter {
             current: MatrixCol::new(matrix, 0)
         }
     }
 }
 
-impl<'a, T, M> Iterator for MatrixColIter<'a, T, M> 
-    where M: MatrixView<T>
+impl<'a, T, M> Iterator for MatrixColIter<T, M> 
+    where M: MatrixView<T> + Copy
 {
-    type Item = Vector<MatrixCol<'a, T, M>, T>;
+    type Item = Vector<MatrixCol<T, M>, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let result = self.current;
@@ -168,11 +168,11 @@ impl<'a, T, M> Iterator for MatrixColIter<'a, T, M>
     }
 }
 
-impl<'a, T, M> Copy for MatrixColIter<'a, T, M> 
-    where M: MatrixView<T> {}
+impl<'a, T, M> Copy for MatrixColIter<T, M> 
+    where M: MatrixView<T> + Copy {}
 
-impl<'a, T, M> Clone for MatrixColIter<'a, T, M>
-    where M: MatrixView<T> 
+impl<'a, T, M> Clone for MatrixColIter<T, M>
+    where M: MatrixView<T> + Copy
 {
     fn clone(&self) -> Self {
         *self

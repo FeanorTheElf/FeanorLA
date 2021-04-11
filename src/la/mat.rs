@@ -4,11 +4,13 @@ use super::ops::*;
 pub use super::matrix_view::*;
 pub use super::vector_view::*;
 pub use super::vec::*;
-pub use super::vector::*;
 pub use super::submatrix::*;
-pub use super::matrix_vector::*;
-pub use super::matrix_row_col::*;
-pub use super::constant::*;
+pub use super::vector::*;
+
+use super::diagonal::*;
+use super::matrix_vector::*;
+use super::matrix_row_col::*;
+use super::constant::*;
 
 use std::marker::PhantomData;
 use std::ops::{AddAssign, Sub, SubAssign, MulAssign, Add, Mul, RangeBounds, Bound};
@@ -91,22 +93,40 @@ impl<M, T> Matrix<M, T>
         ))
     }
 
-    pub fn rows(&self) -> MatrixRowIter<T, M> {
-        MatrixRowIter::new(&self.data)
+    pub fn rows(&self) -> MatrixRowIter<T, MatrixRef<M, T>> {
+        MatrixRowIter::new(self.as_ref().data)
     }
 
-    pub fn row(&self, row: usize) -> Vector<MatrixRow<T, M>, T> {
+    pub fn row(&self, row: usize) -> Vector<MatrixRow<T, MatrixRef<M, T>>, T> {
         self.data.assert_row_in_range(row);
-        Vector::new(MatrixRow::new(&self.data, row))
+        Vector::new(MatrixRow::new(self.as_ref().data, row))
     }
 
-    pub fn cols(&self) -> MatrixColIter<T, M> {
-        MatrixColIter::new(&self.data)
+    pub fn cols(&self) -> MatrixColIter<T, MatrixRef<M, T>> {
+        MatrixColIter::new(self.as_ref().data)
     }
 
-    pub fn col(&self, col: usize) -> Vector<MatrixCol<T, M>, T> {
+    pub fn col(&self, col: usize) -> Vector<MatrixCol<T, MatrixRef<M, T>>, T> {
         self.data.assert_col_in_range(col);
-        Vector::new(MatrixCol::new(&self.data, col))
+        Vector::new(MatrixCol::new(self.as_ref().data, col))
+    }
+
+    pub fn diag(&self) -> Vector<MatrixDiagonal<MatrixRef<M, T>, T>, T> {
+        self.nonmain_diag(0)
+    }
+
+    pub fn nonmain_diag(&self, diag_index: i64) -> Vector<MatrixDiagonal<MatrixRef<M, T>, T>, T> {
+        Vector::new(MatrixDiagonal::new(self.as_ref().data, diag_index))
+    }
+
+    pub fn into_row_vec(self) -> Vector<MatrixRow<T, M>, T> {
+        assert!(self.row_count() == 1);
+        Vector::new(MatrixRow::new(self.data, 0))
+    }
+
+    pub fn into_col_vec(self) -> Vector<MatrixCol<T, M>, T> {
+        assert!(self.col_count() == 1);
+        Vector::new(MatrixCol::new(self.data, 0))
     }
 }
 
@@ -131,6 +151,30 @@ impl<V, T> Matrix<RowVector<V, T>, T>
 {
     pub fn row_vec(vector: Vector<V, T>) -> Self {
         Matrix::new(vector.as_row_vector())
+    }
+}
+
+impl<V, T> Matrix<DiagonalMatrix<V, T>, T>
+    where V: VectorView<T>
+{
+    pub fn diag_matrix_ring<R: Ring<El = T>>(vector: Vector<V, T>, ring: &R) -> Self {
+        Matrix::nonmain_diag_matrix_ring(vector, 0, ring)
+    }
+
+    pub fn nonmain_diag_matrix_ring<R: Ring<El = T>>(vector: Vector<V, T>, diag_index: i64, ring: &R) -> Self {
+        Matrix::new(vector.as_diag_matrix(diag_index, ring.zero()))
+    }
+}
+
+impl<V, T> Matrix<DiagonalMatrix<V, T>, T>
+    where V: VectorView<T>, T: RingEl
+{
+    pub fn diag_matrix(vector: Vector<V, T>) -> Self {
+        Matrix::nonmain_diag_matrix(vector, 0)
+    }
+
+    pub fn nonmain_diag_matrix(vector: Vector<V, T>, diag_index: i64) -> Self {
+        Matrix::nonmain_diag_matrix_ring(vector, diag_index, &StaticRing::<T>::RING)
     }
 }
 
@@ -239,9 +283,9 @@ impl<M, T> Matrix<M, T>
     pub fn copy_vec(&self) -> Vector<VectorOwned<T>, T> {
         assert!(self.col_count() == 1 || self.row_count() == 1);
         if self.col_count() == 1 {
-            self.col(0).to_owned()
+            self.as_ref().col(0).to_owned()
         } else {
-            self.row(0).to_owned()
+            self.as_ref().row(0).to_owned()
         }
     }
 }
@@ -616,4 +660,19 @@ fn test_zero_sized_matrix() {
 
     assert_eq!(0, a.row(0).len());
     assert_eq!(0, d.col(1).len());
+}
+
+#[test]
+fn test_diagonal() {
+    let a = Matrix::from_array([[1, 2], [3, 4], [5, 6]]);
+    assert_eq!(2, a.diag().len());
+    assert_eq!(1, a.nonmain_diag(1).len());
+    assert_eq!(2, a.nonmain_diag(-1).len());
+    assert_eq!(1, a.nonmain_diag(-2).len());
+
+    let b = Matrix::from_array([[1, 0], [0, 2]]);
+    assert_eq!(b, Matrix::diag_matrix(Vector::from_array([1, 2])));
+
+    let c = Matrix::from_array([[0, 0], [3, 0], [0, 6]]);
+    assert_eq!(c, Matrix::nonmain_diag_matrix(a.nonmain_diag(-1), -1));
 }

@@ -7,5 +7,6 @@ pub mod matrix_vector;
 pub mod submatrix;
 pub mod ops;
 pub mod vec;
+pub mod diagonal;
 pub mod mat;
 pub mod algorithms;
