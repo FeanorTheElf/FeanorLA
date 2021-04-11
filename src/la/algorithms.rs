@@ -45,6 +45,10 @@ impl<R: Ring> MatrixKernelBase for R {
 
 pub trait MatrixFrobenius: Ring {
     fn calc_matrix_frobenius_norm_square<M: MatrixView<Self::El>>(&self, a: Matrix<M, Self::El>) -> Self::El;
+
+    fn l2_norm_square<V: VectorView<Self::El>>(&self, v: Vector<V, Self::El>) -> Self::El {
+        self.calc_matrix_frobenius_norm_square(Matrix::row_vec(v))
+    }
 }
 
 impl<R: Ring> MatrixFrobenius for R {
