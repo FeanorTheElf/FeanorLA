@@ -1,4 +1,5 @@
 use super::bitset::*;
+use std::convert::TryInto;
 
 #[derive(Debug, Clone)]
 pub struct BitsetCombinations {
@@ -156,6 +157,12 @@ pub fn clone_slice<T>(slice: &[T]) -> Box<[T]>
     return vec.into_boxed_slice();
 }
 
+pub fn clone_array<T, const N: usize>(slice: &[T]) -> [T; N] 
+    where T: Copy
+{
+    slice.try_into().unwrap()
+}
+
 pub fn basic_combinations<I>(it: I, k: usize) -> impl Iterator<Item = Box<[I::Item]>>
     where I: Iterator + Clone, I::Item: Clone, 
 {
@@ -175,7 +182,6 @@ impl BitsetPowerset {
         self.parent
     }
 }
-
 
 impl BitsetPowerset {
 
@@ -424,14 +430,7 @@ where J: Iterator, J::Item: Iterator + Clone, F: FnMut(&[<J::Item as Iterator>::
     };
 }
 
-macro_rules! static_cartesian_product {
-    () => {
-        std::iter::empty()
-    };
-    ($head:expr, $($tail:tt)*) => {
-        cartesian_product($head, cartesian_product!($($tail)*))
-    };
-}
+
 
 #[test]
 fn test_bitset_combinations() {
