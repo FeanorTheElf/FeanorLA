@@ -931,7 +931,8 @@ impl Shr<usize> for BigInt {
     }
 }
 
-impl_euclidean_ring_el!{ BigInt: BigInt::RING }
+impl_ring_el!{ BigInt; BigInt::RING; RingAxiomsEuclideanRing }
+impl_euclidean_ring_el!{ BigInt; BigInt::RING }
 
 impl Eq for BigInt {}
 

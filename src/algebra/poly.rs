@@ -645,17 +645,15 @@ fn test_binomial_formula() {
     let mut ring = MultivariatePolyRing::new(StaticRing::<i32>::RING);
     let x = ring.adjoint("X");
     let y = ring.adjoint("Y");
-    let two = ring.from(2);
+    let x = ring.bind::<RingAxiomsIntegralRing>(x);
+    let y = ring.bind(y);
+    let two = ring.bind(ring.from(2));
     
-    let x2_2xy_y2 = fixed_ring_env!{ &ring; x, y, two; {
-        (x * x) + (two * x * y) + (y * y)
-    }};
-    let x_y_square = fixed_ring_env!{ &ring; x, y; {
-        (x + y) * (x + y)
-    }};
+    let x2_2xy_y2 = (&x * &x) + (two * &x * &y) + (&y * &y);
+    let x_y_square = (&x + &y) * (&x + &y);
 
-    assert!(ring.eq(&x2_2xy_y2, &x_y_square));
-    assert!(!ring.eq(&x2_2xy_y2, &x));
+    assert_eq!(x2_2xy_y2, x_y_square);
+    assert!(x2_2xy_y2 != x);
 }
 
 #[test]
@@ -672,15 +670,15 @@ fn test_evaluate_at() {
     let mut ring = MultivariatePolyRing::new(StaticRing::<i32>::RING);
     let x = ring.adjoint("X");
     let y = ring.adjoint("Y");
-    let thirteen = ring.from(13);
+    let x = ring.bind::<RingAxiomsIntegralRing>(x);
+    let y = ring.bind(y);
+    let thirteen = ring.bind(ring.from(13));
 
     // the polynomial x^2 y + 2 x y^2 + x + 13
-    let poly = fixed_ring_env!{ &ring; x, y, thirteen; {
-        (x * x * y) + (x * y * y + x * y * y) + x + thirteen
-    }};
+    let poly = (&x * &x * &y) + (&x * &y * &y + &x * &y * &y) + &x + thirteen;
 
-    assert_eq!(14, ring.evaluate_at(poly.clone(), &vec![1, 0]));
-    assert_eq!(12 + 36 + 2 + 13, ring.evaluate_at(poly, &vec![2, 3]));
+    assert_eq!(14, ring.evaluate_at(poly.val().clone(), &vec![1, 0]));
+    assert_eq!(12 + 36 + 2 + 13, ring.evaluate_at(poly.val().clone(), &vec![2, 3]));
 }
 
 #[test]
@@ -694,31 +692,25 @@ fn test_assumption_option_ord() {
 #[test]
 fn test_poly_arithmetic() {
     let ring = PolyRing::adjoint(StaticRing::<i32>::RING, "X");
-    let x = ring.unknown();
-    let one = ring.one();
+    let x = ring.bind::<RingAxiomsIntegralRing>(ring.unknown());
+    let one = ring.bind(ring.one());
 
-    let x2_2x_1 = fixed_ring_env!{ &ring; x, one; {
-        (x * x) + (x + x) + one
-    }};
-    let x_one_square = fixed_ring_env!{ &ring; x, one; {
-        (x + one) * (x + one)
-    }};
+    let x2_2x_1 = (&x * &x) + (&x + &x) + &one;
+    let x_one_square = (&x + &one) * (&x + &one);
 
-    assert!(ring.eq(&x2_2x_1, &x_one_square));
-    assert!(!ring.eq(&x2_2x_1, &x));
-    assert!(ring.is_zero(&ring.sub(x2_2x_1, x_one_square)));
+    assert_eq!(x2_2x_1, x_one_square);
+    assert!(x2_2x_1 != x);
+    assert_eq!(ring.bind(ring.zero()), x2_2x_1 - x_one_square);
 }
 
 #[test]
 fn test_format() {
     let ring = PolyRing::adjoint(StaticRing::<i32>::RING, "X");
-    let x = ring.unknown();
-    let one = ring.one();
+    let x = ring.bind::<RingAxiomsIntegralRing>(ring.unknown());
+    let one = ring.bind(ring.one());
 
-    let poly = fixed_ring_env!{ &ring; x, one; {
-        x * x * x + (one + one) * x * x - one
-    }};
-    assert_eq!("1 * X^3 + 2 * X^2 + -1", format!("{}", display_ring_el(&ring, &poly)));
+    let poly = &x * &x * &x + (&one + &one) * &x * &x - &one;
+    assert_eq!("1 * X^3 + 2 * X^2 + -1", format!("{}", poly));
 }
 
 #[test]
@@ -726,34 +718,26 @@ fn test_format_multivar_poly_ring() {
     let mut ring = MultivariatePolyRing::new(StaticRing::<i32>::RING);
     let x = ring.adjoint("X");
     let y = ring.adjoint("Y");
-    let one = ring.one();
+    let x = ring.bind::<RingAxiomsIntegralRing>(x);
+    let y = ring.bind(y);
+    let one = ring.bind(ring.one());
 
-    let poly = fixed_ring_env!{ &ring; x, y, one; {
-        x * x * x - y + (one + one) * y * x - one
-    }};
-    assert_eq!("-1 + -1 * Y^1 + 2 * X^1 Y^1 + 1 * X^3", format!("{}", display_ring_el(&ring, &poly)));
+    let poly = &x * &x * &x - &y + (&one + &one) * &y * &x - &one;
+    assert_eq!("-1 + -1 * Y^1 + 2 * X^1 Y^1 + 1 * X^3", format!("{}", poly));
 }
 
 #[test]
 fn test_poly_div() {
     let ring = PolyRing::adjoint(StaticRing::<i32>::RING, "X");
-    let x = ring.unknown();
-    let one = ring.one();
+    let x = ring.bind::<RingAxiomsIntegralRing>(ring.unknown());
+    let one = ring.bind(ring.one());
 
-    let mut p = fixed_ring_env!{ &ring; x, one; {
-        x * x * x + x * x + x + one
-    }};
-    let q = fixed_ring_env!{ &ring; x, one; {
-        x + one
-    }};
-    let expected = fixed_ring_env!{ &ring; x, one; {
-        x * x + one
-    }};
-    let result = ring.poly_division(&mut p, &q, |x| Ok(*x)).unwrap();
-    println!("{} ?= 0", display_ring_el(&ring, &p));
-    assert!(ring.is_zero(&p));
-    println!("{} ?= {}", display_ring_el(&ring, &expected), display_ring_el(&ring, &result));
-    assert!(ring.eq(&expected, &result));
+    let mut p = &x * &x * &x + &x * &x + &x + &one;
+    let q = &x + &one;
+    let expected = &x * &x + &one;
+    let result = ring.bind(ring.poly_division(p.val_mut(), q.val(), |x| Ok(*x)).unwrap());
+    assert_eq!(ring.bind(ring.zero()), p);
+    assert_eq!(expected, result);
 }
 
 #[test]
@@ -761,32 +745,19 @@ fn test_div_multivar_poly_ring() {
     let mut ring = MultivariatePolyRing::new(StaticRing::<i32>::RING);
     let x = ring.adjoint("X");
     let y = ring.adjoint("Y");
-    let one = ring.one();
+    let x = ring.bind::<RingAxiomsIntegralRing>(x);
+    let y = ring.bind(y);
+    let one = ring.bind(ring.one());
 
-    let a = fixed_ring_env!{ &ring; x, y; {
-        x + y
-    }};
-    let b = fixed_ring_env!{ &ring; x, one; {
-        (one + one) * x * x
-    }};
-    let c = fixed_ring_env!{ &ring; y, one; {
-        y + one
-    }};
-    let d = fixed_ring_env!{ &ring; x, y, one; {
-        (x + y + one) * (x - one)
-    }};
-    let p = fixed_ring_env!{ &ring; a, b, c, d; {
-        a * b * c * d
-    }};
-    let q = fixed_ring_env!{ &ring; a, c; {
-        a * c
-    }};
-    let expected = fixed_ring_env!{ &ring; b, d; {
-        b * d
-    }};
-    let result = ring.div(p, &q);
-    println!("{} ?= {}", display_ring_el(&ring, &expected), display_ring_el(&ring, &result));
-    assert!(ring.eq(&expected, &result));
+    let a = &x + &y;
+    let b = (&one + &one) * &x * &x;
+    let c = &y + &one;
+    let d = (&x + &y + &one) * (&x - &one);
+    let p = &a * &b * &c * &d;
+    let q = &a * &c;
+    let expected = &b * &d;
+    let result = ring.div(p.val().clone(), q.val());
+    assert_eq!(expected, ring.bind(result));
 }
 
 #[test]
@@ -794,29 +765,25 @@ fn test_elevate_var() {
     let mut ring = MultivariatePolyRing::new(StaticRing::<i32>::RING);
     let x = ring.adjoint("X");
     let y = ring.adjoint("Y");
-    let one = ring.one();
+    let x = ring.bind::<RingAxiomsIntegralRing>(x);
+    let y = ring.bind(y);
+    let one = ring.bind(ring.one());
 
-    let p: BTreeMap<Vec<usize>, <StaticRing::<i32> as Ring>::El> = fixed_ring_env!{ &ring; x, y, one; {
-        x * y + y * y * x * (one + one) + one + x
-    }};
+    let p = &x * &y + &y * &y * &x * (&one + &one) + &one + &x;
 
     let uni_ring = ring.elevate_var_ring(Var(1));
 
-    let uni_y = uni_ring.unknown();
-    let uni_x = uni_ring.from(x);
-    let uni_one = uni_ring.one();
+    let uni_y = uni_ring.bind::<RingAxiomsIntegralRing>(uni_ring.unknown());
+    let uni_x = uni_ring.bind(uni_ring.from(x.val().clone()));
+    let uni_one = uni_ring.bind(uni_ring.one());
 
-    let expected = fixed_ring_env!{ &uni_ring; uni_y, uni_x, uni_one; {
-        uni_x * uni_y + uni_y * uni_y * uni_x * (uni_one + uni_one) + uni_one + uni_x
-    }};
+    let expected = &uni_x * &uni_y + &uni_y * &uni_y * &uni_x * (&uni_one + &uni_one) + &uni_one + &uni_x;
 
-    let actual = ring.elevate_var(Var(1), p.clone());
-    println!("{} ?= {}", display_ring_el(&uni_ring, &expected), display_ring_el(&uni_ring, &actual));
-    assert!(uni_ring.eq(&expected, &actual));
+    let actual = uni_ring.bind(ring.elevate_var(Var(1), p.val().clone()));
+    assert_eq!(expected, actual);
 
-    let original = ring.de_elevate_var(Var(1), actual);
-    println!("{} ?= {}", display_ring_el(&ring, &p), display_ring_el(&ring, &original));
-    assert!(ring.eq(&p, &original));
+    let original = ring.bind(ring.de_elevate_var(Var(1), actual.val().clone()));
+    assert_eq!(p, original);
 }
 
 #[test]
@@ -824,17 +791,14 @@ fn test_gradient() {
     let mut ring = MultivariatePolyRing::new(StaticRing::<i32>::RING);
     let x = ring.adjoint("X");
     let y = ring.adjoint("Y");
-    let one = ring.one();
+    let x = ring.bind::<RingAxiomsIntegralRing>(x);
+    let y = ring.bind(y);
+    let one = ring.bind(ring.one());
 
-    let p = fixed_ring_env!{ &ring; x, y, one; {
-        x + x * x * y + x * y + (one + one) * x * x * x
-    }};
-    let dx = fixed_ring_env!{ &ring; x, y, one; {
-        (one + y) + (one + one) * x * y + (one + one) * (one + one + one) * x * x
-    }};
-    let dy = fixed_ring_env!{ &ring; x; {
-        x * x + x
-    }};
-    assert_eq!(dx, ring.derive(&p, ring.get_var("X")));
-    assert_eq!(dy, ring.derive(&p, ring.get_var("Y")));
+    let p = &x + &x * &x * &y + &x * &y + (&one + &one) * &x * &x * &x;
+    let dx = (&one + &y) + (&one + &one) * &x * &y + (&one + &one) * (&one + &one + &one) * &x * &x;
+    let dy = &x * &x + &x;
+
+    assert_eq!(dx, ring.bind(ring.derive(p.val(), ring.get_var("X"))));
+    assert_eq!(dy, ring.bind(ring.derive(p.val(), ring.get_var("Y"))));
 }
