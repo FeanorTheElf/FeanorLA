@@ -1,5 +1,6 @@
 use super::alg::*;
 use super::algebra::bigint::BigInt;
+use super::alg_macros::*;
 
 use std::marker::PhantomData;
 
@@ -63,7 +64,7 @@ where R: Ring, A: RingAxioms
     }
 }
 
-pub struct WrappingRing<'a, R, A> 
+struct WrappingRing<'a, R, A> 
 {
     ring: PhantomData<&'a R>,
     axioms: PhantomData<A>
@@ -72,7 +73,7 @@ pub struct WrappingRing<'a, R, A>
 impl<'a, R, A> WrappingRing<'a, R, A> 
 where R: 'a + Ring + std::fmt::Debug, A: RingAxioms + std::fmt::Debug 
 {
-    pub const RING: WrappingRing<'a, R, A> = WrappingRing {
+    const RING: WrappingRing<'a, R, A> = WrappingRing {
         ring: PhantomData,
         axioms: PhantomData
     };
@@ -95,10 +96,21 @@ where R: 'a + Ring + std::fmt::Debug, A: RingAxioms + std::fmt::Debug
         RingReferencingEl::create(val.ring, val.ring.neg(val.el))
     }
 
-    fn zero(&self) -> Self::El { unimplemented!() }
-    fn one(&self) -> Self::El { unimplemented!() }
-    fn unspecified_element(&self) -> Self::El { unimplemented!() }
-    fn from_z(&self, x: i64) -> Self::El { unimplemented!() }
+    fn zero(&self) -> Self::El { 
+        panic!("`WrappingRing` does not provide the constants from the ring; Use `base_ring.bind(base_ring.zero())` instead.") 
+    }
+
+    fn one(&self) -> Self::El { 
+        panic!("`WrappingRing` does not provide the constants from the ring; Use `base_ring.bind(base_ring.one())` instead.")
+    }
+
+    fn unspecified_element(&self) -> Self::El {
+        panic!("`WrappingRing` does not provide the constants from the ring; Use `base_ring.bind(base_ring.unspecified_element())` instead.")
+    }
+
+    fn from_z(&self, _x: i64) -> Self::El { 
+        panic!("`WrappingRing` does not provide the constants from the ring; Use `base_ring.bind(base_ring.unspecified_element())` instead.")
+    }
 
     fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
         lhs.ring.eq(lhs.val(), rhs.val())

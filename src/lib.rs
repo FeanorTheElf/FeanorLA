@@ -12,10 +12,10 @@ extern crate take_mut;
 extern crate oorandom;
 extern crate typemap;
 
-#[macro_use]
 pub mod alg;
-pub mod float;
 #[macro_use]
+pub mod alg_macros;
+pub mod float;
 pub mod alg_env;
 
 pub mod la;
