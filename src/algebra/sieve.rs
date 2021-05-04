@@ -107,7 +107,7 @@ fn collect_relations<I>(
         square *= &k;
         square -= n;
         if let Some(rel) = check_smooth(square, &factor_base) {
-            dbg!("found relation: {}, relation count: {}", &k, relations.len());
+            println!("found relation: {}, relation count: {}", &k, relations.len());
             relations.push((k.clone(), rel));
             // we need enough relations to get a matrix with nontrivial kernel
             // modulo 2; this is the case for sure if the it has more columns

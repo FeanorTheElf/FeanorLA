@@ -72,6 +72,16 @@ impl BigInt {
     pub fn is_zero(&self) -> bool {
         self.highest_set_block().is_none()
     }
+
+    pub fn signum(&self) -> i32 {
+        if self.is_zero() {
+            return 0;
+        } else if self.negative {
+            return -1;
+        } else {
+            return 1;
+        }
+    }
     
     fn highest_set_block(&self) -> Option<usize> {
         for i in (0..self.data.len()).rev() {
@@ -567,6 +577,84 @@ impl BigInt {
 
     pub fn pow_big(self, power: BigInt) -> BigInt {
         Self::RING.pow_big(self, power)
+    }
+
+    ///
+    /// Given an increasing function f that is negative for some x1 and positive for 
+    /// some x2, finds the floor of some root of f (if f is strictly increasing, this
+    /// is unique).
+    /// 
+    /// # Complexity
+    /// 
+    /// This function runs in O((T * log(d)) * log(d)) where d is the error
+    /// made in approx (i.e. the difference between x and approx) and T is the
+    /// time required for computing f on a value between x - d and x + d.
+    /// 
+    pub fn find_root_floor<F>(mut f: F, approx: BigInt) -> BigInt
+        where F: FnMut(&BigInt) -> BigInt
+    {
+        let mut begin = approx.clone();
+        let mut step = BigInt::one();
+        while f(&begin).signum() > 0 {
+            begin -= &step;
+            step *= 2;
+        }
+        let mut end = approx;
+        step = BigInt::one();
+        while f(&end).signum() < 0 {
+            end += &step;
+            step *= 2;
+        }
+        return Self::bisect(f, begin, end);
+    }
+
+    ///
+    /// Given an increasing function f that is negative on `begin` and positive on 
+    /// `end`, finds the floor of some root of f.
+    /// 
+    /// # Complexity
+    /// 
+    /// This function runs in O((T + log(d)) * log(d)) where d is the difference between
+    /// begin and end and T is the time required for computing f on a value between 
+    /// begin and end. 
+    /// 
+    pub fn bisect<F>(mut f: F, mut start: BigInt, mut end: BigInt) -> BigInt
+        where F: FnMut(&BigInt) -> BigInt
+    {
+        assert!(f(&start).signum() <= 0);
+        assert!(f(&end).signum() >= 0);
+        loop {
+            let mid = (&start + &end) / 2;
+            if mid == start {
+                return start;
+            }
+            match f(&mid).signum() {
+                -1 => {
+                    start = mid;
+                },
+                1 => {
+                    end = mid;
+                },
+                _ => {
+                    return mid;
+                }
+            }
+        }
+    }
+
+    pub fn root_floor(self, n: usize) -> BigInt {
+        assert!(n > 0);
+        let root_approx = self.to_float_approx().powf(1. / n as f64);
+        if n % 2 == 0 {
+            return BigInt::find_root_floor(|x| x.clone().abs() * x.clone().pow((n - 1) as u32) - &self, BigInt::from_float_approx(root_approx));
+        } else {
+            return BigInt::find_root_floor(|x| x.clone().pow(n as u32) - &self, BigInt::from_float_approx(root_approx));
+        }
+    }
+
+    pub fn log_floor(self, base: BigInt) -> BigInt {
+        let log_approx = self.to_float_approx().log(base.to_float_approx());
+        return BigInt::find_root_floor(|x| base.clone().pow_big(x.clone()), BigInt::from_float_approx(log_approx));
     }
 
     pub fn abs(mut self) -> BigInt {
@@ -1211,4 +1299,19 @@ fn test_eq() {
 #[test]
 fn test_cmp_small() {
     assert!("-23678".parse::<BigInt>().unwrap() < 0);
+}
+
+#[test]
+fn test_find_root_floor() {
+    let f = |x: &BigInt| x * x - 234867;
+    assert_eq!(BigInt::from(484), BigInt::find_root_floor(f, BigInt::ZERO));
+
+    let f = |x: &BigInt| x.clone();
+    assert_eq!(BigInt::ZERO, BigInt::find_root_floor(f, BigInt::ZERO));
+}
+
+#[test]
+fn test_root_floor() {
+    let n = BigInt::from(7681).pow(32);
+    assert_eq!(BigInt::from(7681), n.root_floor(32));
 }

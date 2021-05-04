@@ -170,7 +170,6 @@ fn test_prefix_database() {
     db.insert(&"life".chars().collect::<Vec<_>>());
     db.insert(&"light".chars().collect::<Vec<_>>());
     db.insert(&"apple".chars().collect::<Vec<_>>());
-    dbg!(&db);
 
     let converter = |x: &[char]| x.iter().collect::<String>();
 

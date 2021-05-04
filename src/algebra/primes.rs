@@ -66,7 +66,7 @@ pub fn factor(mut n: BigInt) -> Vec<BigInt> {
                 result.push(BigInt::from(p));
             }
         }
-        if n != 1 {
+        if n_int != 1 {
             result.push(BigInt::from(n_int));
         }
         return result;
@@ -74,6 +74,13 @@ pub fn factor(mut n: BigInt) -> Vec<BigInt> {
         if is_prime(&n, IS_PRIME_ERROR_BOUND) {
             return vec![n];
         } else {
+            for i in 2..n.log2_floor() {
+                if n.clone().root_floor(i).pow(i as u32) == n {
+                    let root = n.root_floor(i);
+                    let factors = factor(root);
+                    return factors.iter().cycle().cloned().take(factors.len() * i).collect();
+                }
+            }
             let first_factor = quadratic_sieve(&n);
             let other_factor = n.euclidean_div_rem(&first_factor);
             debug_assert!(first_factor != 1 && other_factor != 1);
@@ -115,6 +122,13 @@ fn test_factor() {
         BigInt::from(237689), 
         BigInt::from(717653)
     ], factor(BigInt::from(237689 * 717653)));
+}
+
+#[test]
+fn test_factor_perfect_power() {
+    let n = BigInt::from(7681).pow(32);
+    let factors = factor(n);
+    assert_eq!(std::iter::repeat(7681).map(BigInt::from).take(32).collect::<Vec<_>>(), factors);
 }
 
 #[cfg(release)]
