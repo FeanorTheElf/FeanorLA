@@ -5,6 +5,8 @@
 #![feature(const_panic)]
 #![feature(unboxed_closures)]
 #![feature(trace_macros)]
+#![feature(bench_black_box)]
+#![feature(const_fn_trait_bound)]
 
 #[cfg(test)]
 extern crate test;

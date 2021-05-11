@@ -24,6 +24,8 @@ const fn is_prime(n: u64) -> bool {
 
 impl<const N: u64, const IS_FIELD: bool> ZnElImpl<N, IS_FIELD> {
 
+    pub const IS_FIELD: bool = IS_FIELD;
+
     pub const fn project(v: i64) -> ZnElImpl<N, IS_FIELD> {
         assert!(N <= u64::MAX / 2);
         assert!(N <= i64::MAX as u64);
@@ -180,9 +182,7 @@ impl<const N: u64> RingEl for ZnElImpl<N, false> {
 
 impl<const N: u64> FieldEl for ZnElImpl<N, true> {}
 
-
 pub type ZnEl<const N: u64> = ZnElImpl<N, {is_prime(N)}>;
-
 
 #[test]
 fn test_is_prime() {

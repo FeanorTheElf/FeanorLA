@@ -2,6 +2,7 @@ pub mod eea;
 pub mod rat;
 pub mod bigint;
 pub mod zn;
+pub mod fq;
 pub mod quotient;
 pub mod poly;
 pub mod sieve;
