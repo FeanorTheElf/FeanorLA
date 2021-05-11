@@ -287,7 +287,7 @@ impl BigInt {
                 (self.data[self_high - 1] as u128);
 
             if self.data[self_high] != 0 {
-                let  quotient = (self_high_blocks / (rhs.data[rhs_high] as u128 + 1)) as u64;
+                let quotient = (self_high_blocks / (rhs.data[rhs_high] as u128 + 1)) as u64;
                 tmp.assign(rhs);
                 tmp.abs_multiplication_small(quotient);
                 self.abs_subtraction(&tmp, self_high - rhs_high - 1);
@@ -571,11 +571,11 @@ impl BigInt {
         }
     }
 
-    pub fn pow(self, power: u32) -> BigInt {
+    pub fn pow(&self, power: u32) -> BigInt {
         Self::RING.pow(self, power)
     }
 
-    pub fn pow_big(self, power: BigInt) -> BigInt {
+    pub fn pow_big(&self, power: &BigInt) -> BigInt {
         Self::RING.pow_big(self, power)
     }
 
@@ -654,7 +654,7 @@ impl BigInt {
 
     pub fn log_floor(self, base: BigInt) -> BigInt {
         let log_approx = self.to_float_approx().log(base.to_float_approx());
-        return BigInt::find_root_floor(|x| base.clone().pow_big(x.clone()), BigInt::from_float_approx(log_approx));
+        return BigInt::find_root_floor(|x| base.clone().pow_big(x), BigInt::from_float_approx(log_approx));
     }
 
     pub fn abs(mut self) -> BigInt {

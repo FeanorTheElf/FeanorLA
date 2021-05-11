@@ -34,7 +34,7 @@ pub fn is_prime(n: &BigInt, k: usize) -> bool {
             || ((rng.rand_u32() as u64) << 32) | (rng.rand_u32() as u64), &n, 
             STATISTICAL_DISTANCE_ERROR_BOUND
         ));
-        let mut current = ring.pow_big(a.clone(), d.clone());
+        let mut current = ring.pow_big(&a, &d);
         let mut miller_rabin_condition = ring.is_one(&current);
         for _r in 0..s {
             miller_rabin_condition |= ring.is_neg_one(&current);

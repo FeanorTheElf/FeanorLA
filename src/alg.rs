@@ -416,27 +416,27 @@ pub trait Ring {
         self.add(lhs, self.neg(rhs))
     }
 
-    fn pow(&self, basis: Self::El, exp: u32) -> Self::El 
+    fn pow(&self, basis: &Self::El, exp: u32) -> Self::El 
         where Self::El: Clone
     {
-        self.pow_big(basis, BigInt::from(exp as i64))
+        self.pow_big(basis, &BigInt::from(exp as i64))
     }
 
-    fn pow_big(&self, basis: Self::El, exp: BigInt) -> Self::El 
+    fn pow_big(&self, basis: &Self::El, exp: &BigInt) -> Self::El 
         where Self::El: Clone
     {
-        assert!(exp >= 0);
+        assert!(*exp >= 0);
         if exp.is_zero() {
             return self.one();
         }
 
-        let mut power = basis;
         let mut result = self.one();
-        for i in 0..(exp.log2_floor() + 1) {
+        for i in (0..(exp.log2_floor() + 1)).rev() {
             if exp.is_bit_set(i) {
-                result = self.mul_ref(&result, &power);
+                result = self.mul(self.mul_ref(&result, &basis), result);
+            } else {
+                result = self.mul_ref(&result, &result);
             }
-            power = self.mul(power.clone(), power);
         }
         return result;
     }
@@ -546,12 +546,12 @@ impl<'a, R: Ring> Ring for &'a R {
     fn add(&self, lhs: Self::El, rhs: Self::El) -> Self::El { (**self).add(lhs, rhs) }
     fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El { (**self).mul(lhs, rhs) }
     fn sub(&self, lhs: Self::El, rhs: Self::El) -> Self::El { (**self).sub(lhs, rhs) }
-    fn pow(&self, basis: Self::El, exp: u32) -> Self::El 
+    fn pow(&self, basis: &Self::El, exp: u32) -> Self::El 
         where Self::El: Clone
     {
         (**self).pow(basis, exp)
     }
-    fn pow_big(&self, basis: Self::El, exp: BigInt) -> Self::El 
+    fn pow_big(&self, basis: &Self::El, exp: &BigInt) -> Self::El 
         where Self::El: Clone
     {
         (**self).pow_big(basis, exp)
@@ -703,5 +703,5 @@ pub type StaticRing<R> = StaticRingImpl<<R as RingEl>::Axioms, R>;
 
 #[test]
 fn test_pow() {
-    assert_eq!(81 * 81 * 3, StaticRing::<i64>::RING.pow(3, 9));
+    assert_eq!(81 * 81 * 3, StaticRing::<i64>::RING.pow(&3, 9));
 }

@@ -136,16 +136,16 @@ where R: 'a + Ring + std::fmt::Debug, A: RingAxioms + std::fmt::Debug
         RingReferencingEl::create(lhs.ring, lhs.ring.sub(lhs.el, rhs.el))
     }
 
-    fn pow(&self, basis: Self::El, exp: u32) -> Self::El 
+    fn pow(&self, basis: &Self::El, exp: u32) -> Self::El 
         where Self::El: Clone
     {
-        RingReferencingEl::create(basis.ring, basis.ring.pow(basis.el, exp))
+        RingReferencingEl::create(basis.ring, basis.ring.pow(&basis.el, exp))
     }
 
-    fn pow_big(&self, basis: Self::El, exp: BigInt) -> Self::El 
+    fn pow_big(&self, basis: &Self::El, exp: &BigInt) -> Self::El 
         where Self::El: Clone
     {
-        RingReferencingEl::create(basis.ring, basis.ring.pow_big(basis.el, exp))
+        RingReferencingEl::create(basis.ring, basis.ring.pow_big(&basis.el, exp))
     }
 
     fn is_zero(&self, val: &Self::El) -> bool {
