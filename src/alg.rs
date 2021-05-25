@@ -228,6 +228,12 @@ pub trait RingEl:
     Sub<Output = Self> + SubAssign + std::fmt::Debug
 {
     type Axioms: RingAxioms;
+    type RingType: Ring<El = Self>;
+    const RING: Self::RingType;
+
+    fn pow(self, exp: u32) -> Self {
+        Self::RING.pow(self, exp)
+    }
 }
 
 ///
@@ -250,22 +256,32 @@ pub trait FieldEl:
 
 impl RingEl for i8 {
     type Axioms = RingAxiomsEuclideanRing;
+    type RingType = StaticRing<Self>;
+    const RING: Self::RingType = StaticRing::<Self>::RING;
 }
 
 impl RingEl for i16 {
     type Axioms = RingAxiomsEuclideanRing;
+    type RingType = StaticRing<Self>;
+    const RING: Self::RingType = StaticRing::<Self>::RING;
 }
 
 impl RingEl for i32 {
     type Axioms = RingAxiomsEuclideanRing;
+    type RingType = StaticRing<Self>;
+    const RING: Self::RingType = StaticRing::<Self>::RING;
 }
 
 impl RingEl for i64 {
     type Axioms = RingAxiomsEuclideanRing;
+    type RingType = StaticRing<Self>;
+    const RING: Self::RingType = StaticRing::<Self>::RING;
 }
 
 impl RingEl for i128 {
     type Axioms = RingAxiomsEuclideanRing;
+    type RingType = StaticRing<Self>;
+    const RING: Self::RingType = StaticRing::<Self>::RING;
 }
 
 
@@ -311,10 +327,14 @@ impl EuclideanRingEl for i128 {
 
 impl RingEl for f32 {
     type Axioms = RingAxiomsField;
+    type RingType = StaticRing<Self>;
+    const RING: Self::RingType = StaticRing::<Self>::RING;
 }
 
 impl RingEl for f64 {
     type Axioms = RingAxiomsField;
+    type RingType = StaticRing<Self>;
+    const RING: Self::RingType = StaticRing::<Self>::RING;
 }
 
 impl FieldEl for f32 {}
@@ -410,7 +430,13 @@ pub trait Ring {
     }
 
     fn add(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.add_ref(lhs, &rhs) }
+    fn sum(&self, data: &[Self::El]) -> Self::El {
+        data.iter().fold(self.zero(), |a, b| self.add_ref(a, b))
+    }
     fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.mul_ref(&lhs, &rhs) }
+    fn prod(&self, data: &[Self::El]) -> Self::El {
+        data.iter().fold(self.one(), |a, b| self.mul_ref(&a, b))
+    }
 
     fn sub(&self, lhs: Self::El, rhs: Self::El) -> Self::El {
         self.add(lhs, self.neg(rhs))
@@ -566,6 +592,18 @@ impl<'a, R: Ring> Ring for &'a R {
     fn euclidean_rem(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).euclidean_rem(lhs, rhs) }
     fn euclidean_div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).euclidean_div(lhs, rhs) }
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).div(lhs, rhs) }
+    ///
+    /// Writes a textual representation of the element to the formatter.
+    /// If in_prod is set, then the representation will be chosen such that
+    /// any internal operations bind stronger (or equally strong) than 
+    /// potential surrounding multiplications (usually braces will be placed).
+    /// If in_prod is not set, then the representation will be chosen such
+    /// that any internal operations bind stronger (or equally strong) than
+    /// potential surrounding additions.
+    /// 
+    /// If an even stronger binding is required (i.e. for surrounding powering),
+    /// use format_in_brackets which will unconditionally place brackets.
+    /// 
     fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result { (**self).format(el, f, in_prod) }
     fn format_in_brackets(&self, el: &Self::El, f: &mut std::fmt::Formatter) -> std::fmt::Result { (**self).format_in_brackets(el, f) }
 }
@@ -611,6 +649,22 @@ impl<A, T> StaticRingImpl<A, T>
     };
 }
 
+trait DisplayOrDebug {
+    fn fmt(&self, out: &mut std::fmt::Formatter) -> std::fmt::Result;
+}
+
+impl<T: std::fmt::Debug> DisplayOrDebug for T {
+    default fn fmt(&self, out: &mut std::fmt::Formatter) -> std::fmt::Result {
+        <Self as std::fmt::Debug>::fmt(self, out)
+    }
+}
+
+impl<T: std::fmt::Display + std::fmt::Debug> DisplayOrDebug for T {
+    fn fmt(&self, out: &mut std::fmt::Formatter) -> std::fmt::Result {
+        <Self as std::fmt::Display>::fmt(self, out)
+    }
+}
+
 impl<T> Ring for StaticRingImpl<T::Axioms, T>
     where T: RingEl
 {
@@ -643,6 +697,10 @@ impl<T> Ring for StaticRingImpl<T::Axioms, T>
     
     default fn euclidean_rem(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { 
         self.euclidean_div_rem(lhs, rhs).1
+    }
+
+    fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, _in_prod: bool) -> std::fmt::Result {
+        <Self::El as DisplayOrDebug>::fmt(el, f)
     }
 }
 
@@ -703,5 +761,5 @@ pub type StaticRing<R> = StaticRingImpl<<R as RingEl>::Axioms, R>;
 
 #[test]
 fn test_pow() {
-    assert_eq!(81 * 81 * 3, StaticRing::<i64>::RING.pow(3, 9));
+    assert_eq!(81 * 81 * 3, i64::RING.pow(3, 9));
 }

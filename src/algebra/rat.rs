@@ -316,6 +316,8 @@ impl Div<Self> for r64 {
 
 impl RingEl for r64 {
     type Axioms = RingAxiomsField;
+    type RingType = StaticRing<Self>;
+    const RING: Self::RingType = StaticRing::<Self>::RING;
 }
 impl FieldEl for r64 {}
 

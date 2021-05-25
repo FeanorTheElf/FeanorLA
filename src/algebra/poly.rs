@@ -114,6 +114,24 @@ impl<R> MultivariatePolyRing<R>
         }
     }
 
+    fn nonzero_monomials<'a>(&'a self, el: &'a <Self as Ring>::El) -> impl 'a + Iterator<Item = (&'a Vec<usize>, &'a <R as Ring>::El)> {
+        self.assert_valid(el);
+        el.iter().filter(move |(_, coeff)| !self.base_ring.is_zero(coeff))
+    }
+
+    pub fn as_constant<'a>(&self, el: &<Self as Ring>::El) -> Option<R::El> {
+        self.assert_valid(el);
+        if self.is_zero(el) {
+            return Some(self.base_ring.zero());
+        } else {
+            if self.nonzero_monomials(el).any(|(key, _)| *key != Vec::new()) {
+                return None;
+            } else {
+                return  Some(el.get(&Vec::new()).cloned().unwrap_or_else(|| self.base_ring.zero()));
+            }
+        }
+    }
+
     pub fn new(base_ring: R) -> Self {
         MultivariatePolyRing {
             base_ring: base_ring,
@@ -378,10 +396,16 @@ impl<R> Ring for MultivariatePolyRing<R>
     }
 
     fn format(&self, el: &<Self as Ring>::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
-        let mut it = el.iter();
-        if in_prod {
+        self.assert_valid(el);
+        if self.is_zero(el) {
+            return self.base_ring.format(&self.base_ring.zero(), f, in_prod);
+        } else if let Some(c) = self.as_constant(el) {
+            return self.base_ring.format(&c, f, in_prod);
+        } else if in_prod && self.nonzero_monomials(el).skip(1).next().is_some() {
             return self.format_in_brackets(el, f);
-        } else if let Some(first) = it.next() {
+        } else {
+            let mut it = self.nonzero_monomials(el);
+            let first = it.next().unwrap();
 
             let write_part = |key: &Vec<usize>, coeff, f: &mut std::fmt::Formatter| {
                 self.base_ring.format(coeff, f, true)?;
@@ -402,8 +426,6 @@ impl<R> Ring for MultivariatePolyRing<R>
                 write_part(el.0, el.1, f)?;
             }
             return Ok(());
-        } else {
-            return self.base_ring.format(&self.base_ring.zero(), f, in_prod);
         }
     }
 }
@@ -611,10 +633,10 @@ impl<R> Ring for PolyRing<R>
     }
 
     fn format(&self, el: &<Self as Ring>::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
-        if in_prod {
-            return self.format_in_brackets(el, f);
-        } else if self.is_zero(el) {
+        if self.is_zero(el) {
             return self.base_ring.format(&self.base_ring.zero(), f, in_prod);
+        } else if in_prod {
+            return self.format_in_brackets(el, f);
         } else {
             let mut it = el.iter().enumerate().filter(|(_i, x)| !self.base_ring.is_zero(x)).rev();
 
@@ -642,7 +664,7 @@ use super::super::alg_env::*;
 
 #[test]
 fn test_binomial_formula() {
-    let mut ring = MultivariatePolyRing::new(StaticRing::<i32>::RING);
+    let mut ring = MultivariatePolyRing::new(i32::RING);
     let x = ring.adjoint("X");
     let y = ring.adjoint("Y");
     let x = ring.bind::<RingAxiomsIntegralRing>(x);
@@ -658,7 +680,7 @@ fn test_binomial_formula() {
 
 #[test]
 fn test_eq() {
-    let mut ring = MultivariatePolyRing::new(StaticRing::<i32>::RING);
+    let mut ring = MultivariatePolyRing::new(i32::RING);
     let one = ring.from(1);
     let _x = ring.adjoint("x");
     let one_prime = ring.from(1);
@@ -667,7 +689,7 @@ fn test_eq() {
 
 #[test]
 fn test_evaluate_at() {
-    let mut ring = MultivariatePolyRing::new(StaticRing::<i32>::RING);
+    let mut ring = MultivariatePolyRing::new(i32::RING);
     let x = ring.adjoint("X");
     let y = ring.adjoint("Y");
     let x = ring.bind::<RingAxiomsIntegralRing>(x);
@@ -691,7 +713,7 @@ fn test_assumption_option_ord() {
 
 #[test]
 fn test_poly_arithmetic() {
-    let ring = PolyRing::adjoint(StaticRing::<i32>::RING, "X");
+    let ring = PolyRing::adjoint(i32::RING, "X");
     let x = ring.bind::<RingAxiomsIntegralRing>(ring.unknown());
     let one = ring.bind(ring.one());
 
@@ -705,7 +727,7 @@ fn test_poly_arithmetic() {
 
 #[test]
 fn test_format() {
-    let ring = PolyRing::adjoint(StaticRing::<i32>::RING, "X");
+    let ring = PolyRing::adjoint(i32::RING, "X");
     let x = ring.bind::<RingAxiomsIntegralRing>(ring.unknown());
     let one = ring.bind(ring.one());
 
@@ -715,7 +737,7 @@ fn test_format() {
 
 #[test]
 fn test_format_multivar_poly_ring() {
-    let mut ring = MultivariatePolyRing::new(StaticRing::<i32>::RING);
+    let mut ring = MultivariatePolyRing::new(i32::RING);
     let x = ring.adjoint("X");
     let y = ring.adjoint("Y");
     let x = ring.bind::<RingAxiomsIntegralRing>(x);
@@ -728,7 +750,7 @@ fn test_format_multivar_poly_ring() {
 
 #[test]
 fn test_poly_div() {
-    let ring = PolyRing::adjoint(StaticRing::<i32>::RING, "X");
+    let ring = PolyRing::adjoint(i32::RING, "X");
     let x = ring.bind::<RingAxiomsIntegralRing>(ring.unknown());
     let one = ring.bind(ring.one());
 
@@ -742,7 +764,7 @@ fn test_poly_div() {
 
 #[test]
 fn test_div_multivar_poly_ring() {
-    let mut ring = MultivariatePolyRing::new(StaticRing::<i32>::RING);
+    let mut ring = MultivariatePolyRing::new(i32::RING);
     let x = ring.adjoint("X");
     let y = ring.adjoint("Y");
     let x = ring.bind::<RingAxiomsIntegralRing>(x);
@@ -762,7 +784,7 @@ fn test_div_multivar_poly_ring() {
 
 #[test]
 fn test_elevate_var() {
-    let mut ring = MultivariatePolyRing::new(StaticRing::<i32>::RING);
+    let mut ring = MultivariatePolyRing::new(i32::RING);
     let x = ring.adjoint("X");
     let y = ring.adjoint("Y");
     let x = ring.bind::<RingAxiomsIntegralRing>(x);
@@ -788,7 +810,7 @@ fn test_elevate_var() {
 
 #[test]
 fn test_gradient() {
-    let mut ring = MultivariatePolyRing::new(StaticRing::<i32>::RING);
+    let mut ring = MultivariatePolyRing::new(i32::RING);
     let x = ring.adjoint("X");
     let y = ring.adjoint("Y");
     let x = ring.bind::<RingAxiomsIntegralRing>(x);

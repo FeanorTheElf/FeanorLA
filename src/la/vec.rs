@@ -225,7 +225,7 @@ impl<V, T, W> AddAssign<Vector<W, T>> for Vector<V, T>
     where V: VectorViewMut<T>, W: VectorView<T>, T: RingEl
 {
     fn add_assign(&mut self, rhs: Vector<W, T>) {
-        self.add_assign(rhs, &StaticRing::<T>::RING)
+        self.add_assign(rhs, &T::RING)
     }
 }
 
@@ -233,7 +233,7 @@ impl<V, T, W> SubAssign<Vector<W, T>> for Vector<V, T>
     where V: VectorViewMut<T>, W: VectorView<T>, T: RingEl
 {
     fn sub_assign(&mut self, rhs: Vector<W, T>) {
-        self.sub_assign(rhs, &StaticRing::<T>::RING)
+        self.sub_assign(rhs, &T::RING)
     }
 }
 
@@ -243,7 +243,7 @@ impl<V, T, W> Add<Vector<W, T>> for Vector<V, T>
     type Output = Vector<VectorOwned<T>, T>;
 
     fn add(self, rhs: Vector<W, T>) -> Self::Output {
-        self.add(rhs, &StaticRing::<T>::RING)
+        self.add(rhs, &T::RING)
     }
 }
 
@@ -253,7 +253,7 @@ impl<V, T, W> Sub<Vector<W, T>> for Vector<V, T>
     type Output = Vector<VectorOwned<T>, T>;
 
     fn sub(self, rhs: Vector<W, T>) -> Self::Output {
-        self.sub(rhs, &StaticRing::<T>::RING)
+        self.sub(rhs, &T::RING)
     }
 }
 
@@ -261,7 +261,7 @@ impl<V, T> MulAssign<T> for Vector<V, T>
     where V: VectorViewMut<T>, T: RingEl
 {
     fn mul_assign(&mut self, rhs: T) {
-        self.scale(&rhs, &StaticRing::<T>::RING)
+        self.scale(&rhs, &T::RING)
     }
 }
 
