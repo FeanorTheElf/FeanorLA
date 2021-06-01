@@ -2,10 +2,12 @@ use std::collections::HashMap;
 
 pub trait LifetimedGraph<'a> {
     type Node: 'a;
-    type NeighborIter: Iterator<Item = Self::Node>;
+    type IncomingEdgeIter: Iterator<Item = Self::Node>;
+    type OutgoingEdgeIter: Iterator<Item = Self::Node>;
     type NodeIter: Iterator<Item = Self::Node>;
 
-    fn neighbors(&'a self, node: Self::Node) -> Self::NeighborIter;
+    fn outgoing_edges(&'a self, node: Self::Node) -> Self::IncomingEdgeIter;
+    fn incoming_edges(&'a self, node: Self::Node) -> Self::OutgoingEdgeIter;
     fn nodes(&'a self) -> Self::NodeIter;
 }
 
@@ -16,7 +18,7 @@ impl<T> Graph for T
 {}
 
 pub struct MemoryGraph<T> {
-    nodes: HashMap<usize, (T, Vec<usize>)>,
+    nodes: HashMap<usize, (T, Vec<usize>, Vec<usize>)>,
     counter: usize
 }
 
@@ -40,12 +42,20 @@ impl<T> MemoryGraph<T> {
     pub fn add_node(&mut self, content: T) -> usize {
         let result = self.counter;
         self.counter += 1;
-        self.nodes.insert(result, (content, Vec::new()));
+        self.nodes.insert(result, (content, Vec::new(), Vec::new()));
         return result;
     }
 
-    pub fn delete_node(&mut self, node: usize) -> T {
-        self.nodes.remove(&node).unwrap().0
+    pub fn delete_node(&mut self, node: usize) -> Option<T> {
+        if let Some((res, _, incoming)) = self.nodes.remove(&node) {
+            for u in &incoming {
+                let edges = &mut self.nodes.get_mut(&u).unwrap().2;
+                edges.remove(edges.iter().enumerate().find(|(_i, x)| **x == node).unwrap().0);
+            }
+            return Some(res);
+        } else{
+            return None;
+        }
     }
 
     pub fn add_edge(&mut self, from: usize, to: usize) {
@@ -54,9 +64,12 @@ impl<T> MemoryGraph<T> {
     }
 
     pub fn remove_edge(&mut self, from: usize, to: usize) {
-        let neighbors = &mut self.nodes.get_mut(&from).unwrap().1;
-        if let Some((index, _)) = neighbors.iter().enumerate().find(|(_i, x)| **x == to) {
-            neighbors.remove(index);
+        let outgoing = &mut self.nodes.get_mut(&from).unwrap().1;
+        if let Some((index, _)) = outgoing.iter().enumerate().find(|(_i, x)| **x == to) {
+            outgoing.remove(index);
+            
+            let incoming = &mut self.nodes.get_mut(&to).unwrap().2;
+            incoming.remove(incoming.iter().enumerate().find(|(_i, x)| **x == from).unwrap().0);
         }
     }
 }
@@ -64,9 +77,14 @@ impl<T> MemoryGraph<T> {
 impl<'a, T> LifetimedGraph<'a> for MemoryGraph<T> {
     type Node = usize;
     type NodeIter = std::ops::Range<usize>;
-    type NeighborIter = std::iter::Copied<std::slice::Iter<'a, usize>>;
+    type OutgoingEdgeIter = std::iter::Copied<std::slice::Iter<'a, usize>>;
+    type IncomingEdgeIter = std::iter::Copied<std::slice::Iter<'a, usize>>;
 
-    fn neighbors(&'a self, node: Self::Node) -> Self::NeighborIter {
+    fn outgoing_edges(&'a self, node: Self::Node) -> Self::OutgoingEdgeIter {
+        self.nodes.get(&node).unwrap().1.iter().copied()
+    }
+
+    fn incoming_edges(&'a self, node: Self::Node) -> Self::IncomingEdgeIter {
         self.nodes.get(&node).unwrap().1.iter().copied()
     }
 
