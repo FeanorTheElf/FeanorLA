@@ -48,7 +48,7 @@ use super::super::la::algorithms::*;
 #[test]
 fn test_newton_multidim() {
     // the function should be f(x, y) = (xy + 2, x + 2 * y)
-    let mut ring = MultivariatePolyRing::new(&StaticRing::<f64>::RING);
+    let mut ring = MultivariatePolyRing::new(&f64::RING);
     let x = ring.adjoint("x");
     let y = ring.adjoint("y");
     let f1 = ring.add(ring.mul_ref(&x, &y), ring.from(2.));
@@ -66,7 +66,7 @@ fn test_newton_multidim() {
         ring.evaluate_vector_at(function.as_ref(), &point)
     };
     let jacobian_solve = |point: PointRef<f64>, mut y: Point<f64>| {
-        StaticRing::<f64>::RING.solve_linear_equation(
+        f64::RING.solve_linear_equation(
             ring.evaluate_matrix_at(jacobian.as_ref(), &point), 
             &mut Matrix::col_vec(y.as_mut())
         ).unwrap();

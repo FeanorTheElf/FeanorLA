@@ -1,38 +1,10 @@
-use super::super::alg::*;
-use super::super::la::mat::*;
-use super::super::la::algorithms::MatrixKernelBase;
-use super::bigint::*;
-use super::zn::*;
-use super::eea::*;
-
-///
-/// Generates all primes <= bound
-/// 
-pub fn gen_primes(bound: i64) -> Vec<i64> {
-    assert!(bound >= 0);
-    // the prime density formulas used later to estimate the vector 
-    // size do not work for very small values 
-    if bound <= 13 {
-        return [2, 5, 7, 11].iter()
-            .map(|p| *p)
-            .filter(|p| *p < bound)
-            .collect::<Vec<_>>();
-    }
-    let mut numbers = (0..bound).map(|_| true).collect::<Vec<_>>();
-    let mut result = Vec::with_capacity(
-        2 * ((bound as f64) / (bound as f64).ln()) as usize
-    );
-    for i in 2..(bound as usize) {
-        if !numbers[i] {
-            continue;
-        }
-        result.push(i as i64);
-        for k in 2..(bound as usize / i) {
-            numbers[k * i] = false;
-        }
-    }
-    return result;
-}
+use super::super::super::alg::*;
+use super::super::super::la::mat::*;
+use super::super::super::la::algorithms::MatrixKernelBase;
+use super::super::bigint::*;
+use super::super::zn::*;
+use super::super::eea::*;
+use super::gen_primes;
 
 fn next_around_zero(x: i64) -> i64 {
     if x < 0 {
@@ -52,6 +24,13 @@ fn around_zero_iter() -> impl Iterator<Item = i64> {
 
 type RelVec = Vector<VectorOwned<i32>, i32>;
 
+///
+/// Checks whether the given number is smooth w.r.t. the given factor base,
+/// and if this is the case, the corresponding factorization is returned.
+/// This is done using basic trial division, so the complexity is
+/// O(b) divisions of integers of similar size as k, where b is the length
+/// of the factor base.
+/// 
 fn check_smooth(mut k: BigInt, factor_base: &Vec<i64>) -> Option<RelVec> {
     let mut result = Vector::zero(factor_base.len()).to_owned();
     assert!(factor_base[0] == -1);
@@ -82,6 +61,13 @@ fn check_smooth(mut k: BigInt, factor_base: &Vec<i64>) -> Option<RelVec> {
     }
 }
 
+///
+/// Collects relations, i.e. squares modulo n that factor over the given
+/// factor base. Given enough of those relations, one can then compute the
+/// factorization of n.
+/// Found relations are inserted into the given vector, and the function
+/// terminates after count relations have been found.
+/// 
 fn collect_relations<I>(
     m: &BigInt, 
     n: &BigInt, 
@@ -92,6 +78,7 @@ fn collect_relations<I>(
 )
     where I: Iterator<Item = i64>
 {
+    assert!(relations.len() < count);
     let mut k = m.clone();
     loop {
         // here consider (m + d)^2 - n
@@ -106,6 +93,10 @@ fn collect_relations<I>(
         let mut square = k.clone();
         square *= &k;
         square -= n;
+
+        // the probability that the found square is B-smooth is given by
+        // the Canfield-Erdös-Pomerance theorem, concretely it is u^(-u(1 + o(1)))
+        // for u = log(M)/log(B), where M is the size of the found square
         if let Some(rel) = check_smooth(square, &factor_base) {
             println!("found relation: {}, relation count: {}", &k, relations.len());
             relations.push((k.clone(), rel));
@@ -124,7 +115,7 @@ type F2 = ZnEl<2>;
 ///
 /// Checks if the congruent square given by choosing exactly 
 /// the relations given by sol is a real congruent square that 
-/// yields a factor. If it does, the factor is returned
+/// yields a factor. If it does, the factor is returned.
 /// 
 fn check_congruent_square<V>(
     n: &BigInt, factor_base: &Vec<i64>, 
@@ -159,7 +150,8 @@ fn check_congruent_square<V>(
 
 ///
 /// Uses the quadratic sieve algorithm to find a nontrivial factor of n. 
-/// Use only for composite numbers, as it will not terminate for primes.
+/// Do not use this for perfect powers, as it will not terminate for prime powers.
+/// The running time complexity is L_n(1/2, 1).
 /// 
 pub fn quadratic_sieve(n: &BigInt) -> BigInt {
     assert!(*n >= 2);
@@ -204,7 +196,7 @@ pub fn quadratic_sieve(n: &BigInt) -> BigInt {
     // a given square is B-smooth is better the smaller it is.
     // We get the smallest squares modulo n by considering integers k near
     // sqrt(n) and then looking at k^2 - n
-    let m = BigInt::from_float_approx(n_float.sqrt());
+    let m = BigInt::from_float_approx(n_float.sqrt()).unwrap();
     let mut relations: Vec<(BigInt, RelVec)> = Vec::with_capacity(
         factor_base.len() + 1
     );
@@ -224,7 +216,7 @@ pub fn quadratic_sieve(n: &BigInt) -> BigInt {
         let matrix = Matrix::from_fn(factor_base.len(), relations.len(), |r, c| 
             F2::project(*relations[c].1.at(r) as i64)
         );
-        let solutions = F2::RING.calc_matrix_kernel_space(matrix).unwrap();
+        let solutions = StaticRing::<F2>::RING.calc_matrix_kernel_space(matrix).unwrap();
 
         for i in 0..solutions.col_count() {
 
@@ -236,8 +228,7 @@ pub fn quadratic_sieve(n: &BigInt) -> BigInt {
         }
 
         // increase count and hope we find suitable factors with more relations
-        count += (count as f64).ln() as usize;
-        count += 1;
+        count += (count as f64).ln() as usize + 1;
     }
 }
 

@@ -15,7 +15,7 @@ pub use super::alg::*;
 /// ring of such `RingEl`-types.
 /// 
 macro_rules! impl_ring_el {
-    ($t:ty; $ring_constant:expr; $axioms:ty) => {
+    ($t:ty; $ring_constant:expr; $ring_type:ty; $axioms:ty) => {
         impl std::ops::Add for $t {
             type Output = $t;
 
@@ -185,9 +185,11 @@ macro_rules! impl_ring_el {
 
         impl RingEl for $t {
             type Axioms = $axioms;
+            type RingType = $ring_type;
+            const RING: Self::RingType = $ring_constant;
         }
     };
-    ($t:ty; $ring_constant:expr; $axioms:ty; $($t_gen_constraits:tt)*) => {
+    ($t:ty; $ring_constant:expr; $ring_type:ty; $axioms:ty; $($t_gen_constraits:tt)*) => {
 
         impl <$($t_gen_constraits)*> std::ops::Add for $t {
             type Output = $t;
@@ -359,6 +361,8 @@ macro_rules! impl_ring_el {
 
         impl <$($t_gen_constraits)*> RingEl for $t {
             type Axioms = $axioms;
+            type RingType = $ring_type;
+            const RING: Self::RingType = $ring_constant;
         }
     };
 }

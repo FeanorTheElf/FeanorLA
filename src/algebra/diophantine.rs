@@ -78,8 +78,8 @@ fn eliminate_col<M, N>(mut A: Matrix<M, Item>, mut iL: Matrix<N, Item>, pivot: u
 {
     for row in (pivot + 1)..A.row_count() {
         let transform = [1, 0, -A.at(row, pivot) / A.at(pivot, pivot), 1];
-        A.transform_two_dims_left(pivot, row, &transform, &StaticRing::<Item>::RING);
-        iL.transform_two_dims_left(pivot, row, &transform, &StaticRing::<Item>::RING);
+        A.transform_two_dims_left(pivot, row, &transform, &Item::RING);
+        iL.transform_two_dims_left(pivot, row, &transform, &Item::RING);
     }
 }
 
@@ -89,8 +89,8 @@ fn eliminate_row<M, N>(mut A: Matrix<M, Item>, mut iR: Matrix<N, Item>, pivot: u
     for col in (pivot + 1)..A.col_count() {
         
         let transform = [1, -A.at(pivot, col) / A.at(pivot, pivot), 0, 1];
-        A.transform_two_dims_right(pivot, col, &transform, &StaticRing::<Item>::RING);
-        iR.transform_two_dims_right(pivot, col, &transform, &StaticRing::<Item>::RING);
+        A.transform_two_dims_right(pivot, col, &transform, &Item::RING);
+        iR.transform_two_dims_right(pivot, col, &transform, &Item::RING);
     }
 }
 
@@ -115,8 +115,8 @@ fn transform_pivot_gcd_col<M, N, T>(
         let (s, t, _) = signed_eea(a.clone(), b.clone());
         let gcd = s.clone() * a.clone() + t.clone() * b.clone();
         let transform = [s, t, -b / gcd.clone(), a / gcd];
-        A.transform_two_dims_left(pivot_row, pivot_row + current, &transform, &StaticRing::<T>::RING);
-        iL.transform_two_dims_left(pivot_row, pivot_row + current, &transform, &StaticRing::<T>::RING);
+        A.transform_two_dims_left(pivot_row, pivot_row + current, &transform, &T::RING);
+        iL.transform_two_dims_left(pivot_row, pivot_row + current, &transform, &T::RING);
         current =
             find_smallest_gcd_entry_in_pivot_col(
                 A.submatrix_mut(pivot..A.row_count(), pivot..A.col_count())
@@ -146,8 +146,8 @@ fn transform_pivot_gcd_row<M, N, T>(
         let (s, t, _) = signed_eea(a.clone(), b.clone());
         let gcd = s.clone() * a.clone() + t.clone() * b.clone();
         let transform = [s, -b / gcd.clone(), t, a / gcd];
-        A.transform_two_dims_right(pivot_col, pivot_col + current, &transform, &StaticRing::<T>::RING);
-        iR.transform_two_dims_left(pivot_col, pivot_col + current, &transform, &StaticRing::<T>::RING);
+        A.transform_two_dims_right(pivot_col, pivot_col + current, &transform, &T::RING);
+        iR.transform_two_dims_left(pivot_col, pivot_col + current, &transform, &T::RING);
         current =
             find_smallest_gcd_entry_in_pivot_row(
                 A.submatrix_mut(pivot..A.row_count(), pivot..A.col_count())

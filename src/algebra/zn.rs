@@ -174,10 +174,14 @@ impl<const N: u64, const IS_FIELD: bool> One for ZnElImpl<N, IS_FIELD> {
 
 impl<const N: u64> RingEl for ZnElImpl<N, true> {
     type Axioms = RingAxiomsField;
+    type RingType = StaticRing<Self>;
+    const RING: Self::RingType = StaticRing::<Self>::RING;
 }
 
 impl<const N: u64> RingEl for ZnElImpl<N, false> {
     type Axioms = RingAxiomsRing;
+    type RingType = StaticRing<Self>;
+    const RING: Self::RingType = StaticRing::<Self>::RING;
 }
 
 impl<const N: u64> FieldEl for ZnElImpl<N, true> {}

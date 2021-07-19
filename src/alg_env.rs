@@ -64,7 +64,7 @@ where R: Ring, A: RingAxioms
     }
 }
 
-struct WrappingRing<'a, R, A> 
+pub struct WrappingRing<'a, R, A> 
 {
     ring: PhantomData<&'a R>,
     axioms: PhantomData<A>
@@ -203,7 +203,7 @@ where R: 'a + Ring + std::fmt::Debug, A: RingAxioms + std::fmt::Debug
 
 impl_ring_el!{ 
     RingReferencingEl<'a, R, A>; 
-    WrappingRing::<'a, R, A>::RING; 
+    WrappingRing::<'a, R, A>::RING; WrappingRing<'a, R, A>;
     A; 
     'a, R: 'a + Ring + std::fmt::Debug, A: RingAxioms + std::fmt::Debug
 }
@@ -220,7 +220,7 @@ impl_field_ring_el!{
 
 #[test]
 fn test_exper() {
-    let ring = StaticRing::<i64>::RING;
+    let ring = i64::RING;
     let a = ring.bind::<RingAxiomsEuclideanRing>(4);
     let b = ring.bind(10);
 

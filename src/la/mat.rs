@@ -174,7 +174,7 @@ impl<V, T> Matrix<DiagonalMatrix<V, T>, T>
     }
 
     pub fn nonmain_diag_matrix(vector: Vector<V, T>, diag_index: i64) -> Self {
-        Matrix::nonmain_diag_matrix_ring(vector, diag_index, &StaticRing::<T>::RING)
+        Matrix::nonmain_diag_matrix_ring(vector, diag_index, &T::RING)
     }
 }
 
@@ -425,7 +425,7 @@ impl<M, N, T> AddAssign<Matrix<N, T>> for Matrix<M, T>
     where M: MatrixViewMut<T>, N: MatrixView<T>, T: RingEl
 {
     fn add_assign(&mut self, rhs: Matrix<N, T>) {
-        self.add_assign(rhs, &StaticRing::<T>::RING)
+        self.add_assign(rhs, &T::RING)
     }
 }
 
@@ -433,7 +433,7 @@ impl<M, N, T> SubAssign<Matrix<N, T>> for Matrix<M, T>
     where M: MatrixViewMut<T>, N: MatrixView<T>, T: RingEl
 {
     fn sub_assign(&mut self, rhs: Matrix<N, T>) {
-        self.sub_assign(rhs, &StaticRing::<T>::RING)
+        self.sub_assign(rhs, &T::RING)
     }
 }
 
@@ -443,7 +443,7 @@ impl<M, N, T> Add<Matrix<N, T>> for Matrix<M, T>
     type Output = Matrix<MatrixOwned<T>, T>;
 
     fn add(self, rhs: Matrix<N, T>) -> Self::Output {
-        self.add(rhs, &StaticRing::<T>::RING)
+        self.add(rhs, &T::RING)
     }
 }
 
@@ -453,7 +453,7 @@ impl<M, N, T> Sub<Matrix<N, T>> for Matrix<M, T>
     type Output = Matrix<MatrixOwned<T>, T>;
 
     fn sub(self, rhs: Matrix<N, T>) -> Self::Output {
-        self.sub(rhs, &StaticRing::<T>::RING)
+        self.sub(rhs, &T::RING)
     }
 }
 
@@ -463,7 +463,7 @@ impl<M, N, T> Mul<Matrix<N, T>> for Matrix<M, T>
     type Output = Matrix<MatrixOwned<T>, T>;
 
     fn mul(self, rhs: Matrix<N, T>) -> Self::Output {
-        self.mul(rhs, &StaticRing::<T>::RING)
+        self.mul(rhs, &T::RING)
     }
 }
 
@@ -471,7 +471,7 @@ impl<M, T> MulAssign<T> for Matrix<M, T>
     where T: RingEl, M: MatrixViewMut<T>
 {
     fn mul_assign(&mut self, rhs: T) {
-        self.scale(&rhs, &StaticRing::<T>::RING)
+        self.scale(&rhs, &T::RING)
     }
 }
 

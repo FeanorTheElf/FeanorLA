@@ -313,11 +313,11 @@ impl<M, T> Matrix<M, T>
 fn test_invert_matrix() {
     let mut a = Matrix::from_array([[1., 2.], [4., 8.]]);
     let mut a_inv = Matrix::identity(2, 2);
-    assert!(a.solve_modifying(&mut a_inv, &StaticRing::<f32>::RING).is_err());
+    assert!(a.solve_modifying(&mut a_inv, &f32::RING).is_err());
 
     let mut b = Matrix::from_array([[1., 2.], [4., 4.]]);
     let mut b_inv = Matrix::identity(2, 2);
-    b.solve_modifying(&mut b_inv, &StaticRing::<f32>::RING).unwrap();
+    b.solve_modifying(&mut b_inv, &f32::RING).unwrap();
 
     assert_eq!(1., *b_inv.at(1, 0));
     assert_eq!(-0.25, *b_inv.at(1, 1));
@@ -333,7 +333,7 @@ fn test_kernel_base() {
                                     [0., 0., 1., 1.]]);
 
     let b = Matrix::from_array([[3.], [-1.], [0.], [0.]]);
-    assert_eq!(b, a.kernel_base_modifying(&StaticRing::<f32>::RING).unwrap());
+    assert_eq!(b, a.kernel_base_modifying(&f32::RING).unwrap());
 
     #[rustfmt::skip]
     let mut a = Matrix::from_array([[1., 3., 1., 3.], 
@@ -345,5 +345,5 @@ fn test_kernel_base() {
                                 [-1., 0.], 
                                 [0.,  1.], 
                                 [0., -1.]]);
-    assert_eq!(b, a.kernel_base_modifying(&StaticRing::<f32>::RING).unwrap());
+    assert_eq!(b, a.kernel_base_modifying(&f32::RING).unwrap());
 }
