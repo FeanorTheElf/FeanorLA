@@ -59,7 +59,7 @@ fn find_augmenting_path<'a, G>(
                 tmp
             })));
         }
-        for n in graph.neighbors(node.clone()) {
+        for n in graph.outgoing_edges(node.clone()) {
             let free_capacity = *capacity.get(&n).unwrap();
             let path_capacity = min(free_capacity, flow);
 
@@ -102,7 +102,6 @@ pub fn ford_fulkerson<'a, G>(
     loop {
         match find_augmenting_path(graph, s, t, &capacity) {
             Ok((flow, path)) => {
-                println!("found augmenting path of flow {}", flow);
                 for node in path {
                     let capacity_entry = capacity.get_mut(&node).unwrap();
                     assert!(*capacity_entry >= flow);

@@ -1,7 +1,8 @@
 use super::super::alg::*;
-use super::eea::signed_eea;
+use super::eea::eea;
 use super::poly::*;
 
+use array_init;
 use std::ops::{AddAssign, MulAssign, SubAssign, DivAssign, Add, Mul, Sub, Div, Neg};
 
 pub const MAX_DEGREE: usize = 64;
@@ -52,37 +53,36 @@ impl<const D: usize, const POLY: [i8; MAX_DEGREE], T: RingEl> Ring for RingExtRi
 
     fn add_ref(&self, mut lhs: Self::El, rhs: &Self::El) -> Self::El {
         for i in 0..D {
-            lhs.data[i] += rhs.data[i];
+            lhs.data[i] += rhs.data[i].clone();
         }
         return lhs;
     }
 
     fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El {
-        let mut result: [[T; D]; 2] = [[T::zero(); D]; 2];
+        let mut result: [[T; D]; 2] = [self.zero().data, self.zero().data];
         for i in 0..D {
             for j in 0..D {
-                result[(i + j) / D][(i + j) % D] += lhs.data[i] * rhs.data[j];
+                result[(i + j) / D][(i + j) % D] += lhs.data[i].clone() * rhs.data[j].clone();
             }
         }
         for i in (0..D).rev() {
             for j in 0..D {
-                result[(i + j) / D][(i + j) % D] += result[1][i] * T::from(POLY[j]);
+                result[(i + j) / D][(i + j) % D] += result[1][i].clone() * T::from(POLY[j]);
             }
         }
-        return RingExtEl {
-            data: result[0]
-        };
+        let [_, data] = result;
+        return RingExtEl::new(data);
     }
 
     fn neg(&self, mut val: Self::El) -> Self::El {
         for i in 0..D {
-            val.data[i] = -val.data[i];
+            take_mut::take(&mut val.data[i], |x| -x);
         }
         return val;
     }
 
     fn zero(&self) -> Self::El {
-        RingExtEl::new([T::zero(); D])
+        RingExtEl::new(array_init::array_init(|_| T::zero()))
     }
 
     fn one(&self) -> Self::El {
@@ -121,6 +121,27 @@ impl<const D: usize, const POLY: [i8; MAX_DEGREE], T: RingEl> Ring for RingExtRi
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
         assert!(T::Axioms::is_field());
         let poly_ring = PolyRing::adjoint(T::RING, "X");
+        let x = poly_ring.unknown();
+        let modulus = poly_ring.sub(
+            poly_ring.pow(&x, D as u32), 
+            (0..D).map(|i| 
+                poly_ring.mul(poly_ring.from(T::from(POLY[i])), poly_ring.pow(&x, i as u32))
+            ).fold(poly_ring.zero(), |a, b| poly_ring.add(a, b))
+        );
+        let polynomial = (0..D).map(|i| 
+            poly_ring.mul(poly_ring.from(rhs.data[i].clone()), poly_ring.pow(&x, i as u32))
+        ).fold(poly_ring.zero(), |a, b| poly_ring.add(a, b));
+
+        let (mut s, _, _) = eea(&poly_ring, polynomial, modulus);
+        assert!(!poly_ring.is_zero(&s));
+        assert!(poly_ring.deg(&s).unwrap() < D);
+
+        let mut result = self.zero();
+        for i in 0..poly_ring.deg(&s).unwrap() {
+            std::mem::swap(&mut result.data[i], &mut s[i]);
+        }
+
+        return self.mul(lhs, result);
     }
 
     fn from_z(&self, x: i64) -> Self::El {
@@ -147,16 +168,16 @@ impl<const D: usize, const POLY: [i8; MAX_DEGREE], T: RingEl> Ring for RingExtRi
     }
 }
 
-impl<const D: usize, const POLY: [u64; MAX_DEGREE], T: RingEl> AddAssign for RingExtEl<D, POLY, T> {
+impl<const D: usize, const POLY: [i8; MAX_DEGREE], T: RingEl> AddAssign for RingExtEl<D, POLY, T> {
 
     fn add_assign(&mut self, rhs: Self) {
         for i in 0..D {
-            self.data[i] += rhs.data[i];
+            self.data[i] += rhs.data[i].clone();
         }
     }
 }
 
-impl<const D: usize, const POLY: [u64; MAX_DEGREE], T: RingEl> MulAssign for RingExtEl<D, POLY, T> {
+impl<const D: usize, const POLY: [i8; MAX_DEGREE], T: RingEl> MulAssign for RingExtEl<D, POLY, T> {
 
     fn mul_assign(&mut self, rhs: Self) {
         

@@ -64,6 +64,14 @@ where R: Ring, A: RingAxioms
     }
 }
 
+impl<'a, R, A> From<i8> for RingReferencingEl<'a, R, A>
+where R: Ring, A: RingAxioms
+{
+    fn from(x: i8) -> Self {
+        panic!("`RingReferencingEl` does not provide the constants from the ring; Use `base_ring.bind(base_ring.from_z())` instead.")
+    }
+}
+
 pub struct WrappingRing<'a, R, A> 
 {
     ring: PhantomData<&'a R>,
@@ -109,7 +117,7 @@ where R: 'a + Ring + std::fmt::Debug, A: RingAxioms + std::fmt::Debug
     }
 
     fn from_z(&self, _x: i64) -> Self::El { 
-        panic!("`WrappingRing` does not provide the constants from the ring; Use `base_ring.bind(base_ring.unspecified_element())` instead.")
+        panic!("`WrappingRing` does not provide the constants from the ring; Use `base_ring.bind(base_ring.from_z())` instead.")
     }
 
     fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
@@ -219,8 +227,8 @@ impl_field_ring_el!{
 }
 
 #[test]
-fn test_exper() {
-    let ring = i64::RING;
+fn test_ring_referencing_el_operations() {
+    let ring = StaticRing::<i64>::RING;
     let a = ring.bind::<RingAxiomsEuclideanRing>(4);
     let b = ring.bind(10);
 

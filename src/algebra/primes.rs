@@ -1,5 +1,5 @@
 use super::super::alg::*;
-use super::sieve::*;
+use super::factoring;
 use super::bigint::*;
 use super::quotient::*;
 
@@ -58,7 +58,7 @@ pub fn factor(mut n: BigInt) -> Vec<BigInt> {
     
     if n < QUADRATIC_SIEVE_BOUND {
         let mut n_int = n.to_int().unwrap();
-        let potential_divisors = gen_primes((n_int as f64).sqrt() as i64 + 1);
+        let potential_divisors = factoring::gen_primes((n_int as f64).sqrt() as i64 + 1);
         let mut result = Vec::new();
         for p in potential_divisors {
             while n_int % p == 0 {
@@ -81,7 +81,7 @@ pub fn factor(mut n: BigInt) -> Vec<BigInt> {
                     return factors.iter().cycle().cloned().take(factors.len() * i).collect();
                 }
             }
-            let first_factor = quadratic_sieve(&n);
+            let first_factor = factoring::sieve::quadratic_sieve(&n);
             let other_factor = n.euclidean_div_rem(&first_factor);
             debug_assert!(first_factor != 1 && other_factor != 1);
             let mut result = factor(first_factor);
@@ -116,12 +116,12 @@ fn test_factor() {
     assert_eq!(vec![
         BigInt::from(641), 
         BigInt::from(6700417)
-    ], factor(BigInt::from(4294967297)));
+    ], factor("4294967297".parse::<BigInt>().unwrap()));
 
     assert_eq!(vec![
         BigInt::from(237689), 
         BigInt::from(717653)
-    ], factor(BigInt::from(237689 * 717653)));
+    ], factor(BigInt::from(237689) * BigInt::from(717653)));
 }
 
 #[test]

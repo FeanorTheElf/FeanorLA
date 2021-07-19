@@ -225,14 +225,14 @@ impl RingAxioms for RingAxiomsField {
 pub trait RingEl: 
     Clone + Sized + Add<Output = Self> + Mul<Output = Self> + 
     AddAssign + PartialEq + Zero + One + Neg<Output = Self> + 
-    Sub<Output = Self> + SubAssign + std::fmt::Debug
+    Sub<Output = Self> + SubAssign + std::fmt::Debug + From<i8>
 {
     type Axioms: RingAxioms;
     type RingType: Ring<El = Self>;
     const RING: Self::RingType;
 
     fn pow(self, exp: u32) -> Self {
-        Self::RING.pow(self, exp)
+        Self::RING.pow(&self, exp)
     }
 }
 
@@ -761,9 +761,5 @@ pub type StaticRing<R> = StaticRingImpl<<R as RingEl>::Axioms, R>;
 
 #[test]
 fn test_pow() {
-<<<<<<< HEAD
-    assert_eq!(81 * 81 * 3, StaticRing::<i64>::RING.pow(&3, 9));
-=======
-    assert_eq!(81 * 81 * 3, i64::RING.pow(3, 9));
->>>>>>> f981f8bddd1c9ffac6330233ea6b6673b4cde300
+    assert_eq!(81 * 81 * 3, i64::RING.pow(&3, 9));
 }

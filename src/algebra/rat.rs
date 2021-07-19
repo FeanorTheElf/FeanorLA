@@ -83,9 +83,9 @@ impl r64 {
     }
 }
 
-impl From<i64> for r64 {
-    fn from(value: i64) -> Self {
-        r64::new(value, 1)
+impl From<i8> for r64 {
+    fn from(value: i8) -> Self {
+        r64::new(value as i64, 1)
     }
 }
 
@@ -319,6 +319,7 @@ impl RingEl for r64 {
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
 }
+
 impl FieldEl for r64 {}
 
 impl Debug for r64 {

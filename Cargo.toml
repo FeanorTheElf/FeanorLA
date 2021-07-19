@@ -12,3 +12,4 @@ bench = true
 oorandom = "11.1.3"
 take_mut = "0.2.2"
 typemap = "0.3.3"
+array-init = "2.0.0"

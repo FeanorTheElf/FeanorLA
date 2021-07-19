@@ -29,7 +29,7 @@ impl<const N: u64, const IS_FIELD: bool> ZnElImpl<N, IS_FIELD> {
     pub const fn project(v: i64) -> ZnElImpl<N, IS_FIELD> {
         assert!(N <= u64::MAX / 2);
         assert!(N <= i64::MAX as u64);
-        assert!(IS_FIELD == is_prime(N));
+        assert!(!IS_FIELD || is_prime(N));
         let mut result = v % N as i64;
         if result < 0 {
             result += N as i64;
@@ -42,6 +42,13 @@ impl<const N: u64, const IS_FIELD: bool> ZnElImpl<N, IS_FIELD> {
 
     pub const ZERO: ZnElImpl<N, IS_FIELD> = ZnElImpl::project(0);
     pub const ONE: ZnElImpl<N, IS_FIELD> = ZnElImpl::project(1);
+}
+
+impl<const N: u64, const IS_FIELD: bool> From<i8> for ZnElImpl<N, IS_FIELD> {
+
+    fn from(x: i8) -> Self {
+        Self::project(x as i64)
+    }
 }
 
 impl<const N: u64, const IS_FIELD: bool> AddAssign for ZnElImpl<N, IS_FIELD> {

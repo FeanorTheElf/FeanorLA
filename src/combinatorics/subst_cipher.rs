@@ -270,6 +270,6 @@ fn test_evaluate() {
     db.insert(&"light".chars().collect::<Vec<_>>());
     db.insert(&"apple".chars().collect::<Vec<_>>());
 
-    let mask = create_mask("__v__l__e");
+    let mask = create_mask("____v__l__e__");
     assert_eq!(8, evaluate(&mask, &db));
 }

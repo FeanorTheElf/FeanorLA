@@ -543,15 +543,18 @@ impl BigInt {
     ///
     /// Returns a BigInt that has the given value, rounded. Note that
     /// for very big numbers, the float representation can be very imprecise.
+    /// For Infinity and NaN, nothing is returned;
     /// 
-    pub fn from_float_approx(val: f64) -> BigInt {
-        if val.abs() <= 0.5 {
-            return BigInt::zero()
+    pub fn from_float_approx(val: f64) -> Option<BigInt> {
+        if val.is_infinite() || val.is_nan() {
+            return None;
+        } else if val.abs() <= 0.5 {
+            return Some(BigInt::zero());
         } else if val.abs() <= 1.5 {
             if val.is_sign_negative() { 
-                return -BigInt::one();
+                return Some(-BigInt::one());
             } else { 
-                return BigInt::one();
+                return Some(BigInt::one());
             }
         } else {
             const MANTISSA: i32 = 52;
@@ -564,10 +567,10 @@ impl BigInt {
             if within_block_shift != 0 {
                 result.push(int >> (Self::BLOCK_BITS - within_block_shift));
             }
-            return BigInt {
+            return Some(BigInt {
                 negative: val.is_sign_negative(),
                 data: result
-            };
+            });
         }
     }
 
@@ -586,11 +589,11 @@ impl BigInt {
     /// 
     /// # Complexity
     /// 
-    /// This function runs in O((T * log(d)) * log(d)) where d is the error
+    /// This function runs in O((T + log(d)) * log(d)) where d is the error
     /// made in approx (i.e. the difference between x and approx) and T is the
     /// time required for computing f on a value between x - d and x + d.
     /// 
-    pub fn find_root_floor<F>(mut f: F, approx: BigInt) -> BigInt
+    pub fn find_zero_floor<F>(mut f: F, approx: BigInt) -> BigInt
         where F: FnMut(&BigInt) -> BigInt
     {
         let mut begin = approx.clone();
@@ -642,19 +645,37 @@ impl BigInt {
         }
     }
 
+    ///
+    /// Computes the n-th root of this number.
+    /// 
+    /// # Complexity
+    /// 
+    /// The asymptotic worst-case complexity is O(log(n)^2), however it
+    /// will be quite fast on most inputs due to internal use of floating
+    /// point approximations.
+    /// 
     pub fn root_floor(self, n: usize) -> BigInt {
         assert!(n > 0);
         let root_approx = self.to_float_approx().powf(1. / n as f64);
         if n % 2 == 0 {
-            return BigInt::find_root_floor(|x| x.clone().abs() * x.clone().pow((n - 1) as u32) - &self, BigInt::from_float_approx(root_approx));
+            return BigInt::find_zero_floor(
+                |x| x.clone().abs() * x.clone().pow((n - 1) as u32) - &self, 
+                BigInt::from_float_approx(root_approx).unwrap_or(BigInt::ZERO)
+            );
         } else {
-            return BigInt::find_root_floor(|x| x.clone().pow(n as u32) - &self, BigInt::from_float_approx(root_approx));
+            return BigInt::find_zero_floor(
+                |x| x.clone().pow(n as u32) - &self, 
+                BigInt::from_float_approx(root_approx).unwrap_or(BigInt::ZERO)
+            );
         }
     }
 
     pub fn log_floor(self, base: BigInt) -> BigInt {
         let log_approx = self.to_float_approx().log(base.to_float_approx());
-        return BigInt::find_root_floor(|x| base.clone().pow_big(x), BigInt::from_float_approx(log_approx));
+        return BigInt::find_zero_floor(
+            |x| base.clone().pow_big(x), 
+            BigInt::from_float_approx(log_approx).unwrap_or(BigInt::ZERO)
+        );
     }
 
     pub fn abs(mut self) -> BigInt {
@@ -751,6 +772,18 @@ impl From<i64> for BigInt {
                 data: vec![val as u64]
             }
         }
+    }
+}
+
+impl From<i32> for BigInt {
+    fn from(val: i32) -> BigInt {
+        Self::from(val as i64)
+    }
+}
+
+impl From<i8> for BigInt {
+    fn from(val: i8) -> BigInt {
+        Self::from(val as i64)
     }
 }
 
@@ -1260,7 +1293,7 @@ fn bench_mul(bencher: &mut test::Bencher) {
 #[test]
 fn from_to_float_approx() {
     let x: f64 = 83465209236517892563478156042389675783219532497861237985328563.;
-    let y = BigInt::from_float_approx(x).to_float_approx();
+    let y = BigInt::from_float_approx(x).unwrap().to_float_approx();
     assert!(x * 0.99 < y);
     assert!(y < x * 1.01);
 }
@@ -1302,12 +1335,12 @@ fn test_cmp_small() {
 }
 
 #[test]
-fn test_find_root_floor() {
+fn test_find_zero_floor() {
     let f = |x: &BigInt| x * x - 234867;
-    assert_eq!(BigInt::from(484), BigInt::find_root_floor(f, BigInt::ZERO));
+    assert_eq!(BigInt::from(484), BigInt::find_zero_floor(f, BigInt::ZERO));
 
     let f = |x: &BigInt| x.clone();
-    assert_eq!(BigInt::ZERO, BigInt::find_root_floor(f, BigInt::ZERO));
+    assert_eq!(BigInt::ZERO, BigInt::find_zero_floor(f, BigInt::ZERO));
 }
 
 #[test]
