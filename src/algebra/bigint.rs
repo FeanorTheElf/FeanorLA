@@ -787,6 +787,7 @@ impl From<i8> for BigInt {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct BigIntRing;
 
 impl BigInt {

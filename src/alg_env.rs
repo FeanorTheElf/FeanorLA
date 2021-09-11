@@ -87,6 +87,23 @@ where R: 'a + Ring + std::fmt::Debug, A: RingAxioms + std::fmt::Debug
     };
 }
 
+impl<'a, R, A> std::fmt::Debug for WrappingRing<'a, R, A> {
+
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "WrappingRing for {}",  std::intrinsics::type_name::<R>())
+    }
+}
+
+impl<'a, R, A> Clone for WrappingRing<'a, R, A> {
+
+    fn clone(&self) -> Self {
+        WrappingRing {
+            ring: PhantomData,
+            axioms: PhantomData
+        }
+    }
+}
+
 impl<'a, R, A> Ring for WrappingRing<'a, R, A> 
 where R: 'a + Ring + std::fmt::Debug, A: RingAxioms + std::fmt::Debug
 {
@@ -238,4 +255,13 @@ fn test_ring_referencing_el_operations() {
     let d = c;
 
     assert_eq!(ring.bind(20), d);
+}
+
+#[test]
+#[should_panic]
+fn test_throw_on_wrong_axioms() {
+    let ring = StaticRing::<i64>::RING;
+    let a = ring.bind::<RingAxiomsField>(4);
+    let b = ring.bind(10);
+    let _ = a / b;
 }

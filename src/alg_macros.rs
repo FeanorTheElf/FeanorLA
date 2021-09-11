@@ -469,13 +469,13 @@ macro_rules! impl_field_ring_el {
             type Output = $t;
 
             fn div(self, rhs: $t) -> Self::Output {
-                ($ring_constant).euclidean_div(self, &rhs)
+                ($ring_constant).div(self, &rhs)
             }
         }
 
         impl std::ops::DivAssign for $t {
             fn div_assign(&mut self, rhs: $t) {
-                take_mut::take_or_recover(self, || ($ring_constant).unspecified_element(), |v| ($ring_constant).euclidean_div(v, &rhs));
+                take_mut::take_or_recover(self, || ($ring_constant).unspecified_element(), |v| ($ring_constant).div(v, &rhs));
             }
         }
 
@@ -487,13 +487,13 @@ macro_rules! impl_field_ring_el {
             type Output = $t;
 
             fn div(self, rhs: $t) -> Self::Output {
-                ($ring_constant).euclidean_div(self, &rhs)
+                ($ring_constant).div(self, &rhs)
             }
         }
 
         impl <$($t_gen_constraits)*> std::ops::DivAssign for $t {
             fn div_assign(&mut self, rhs: $t) {
-                take_mut::take_or_recover(self, || ($ring_constant).unspecified_element(), |v| ($ring_constant).euclidean_div(v, &rhs));
+                take_mut::take_or_recover(self, || ($ring_constant).unspecified_element(), |v| ($ring_constant).div(v, &rhs));
             }
         }
 

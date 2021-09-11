@@ -369,7 +369,7 @@ where R: Ring
 /// is not provided, this is mainly an interface that can be used for algorithms 
 /// that deal with ring elements.
 /// 
-pub trait Ring {
+pub trait Ring : std::fmt::Debug + std::clone::Clone {
     type El: Sized + Clone + std::fmt::Debug;
 
     //

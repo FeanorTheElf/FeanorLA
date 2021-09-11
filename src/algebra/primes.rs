@@ -1,7 +1,7 @@
 use super::super::alg::*;
 use super::factoring;
 use super::bigint::*;
-use super::quotient::*;
+use super::zn::*;
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -24,7 +24,7 @@ pub fn is_prime(n: &BigInt, k: usize) -> bool {
     let n_minus_one = n.clone() - 1;
     let s = n_minus_one.highest_dividing_power_of_two();
     let d = n_minus_one >> s;
-    let ring = QuotientRingZ::new(n.clone());
+    let ring = FactorRingZ::new(n.clone());
 
     // Admitted, there is no calculation behind this choice
     const STATISTICAL_DISTANCE_ERROR_BOUND: usize = 5;
