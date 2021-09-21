@@ -48,6 +48,21 @@ impl<'a, T, M> VectorView<T> for MatrixRow<T, M>
     }
 }
 
+impl<'a, T, M> VectorViewMut<T> for MatrixRow<T, M> 
+    where M: MatrixViewMut<T>
+{
+    fn at_mut(&mut self, i: usize) -> &mut T {
+        self.assert_in_range(i);
+        self.matrix.at_mut(self.row, i)
+    }
+
+    fn swap(&mut self, fst: usize, snd: usize) {
+        self.assert_in_range(fst);
+        self.assert_in_range(snd);
+        self.matrix.swap((self.row, fst), (self.row, snd));
+    }
+}
+
 pub struct MatrixRowIter<T, M>
     where M: MatrixView<T> + Copy
 {
@@ -133,6 +148,21 @@ impl<T, M> VectorView<T> for MatrixCol<T, M>
     fn at(&self, i: usize) -> &T {
         self.assert_in_range(i);
         self.matrix.at(i, self.col)
+    }
+}
+
+impl<'a, T, M> VectorViewMut<T> for MatrixCol<T, M> 
+    where M: MatrixViewMut<T>
+{
+    fn at_mut(&mut self, i: usize) -> &mut T {
+        self.assert_in_range(i);
+        self.matrix.at_mut(i, self.col)
+    }
+
+    fn swap(&mut self, fst: usize, snd: usize) {
+        self.assert_in_range(fst);
+        self.assert_in_range(snd);
+        self.matrix.swap((fst, self.col), (snd, self.col));
     }
 }
 

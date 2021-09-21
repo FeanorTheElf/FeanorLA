@@ -21,9 +21,9 @@ impl<R> FieldOfFractions<R>
     }
 
     fn format_base(&self, num: &R::El, den: &R::El, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if self.base_ring.is_one(&num) {
+        if self.base_ring.is_zero(&num) || self.base_ring.is_one(&den) {
             self.base_ring.format(&num, f, true)?;
-        } else if self.base_ring.is_neg_one(&num) {
+        } else if self.base_ring.is_neg_one(&den) {
             write!(f, "-")?;
             self.base_ring.format(&num, f, true)?;
         } else {
@@ -155,3 +155,12 @@ fn test_mul() {
     let one_half = rats.bind(rats.one()) / two;
     assert_eq!(rats.bind::<RingAxiomsField>(rats.from_z(1)) / rats.bind(rats.from_z(3)), two_thirds * one_half);
 }
+
+#[cfg(test)]
+use super::poly::*;
+#[cfg(test)]
+use super::rat::*;
+#[cfg(test)]
+use super::super::la::mat::*;
+#[cfg(test)]
+use super::super::la::algorithms::*;

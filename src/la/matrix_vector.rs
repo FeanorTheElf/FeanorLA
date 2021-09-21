@@ -63,7 +63,7 @@ impl<V, T> MatrixViewMut<T> for ColumnVector<V, T>
     fn swap(&mut self, fst: (usize, usize), snd: (usize, usize)) {
         self.assert_col_in_range(fst.1);
         self.assert_col_in_range(snd.1);
-        unimplemented!();
+        self.base.swap(fst.0, snd.0);
     }
 }
 

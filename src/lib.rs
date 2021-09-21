@@ -1,6 +1,5 @@
 #![feature(const_generics)]
 #![feature(specialization)]
-#![feature(core_intrinsics)]
 #![feature(test)]
 #![feature(const_panic)]
 #![feature(unboxed_closures)]

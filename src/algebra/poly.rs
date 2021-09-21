@@ -404,15 +404,21 @@ impl<R> Ring for MultivariatePolyRing<R>
         } else if in_prod && self.nonzero_monomials(el).skip(1).next().is_some() {
             return self.format_in_brackets(el, f);
         } else {
-            let mut it = self.nonzero_monomials(el);
-            let first = it.next().unwrap();
+            let mut monomial_it = self.nonzero_monomials(el);
+            let first = monomial_it.next().unwrap();
 
             let write_part = |key: &Vec<usize>, coeff, f: &mut std::fmt::Formatter| {
-                self.base_ring.format(coeff, f, true)?;
+                if !self.base_ring.is_one(coeff) {
+                    self.base_ring.format(coeff, f, true)?;
+                    if key.len() > 0 {
+                        write!(f, " *")?;
+                    }
+                }
                 if key.len() > 0 {
-                    write!(f, " *")?;
                     for (i, pow) in key.iter().enumerate() {
-                        if *pow > 0 {
+                        if *pow == 1 {
+                            write!(f, " {}", self.var_names[i])?;
+                        } else if *pow > 1 {
                             write!(f, " {}^{}", self.var_names[i], pow)?;
                         }
                     }
@@ -421,7 +427,7 @@ impl<R> Ring for MultivariatePolyRing<R>
             };
             
             write_part(first.0, first.1, f)?;
-            for el in it {
+            for el in monomial_it {
                 write!(f, " + ")?;
                 write_part(el.0, el.1, f)?;
             }
@@ -485,7 +491,7 @@ impl<R> PolyRing<R>
         assert!(!self.is_zero(rhs));
         let rhs_deg = self.deg(rhs).unwrap();
         let mut result = Vec::new();
-        result.resize_with(self.deg(lhs).unwrap_or(0), || self.base_ring.zero());
+        result.resize_with(self.deg(lhs).unwrap_or(0) + 1, || self.base_ring.zero());
         while self.deg(lhs) >= self.deg(rhs) {
             let lhs_deg = self.deg(lhs).unwrap();
             let coeff = div_lc(&lhs[lhs_deg])?;
@@ -601,8 +607,17 @@ impl<R> Ring for PolyRing<R>
         false
     }
     
-    fn euclidean_div_rem(&self, _lhs: Self::El, _rhs: &Self::El) -> (Self::El, Self::El) {
-        panic!("Not a euclidean domain!")
+    fn euclidean_div_rem(&self, mut lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) {
+        assert!(!self.is_zero(&rhs));
+        assert!(self.is_euclidean());
+        let rhs_lc = self.lc(&rhs).unwrap();
+        let rhs_lc_inv = self.base_ring.div(self.base_ring.one(), rhs_lc);
+        let q = self.poly_division(
+            &mut lhs, 
+            &rhs, 
+            |x| Ok(self.base_ring.mul_ref(x, &rhs_lc_inv))
+        ).unwrap();
+        return (q, lhs);
     }
 
     ///
@@ -613,22 +628,12 @@ impl<R> Ring for PolyRing<R>
     /// Therefore, if the base ring division works for all divisible pairs of arguments,
     /// this is also the case for this function.
     /// 
-    fn div(&self, mut lhs: Self::El, rhs: &Self::El) -> Self::El {
-        assert!(!self.is_zero(&rhs));
-        let rhs_lc = self.lc(&rhs).unwrap();
-        if self.base_ring.is_field() {
-            let rhs_lc_inv = self.base_ring.div(self.base_ring.one(), rhs_lc);
-            self.poly_division(
-                &mut lhs, 
-                &rhs, 
-                |x| Ok(self.base_ring.mul_ref(x, &rhs_lc_inv))
-            ).unwrap()
+    fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
+        let (q, r) = self.euclidean_div_rem(lhs, rhs);
+        if self.is_zero(&r) {
+            return q;
         } else {
-            self.poly_division(
-                &mut lhs, 
-                &rhs, 
-                |x| Ok(self.base_ring.div(x.clone(), rhs_lc))
-            ).unwrap()
+            panic!("Not a field called for not divisible polynomials!");
         }
     }
 
@@ -638,21 +643,28 @@ impl<R> Ring for PolyRing<R>
         } else if in_prod {
             return self.format_in_brackets(el, f);
         } else {
-            let mut it = el.iter().enumerate().filter(|(_i, x)| !self.base_ring.is_zero(x)).rev();
+            let mut monomial_it = el.iter().enumerate().filter(|(_i, x)| !self.base_ring.is_zero(x)).rev();
 
-            let print_part = |pow, coeff, formatter: &mut std::fmt::Formatter| {
-                self.base_ring.format(coeff, formatter, true)?;
-                if pow > 0 {
-                    write!(formatter, " * {}^{}", self.var_name, pow)?;
+            let print_monomial = |pow, coeff, formatter: &mut std::fmt::Formatter| {
+                if !self.base_ring.is_one(coeff) {
+                    self.base_ring.format(coeff, formatter, true)?;
+                    if pow > 0 {
+                        write!(formatter, " * ")?;
+                    }
+                }
+                if pow == 1 {
+                    write!(formatter, "{}", self.var_name)?;
+                } else if pow > 0 {
+                    write!(formatter, "{}^{}", self.var_name, pow)?;
                 }
                 return Ok(());
             };
 
-            let (fst_pow, fst_coeff) = it.next().unwrap();
-            print_part(fst_pow, fst_coeff, f)?;
-            for (pow, coeff) in it {
+            let (fst_pow, fst_coeff) = monomial_it.next().unwrap();
+            print_monomial(fst_pow, fst_coeff, f)?;
+            for (pow, coeff) in monomial_it {
                 write!(f, " + ")?;
-                print_part(pow, coeff, f)?;
+                print_monomial(pow, coeff, f)?;
             }
             return Ok(());
         }
@@ -732,7 +744,7 @@ fn test_format() {
     let one = ring.bind(ring.one());
 
     let poly = &x * &x * &x + (&one + &one) * &x * &x - &one;
-    assert_eq!("1 * X^3 + 2 * X^2 + -1", format!("{}", poly));
+    assert_eq!("X^3 + 2 * X^2 + -1", format!("{}", poly));
 }
 
 #[test]

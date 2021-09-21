@@ -90,7 +90,7 @@ where R: 'a + Ring + std::fmt::Debug, A: RingAxioms + std::fmt::Debug
 impl<'a, R, A> std::fmt::Debug for WrappingRing<'a, R, A> {
 
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "WrappingRing for {}",  std::intrinsics::type_name::<R>())
+        write!(f, "WrappingRing for {}",  std::any::type_name::<R>())
     }
 }
 

@@ -136,6 +136,11 @@ impl<M, T> Matrix<M, T>
     pub fn at_mut(&mut self, row: usize, col: usize) -> &mut T {
         self.data.at_mut(row, col)
     }
+
+    pub fn col_mut(&mut self, col: usize) -> Vector<MatrixCol<T, MatrixRefMut<M, T>>, T> {
+        self.data.assert_col_in_range(col);
+        Vector::new(MatrixCol::new(self.as_mut().data, col))
+    }
 }
 
 impl<V, T> Matrix<ColumnVector<V, T>, T>
