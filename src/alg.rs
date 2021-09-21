@@ -622,7 +622,7 @@ impl<'a, R: Ring> Ring for &'a R {
     /// Writes a textual representation of the element to the formatter.
     /// If in_prod is set, then the representation will be chosen such that
     /// any internal operations bind stronger (or equally strong) than 
-    /// potential surrounding multiplications (usually braces will be placed).
+    /// potential surrounding multiplications (usually brackets will be placed).
     /// If in_prod is not set, then the representation will be chosen such
     /// that any internal operations bind stronger (or equally strong) than
     /// potential surrounding additions.

@@ -411,15 +411,15 @@ impl<R> Ring for MultivariatePolyRing<R>
                 if !self.base_ring.is_one(coeff) {
                     self.base_ring.format(coeff, f, true)?;
                     if key.len() > 0 {
-                        write!(f, " *")?;
+                        write!(f, " * ")?;
                     }
                 }
                 if key.len() > 0 {
                     for (i, pow) in key.iter().enumerate() {
                         if *pow == 1 {
-                            write!(f, " {}", self.var_names[i])?;
+                            write!(f, "{}", self.var_names[i])?;
                         } else if *pow > 1 {
-                            write!(f, " {}^{}", self.var_names[i], pow)?;
+                            write!(f, "{}^{}", self.var_names[i], pow)?;
                         }
                     }
                 }
@@ -609,7 +609,6 @@ impl<R> Ring for PolyRing<R>
     
     fn euclidean_div_rem(&self, mut lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) {
         assert!(!self.is_zero(&rhs));
-        assert!(self.is_euclidean());
         let rhs_lc = self.lc(&rhs).unwrap();
         let rhs_lc_inv = self.base_ring.div(self.base_ring.one(), rhs_lc);
         let q = self.poly_division(
@@ -628,12 +627,22 @@ impl<R> Ring for PolyRing<R>
     /// Therefore, if the base ring division works for all divisible pairs of arguments,
     /// this is also the case for this function.
     /// 
-    fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
-        let (q, r) = self.euclidean_div_rem(lhs, rhs);
-        if self.is_zero(&r) {
-            return q;
+    fn div(&self, mut lhs: Self::El, rhs: &Self::El) -> Self::El {
+        assert!(!self.is_zero(&rhs));
+        let rhs_lc = self.lc(&rhs).unwrap();
+        if self.base_ring.is_field() {
+            let rhs_lc_inv = self.base_ring.div(self.base_ring.one(), rhs_lc);
+            self.poly_division(
+                &mut lhs, 
+                &rhs, 
+                |x| Ok(self.base_ring.mul_ref(x, &rhs_lc_inv))
+            ).unwrap()
         } else {
-            panic!("Not a field called for not divisible polynomials!");
+            self.poly_division(
+                &mut lhs, 
+                &rhs, 
+                |x| Ok(self.base_ring.div(x.clone(), rhs_lc))
+            ).unwrap()
         }
     }
 
@@ -757,7 +766,7 @@ fn test_format_multivar_poly_ring() {
     let one = ring.bind(ring.one());
 
     let poly = &x * &x * &x - &y + (&one + &one) * &y * &x - &one;
-    assert_eq!("-1 + -1 * Y^1 + 2 * X^1 Y^1 + 1 * X^3", format!("{}", poly));
+    assert_eq!("-1 + -1 * Y + 2 * XY + X^3", format!("{}", poly));
 }
 
 #[test]

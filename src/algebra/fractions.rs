@@ -33,6 +33,15 @@ impl<R> FieldOfFractions<R>
         }
         return Ok(());
     }
+
+    pub fn soft_reduce(&self, el: <Self as Ring>::El) -> <Self as Ring>::El {
+        if self.base_ring.is_euclidean() {
+            let d = gcd(&self.base_ring, el.0.clone(), el.1.clone());
+            return (self.base_ring.euclidean_div(el.0, &d), self.base_ring.euclidean_div(el.1, &d));
+        } else {
+            return el;
+        }
+    }
 }
 
 impl<R> Ring for FieldOfFractions<R>
@@ -115,16 +124,8 @@ impl<R> Ring for FieldOfFractions<R>
     }
 
     fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, _in_prod: bool) -> std::fmt::Result {
-        if self.base_ring.is_euclidean() {
-            let d = gcd(&self.base_ring, el.0.clone(), el.1.clone());
-            self.format_base(
-                &self.base_ring.euclidean_div(el.0.clone(), &d), 
-                &self.base_ring.euclidean_div(el.1.clone(), &d), 
-                f
-            )
-        } else {
-            self.format_base(&el.0, &el.1, f)
-        }
+        let to_format = self.soft_reduce(el.clone());
+        self.format_base(&to_format.0, &to_format.1, f)
     }
 }
 
