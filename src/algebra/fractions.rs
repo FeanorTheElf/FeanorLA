@@ -155,12 +155,3 @@ fn test_mul() {
     let one_half = rats.bind(rats.one()) / two;
     assert_eq!(rats.bind::<RingAxiomsField>(rats.from_z(1)) / rats.bind(rats.from_z(3)), two_thirds * one_half);
 }
-
-#[cfg(test)]
-use super::poly::*;
-#[cfg(test)]
-use super::rat::*;
-#[cfg(test)]
-use super::super::la::mat::*;
-#[cfg(test)]
-use super::super::la::algorithms::*;

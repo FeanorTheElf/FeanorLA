@@ -329,12 +329,38 @@ impl RingEl for f32 {
     type Axioms = RingAxiomsField;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+
+    fn pow(self, exp: u32) -> Self {
+        if exp > i32::MAX as u32 {
+            let value = f32::powi(self, (exp >> 1) as i32);
+            if exp & 1 == 1 {
+                value * value * self
+            } else {
+                value * value
+            }
+        } else {
+            f32::powi(self, exp as i32)
+        }
+    }
 }
 
 impl RingEl for f64 {
     type Axioms = RingAxiomsField;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+
+    fn pow(self, exp: u32) -> Self {
+        if exp > i32::MAX as u32 {
+            let value = f64::powi(self, (exp >> 1) as i32);
+            if exp & 1 == 1 {
+                value * value * self
+            } else {
+                value * value
+            }
+        } else {
+            f64::powi(self, exp as i32)
+        }
+    }
 }
 
 impl FieldEl for f32 {}

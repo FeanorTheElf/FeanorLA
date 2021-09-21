@@ -67,7 +67,7 @@ where R: Ring, A: RingAxioms
 impl<'a, R, A> From<i8> for RingReferencingEl<'a, R, A>
 where R: Ring, A: RingAxioms
 {
-    fn from(x: i8) -> Self {
+    fn from(_: i8) -> Self {
         panic!("`RingReferencingEl` does not provide the constants from the ring; Use `base_ring.bind(base_ring.from_z())` instead.")
     }
 }
