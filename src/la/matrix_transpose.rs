@@ -44,7 +44,7 @@ impl<T, M> MatrixView<T> for MatrixTranspose<T, M>
     }
     
     fn at(&self, i: usize, j: usize) -> &T {
-        self.matrix.at(i, j)
+        self.matrix.at(j, i)
     }
 }
 
@@ -64,4 +64,14 @@ impl<T, M> MatrixViewMut<T> for MatrixTranspose<T, M>
         self.assert_col_in_range(snd_j);
         self.matrix.swap((fst_j, fst_i), (snd_j, snd_i));
     }
+}
+
+#[test]
+fn test_transpose() {
+    let mut a = MatrixTranspose::new(MatrixOwned::from_array([[1], [3]]));
+    let mut at = MatrixOwned::from_array([[1, 3]]);
+    assert_eq!(a.at(0, 0), at.at(0, 0));
+    assert_eq!(a.at(0, 1), at.at(0, 1));
+    assert_eq!(a.at_mut(0, 0), at.at_mut(0, 0));
+    assert_eq!(a.at_mut(0, 1), at.at_mut(0, 1));
 }
