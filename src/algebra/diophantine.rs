@@ -11,7 +11,7 @@ pub fn diophantine_solve<M, V>(
 ) -> Option<Vector<VectorOwned<Item>, Item>> 
     where M: MatrixView<Item>, V: VectorView<Item>
 {
-    let mut smith_A = A.as_ref().to_owned();
+    let mut smith_A = A.as_ref().into_owned();
     let mut iL = Matrix::identity(A.row_count(), A.row_count());
     let mut iR = Matrix::identity(A.col_count(), A.col_count());
     partial_smith(
@@ -21,7 +21,7 @@ pub fn diophantine_solve<M, V>(
         0,
     );
     // x is solution of (L * smith_A) x = b, get result through r := R^-1 * x
-    let mut x = Vector::zero(A.col_count()).to_owned();
+    let mut x = Vector::zero(A.col_count()).into_owned();
     let c = iL * Matrix::col_vec(b);
     for i in 0..usize::min(x.len(), A.row_count()) {
         let entry = *smith_A.at(i, i);

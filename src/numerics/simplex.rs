@@ -156,7 +156,7 @@ fn add_artificials<M, T>(table: Matrix<M, T>) -> (Matrix<MatrixOwned<T>, T>, Bas
         vec.resize(table.row_count(), 0);
         vec.into_boxed_slice()
     };
-    let mut result: Matrix<MatrixOwned<T>, T> = Matrix::zero(rows, cols).to_owned();
+    let mut result: Matrix<MatrixOwned<T>, T> = Matrix::zero(rows, cols).into_owned();
     for row_index in 1..rows {
         for col_index in 0..table.col_count() {
             *result.at_mut(row_index, col_index) = table.at(row_index - 1, col_index).clone();

@@ -66,7 +66,7 @@ pub fn qr_decompose<M, T>(A: &mut Matrix<M, T>) -> Matrix<MatrixOwned<T>, T>
     where M: MatrixViewMut<T>, T: Float + Root + std::fmt::Display
 {
     let mut Q = Matrix::identity(A.row_count(), A.row_count());
-    let mut y_base = Vector::zero(A.row_count()).to_owned();
+    let mut y_base = Vector::zero(A.row_count()).into_owned();
     let half = T::one() / two::<T>();
     let two = two::<T>();
 

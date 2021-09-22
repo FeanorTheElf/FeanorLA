@@ -143,7 +143,7 @@ impl<V, T> Vector<V, T>
     pub fn add<R, W>(self, rhs: Vector<W, T>, ring: &R) -> Vector<VectorOwned<T>, T>
         where R: Ring<El = T>, W: VectorView<T>
     {
-        let mut result = self.to_owned();
+        let mut result = self.into_owned();
         <R as MatrixAddAssign<_, _>>::add_assign_matrix(ring, &mut result.as_mut().as_column_vector(), rhs.as_ref().as_column_vector());
         return result;
     }
@@ -151,7 +151,7 @@ impl<V, T> Vector<V, T>
     pub fn sub<R, W>(self, rhs: Vector<W, T>, ring: &R) -> Vector<VectorOwned<T>, T>
         where R: Ring<El = T>, W: VectorView<T>
     {
-        let mut result = self.to_owned();
+        let mut result = self.into_owned();
         <R as MatrixAddAssign<_, _>>::sub_assign_matrix(ring, &mut result.as_mut().as_column_vector(), rhs.as_ref().as_column_vector());
         return result;
     }
@@ -177,8 +177,8 @@ impl<V, T> Eq for Vector<V, T>
 impl<V, T> Vector<V, T>
     where V: VectorView<T>, T: Clone
 {
-    pub fn to_owned(self) -> Vector<VectorOwned<T>, T> {
-        Vector::new(self.data.to_owned())
+    pub fn into_owned(self) -> Vector<VectorOwned<T>, T> {
+        Vector::new(self.data.into_owned())
     }
 }
 

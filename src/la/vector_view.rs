@@ -9,7 +9,7 @@ pub trait VectorView<T>: Sized {
         assert!(index < self.len(), "Vector index {} out of range 0..{}", index, self.len());
     }
 
-    fn to_owned(self) -> VectorOwned<T>
+    fn into_owned(self) -> VectorOwned<T>
         where T: Clone
     {
         VectorOwned::from_fn(self.len(), |i| self.at(i).clone())

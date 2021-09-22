@@ -67,10 +67,10 @@ where V: VectorView<T>
         }
     }
 
-    fn to_owned(self) -> MatrixOwned<T> 
+    fn into_owned(self) -> MatrixOwned<T> 
         where T: Clone
     {
-        let mut result = MatrixConstant::new(self.row_count(), self.col_count(), self.zero).to_owned();
+        let mut result = MatrixConstant::new(self.row_count(), self.col_count(), self.zero).into_owned();
         for index in 0..self.diagonal.len() {
             let (i, j) = get_matrix_index(self.diagonal_index, index);
             *result.at_mut(i, j) = self.diagonal.at(index).clone();

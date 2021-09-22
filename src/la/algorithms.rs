@@ -22,7 +22,7 @@ pub trait MatrixSolve: Ring {
 impl<R: Ring> MatrixSolve for R {
 
     default fn solve_linear_equation<M: MatrixView<Self::El>, N: MatrixViewMut<Self::El>>(&self, a: Matrix<M, Self::El>, b: &mut Matrix<N, Self::El>) -> Result<(), usize> {
-        a.to_owned().solve_modifying(b, self)
+        a.into_owned().solve_modifying(b, self)
     }
 }
 
@@ -39,7 +39,7 @@ pub trait MatrixKernelBase: Ring {
 impl<R: Ring> MatrixKernelBase for R {
     
     default fn calc_matrix_kernel_space<M: MatrixView<Self::El>>(&self, a: Matrix<M, Self::El>) -> Option<Matrix<MatrixOwned<Self::El>, Self::El>> {
-        a.to_owned().kernel_base_modifying(self)
+        a.into_owned().kernel_base_modifying(self)
     }
 }
 
@@ -285,7 +285,7 @@ impl<M, T> Matrix<M, T>
         }
         let upper_part = effective_matrix.row_count();
         let lower_part = effective_matrix.col_count() - effective_matrix.row_count();
-        let mut result = Matrix::zero_ring(upper_part + lower_part, lower_part, ring).to_owned();
+        let mut result = Matrix::zero_ring(upper_part + lower_part, lower_part, ring).into_owned();
 
         // set to identity in the lower part
         for i in 0..lower_part {

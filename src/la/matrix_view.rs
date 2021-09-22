@@ -14,7 +14,7 @@ pub trait MatrixView<T>: Sized {
         assert!(col < self.col_count(), "Column index {} out of range 0..{}", col, self.col_count());
     }
 
-    fn to_owned(self) -> MatrixOwned<T> 
+    fn into_owned(self) -> MatrixOwned<T> 
         where T: Clone
     {
         MatrixOwned::from_fn(self.row_count(), self.col_count(), |i, j| self.at(i, j).clone())
@@ -71,7 +71,7 @@ impl<T> MatrixView<T> for MatrixOwned<T> {
         &self.data[row * self.col_count + col]
     }
 
-    fn to_owned(self) -> MatrixOwned<T> {
+    fn into_owned(self) -> MatrixOwned<T> {
         self
     }
 }

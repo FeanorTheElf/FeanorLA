@@ -286,16 +286,16 @@ impl<M, T> Matrix<M, T>
 impl<M, T> Matrix<M, T>
     where M: MatrixView<T>, T: Clone
 {
-    pub fn to_owned(self) -> Matrix<MatrixOwned<T>, T> {
-        Matrix::new(self.data.to_owned())
+    pub fn into_owned(self) -> Matrix<MatrixOwned<T>, T> {
+        Matrix::new(self.data.into_owned())
     }
 
     pub fn copy_vec(&self) -> Vector<VectorOwned<T>, T> {
         assert!(self.col_count() == 1 || self.row_count() == 1);
         if self.col_count() == 1 {
-            self.as_ref().col(0).to_owned()
+            self.as_ref().col(0).into_owned()
         } else {
-            self.as_ref().row(0).to_owned()
+            self.as_ref().row(0).into_owned()
         }
     }
 }
@@ -322,7 +322,7 @@ impl<M, T> Matrix<M, T>
     pub fn add<R, N>(self, rhs: Matrix<N, T>, ring: &R) -> Matrix<MatrixOwned<T>, T>
         where R: Ring<El = T>, N: MatrixView<T>
     {
-        let mut result = self.to_owned();
+        let mut result = self.into_owned();
         result.add_assign(rhs, ring);
         return result;
     }
@@ -331,7 +331,7 @@ impl<M, T> Matrix<M, T>
     pub fn sub<R, N>(self, rhs: Matrix<N, T>, ring: &R) -> Matrix<MatrixOwned<T>, T>
         where R: Ring<El = T>, N: MatrixView<T>
     {
-        let mut result = self.to_owned();
+        let mut result = self.into_owned();
         result.sub_assign(rhs, ring);
         return result;
     }
@@ -656,7 +656,7 @@ fn test_zero_sized_matrix() {
 
     assert_eq!(Matrix::<_, i32>::zero(3, 0), a);
 
-    let mut d: Matrix<_, i32> = Matrix::zero(0, 5).to_owned();
+    let mut d: Matrix<_, i32> = Matrix::zero(0, 5).into_owned();
 
     assert_eq!(d.clone(), d);
 
