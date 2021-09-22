@@ -63,7 +63,7 @@ fn sgn<T>(val: &T) -> T
 /// and R is assigned to the input matrix.
 /// 
 pub fn qr_decompose<M, T>(A: &mut Matrix<M, T>) -> Matrix<MatrixOwned<T>, T>
-    where M: MatrixViewMut<T>, T: Float + Root + std::fmt::Display
+    where M: MatrixViewMut<T>, T: Float + Root
 {
     let mut Q = Matrix::identity(A.row_count(), A.row_count());
     let mut y_base = Vector::zero(A.row_count()).into_owned();
