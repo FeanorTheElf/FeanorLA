@@ -7,6 +7,7 @@ pub use super::vec::*;
 pub use super::submatrix::*;
 pub use super::vector::*;
 
+use super::matrix_transpose::*;
 use super::diagonal::*;
 use super::matrix_vector::*;
 use super::matrix_row_col::*;
@@ -59,6 +60,10 @@ impl<M, T> Matrix<M, T>
 
     pub fn as_ref<'a>(&'a self) -> Matrix<MatrixRef<'a, M, T>, T> {
         self.submatrix(.., ..)
+    }
+
+    pub fn transpose(self) -> Matrix<MatrixTranspose<T, M>, T> {
+        Matrix::new(MatrixTranspose::new(self.data))
     }
 
     pub fn submatrix<'a, R, S>(

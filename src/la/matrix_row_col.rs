@@ -24,10 +24,10 @@ impl<T, M> MatrixRow<T, M>
     }
 }
 
-impl<'a, T, M> Copy for MatrixRow<T, M> 
+impl<T, M> Copy for MatrixRow<T, M> 
     where M: MatrixView<T> + Copy {}
 
-impl<'a, T, M> Clone for MatrixRow<T, M>
+impl<T, M> Clone for MatrixRow<T, M>
     where M: MatrixView<T> + Clone
 {
     fn clone(&self) -> Self {
@@ -35,7 +35,7 @@ impl<'a, T, M> Clone for MatrixRow<T, M>
     }
 }
 
-impl<'a, T, M> VectorView<T> for MatrixRow<T, M> 
+impl<T, M> VectorView<T> for MatrixRow<T, M> 
     where M: MatrixView<T>
 {
     fn len(&self) -> usize {
@@ -48,7 +48,7 @@ impl<'a, T, M> VectorView<T> for MatrixRow<T, M>
     }
 }
 
-impl<'a, T, M> VectorViewMut<T> for MatrixRow<T, M> 
+impl<T, M> VectorViewMut<T> for MatrixRow<T, M> 
     where M: MatrixViewMut<T>
 {
     fn at_mut(&mut self, i: usize) -> &mut T {
@@ -151,7 +151,7 @@ impl<T, M> VectorView<T> for MatrixCol<T, M>
     }
 }
 
-impl<'a, T, M> VectorViewMut<T> for MatrixCol<T, M> 
+impl<T, M> VectorViewMut<T> for MatrixCol<T, M> 
     where M: MatrixViewMut<T>
 {
     fn at_mut(&mut self, i: usize) -> &mut T {
@@ -182,7 +182,7 @@ impl<T, M> MatrixColIter<T, M>
     }
 }
 
-impl<'a, T, M> Iterator for MatrixColIter<T, M> 
+impl<T, M> Iterator for MatrixColIter<T, M> 
     where M: MatrixView<T> + Copy
 {
     type Item = Vector<MatrixCol<T, M>, T>;
@@ -198,10 +198,10 @@ impl<'a, T, M> Iterator for MatrixColIter<T, M>
     }
 }
 
-impl<'a, T, M> Copy for MatrixColIter<T, M> 
+impl<T, M> Copy for MatrixColIter<T, M> 
     where M: MatrixView<T> + Copy {}
 
-impl<'a, T, M> Clone for MatrixColIter<T, M>
+impl<T, M> Clone for MatrixColIter<T, M>
     where M: MatrixView<T> + Copy
 {
     fn clone(&self) -> Self {
