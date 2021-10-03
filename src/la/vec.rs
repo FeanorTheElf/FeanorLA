@@ -47,11 +47,11 @@ impl<V, T> Vector<V, T>
         self.data.at(i)
     }
 
-    pub fn as_ref<'a>(&'a self) -> Vector<VectorRef<V, T>, T> {
-        self.subvector(..)
+    pub fn as_ref<'a>(&'a self) -> Vector<&'a V, T> {
+        Vector::new(&self.data)
     }
 
-    pub fn subvector<'a, R>(&'a self, range: R) -> Vector<VectorRef<V, T>, T>
+    pub fn into_subvector<R>(self, range: R) -> Vector<Subvector<V, T>, T>
         where R: RangeBounds<usize>
     {
         let begin = match range.start_bound() {
@@ -65,8 +65,14 @@ impl<V, T> Vector<V, T>
             Bound::Unbounded => self.len(),
         };
         return Vector::new(
-            VectorRef::new(begin, end, &self.data)
+            Subvector::new(begin, end, self.data)
         )
+    }
+
+    pub fn subvector<'a, R>(&'a self, range: R) -> Vector<Subvector<&'a V, T>, T>
+        where R: RangeBounds<usize>
+    {
+        Vector::new(&self.data).into_subvector(range)
     }
 }
 
@@ -93,26 +99,14 @@ impl<V, T> Index<usize> for Vector<V, T>
 impl<V, T> Vector<V, T>
     where V: VectorViewMut<T>
 {
-    pub fn as_mut<'a>(&'a mut self) -> Vector<VectorRefMut<V, T>, T> {
-        self.subvector_mut(..)
+    pub fn as_mut<'a>(&'a mut self) -> Vector<&'a mut V, T> {
+        Vector::new(&mut self.data)
     }
 
-    pub fn subvector_mut<'a, R>(&'a mut self, range: R) -> Vector<VectorRefMut<V, T>, T>
+    pub fn subvector_mut<'a, R>(&'a mut self, range: R) -> Vector<Subvector<&'a mut V, T>, T>
         where R: RangeBounds<usize>
     {
-        let begin = match range.start_bound() {
-            Bound::Included(x) => *x,
-            Bound::Excluded(x) => x + 1,
-            Bound::Unbounded => 0,
-        };
-        let end = match range.end_bound() {
-            Bound::Included(x) => x + 1,
-            Bound::Excluded(x) => *x,
-            Bound::Unbounded => self.len(),
-        };
-        return Vector::new(
-            VectorRefMut::new(begin, end, &mut self.data)
-        )
+        self.as_mut().into_subvector(range)
     }
 }
 

@@ -90,14 +90,14 @@ pub struct MatrixRefMutRowIter<'a, M, T>
 impl<'a, M, T> Iterator for MatrixRefMutRowIter<'a, M, T>
     where M: LifetimeMatrixMutRowIter<'a, T>
 {
-    type Item = VectorRestriction<M::RowRef, T>;
+    type Item = Subvector<M::RowRef, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.to_yield == 0 {
             return None;
         } else {
             self.to_yield -= 1;
-            return self.current.next().map(|r| VectorRestriction::restrict(r, self.from_col, self.to_col));
+            return self.current.next().map(|r| Subvector::new(self.from_col, self.to_col, r));
         }
     }
 }
@@ -105,7 +105,7 @@ impl<'a, M, T> Iterator for MatrixRefMutRowIter<'a, M, T>
 impl<'a, M, T: 'a> LifetimeMatrixMutRowIter<'a, T> for Submatrix<M, T> 
     where M: LifetimeMatrixMutRowIter<'a, T>
 {
-    type RowRef = VectorRestriction<M::RowRef, T>;
+    type RowRef = Subvector<M::RowRef, T>;
     type RowIter = MatrixRefMutRowIter<'a, M, T>;
 
     fn rows_mut(&'a mut self) -> Self::RowIter {
@@ -123,7 +123,7 @@ impl<'a, M, T: 'a> LifetimeMatrixMutRowIter<'a, T> for Submatrix<M, T>
 
     fn get_row_mut(&'a mut self, i: usize) -> Self::RowRef {
         self.assert_row_in_range(i);
-        VectorRestriction::restrict(self.matrix.get_row_mut(i + self.rows_begin), self.cols_begin, self.cols_end)
+        Subvector::new(self.cols_begin, self.cols_end, self.matrix.get_row_mut(i + self.rows_begin))
     }
 }
 

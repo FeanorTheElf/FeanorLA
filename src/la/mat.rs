@@ -66,11 +66,7 @@ impl<M, T> Matrix<M, T>
         Matrix::new(MatrixTranspose::new(self.data))
     }
 
-    pub fn submatrix<'a, R, S>(
-        &'a self,
-        rows: R, 
-        cols: S
-    ) -> Matrix<Submatrix<&'a M, T>, T> 
+    pub fn into_submatrix<R, S>(self, rows: R, cols: S) -> Matrix<Submatrix<M, T>, T> 
         where R: RangeBounds<usize>, S: RangeBounds<usize>
     {
         let rows_begin = match rows.start_bound() {
@@ -94,8 +90,14 @@ impl<M, T> Matrix<M, T>
             Bound::Unbounded => self.col_count(),
         };
         Matrix::new(Submatrix::new(
-            rows_begin, rows_end, cols_begin, cols_end, &self.data
+            rows_begin, rows_end, cols_begin, cols_end, self.data
         ))
+    }
+
+    pub fn submatrix<'a, R, S>(&'a self, rows: R, cols: S) -> Matrix<Submatrix<&'a M, T>, T>
+        where R: RangeBounds<usize>, S: RangeBounds<usize>
+    {
+        Matrix::new(&self.data).into_submatrix(rows, cols)
     }
 
     pub fn rows(&self) -> MatrixRowIter<T, &M> {
@@ -231,36 +233,10 @@ impl<M, T> Matrix<M, T>
         Matrix::new(&mut self.data)
     }
 
-    pub fn submatrix_mut<'a, R, S>(
-        &'a mut self, 
-        rows: R, 
-        cols: S
-    ) -> Matrix<Submatrix<&'a mut M, T>, T> 
+    pub fn submatrix_mut<'a, R, S>(&'a mut self, rows: R, cols: S) -> Matrix<Submatrix<&'a mut M, T>, T> 
         where R: RangeBounds<usize>, S: RangeBounds<usize>
     {
-        let rows_begin = match rows.start_bound() {
-            Bound::Included(x) => *x,
-            Bound::Excluded(x) => x + 1,
-            Bound::Unbounded => 0,
-        };
-        let rows_end = match rows.end_bound() {
-            Bound::Included(x) => x + 1,
-            Bound::Excluded(x) => *x,
-            Bound::Unbounded => self.row_count(),
-        };
-        let cols_begin = match cols.start_bound() {
-            Bound::Included(x) => *x,
-            Bound::Excluded(x) => x + 1,
-            Bound::Unbounded => 0,
-        };
-        let cols_end = match cols.end_bound() {
-            Bound::Included(x) => x + 1,
-            Bound::Excluded(x) => *x,
-            Bound::Unbounded => self.col_count(),
-        };
-        Matrix::new(Submatrix::new(
-            rows_begin, rows_end, cols_begin, cols_end, &mut self.data
-        ))
+        Matrix::new(&mut self.data).into_submatrix(rows, cols)
     }
 }
 

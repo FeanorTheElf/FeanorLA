@@ -2,7 +2,7 @@ use super::super::float::*;
 use super::super::la::mat::*;
 
 type Point<T> = Vector<VectorOwned<T>, T>;
-type PointRef<'a, T> = Vector<VectorRef<'a, VectorOwned<T>, T>, T>;
+type PointRef<'a, T> = Vector<&'a VectorOwned<T>, T>;
 
 #[derive(Debug)]
 pub struct NotConvergent<T>(pub Point<T>);
