@@ -227,6 +227,68 @@ impl<'b, T: 'b> LifetimeMatrixMutRowIter<'b, T> for MatrixOwned<T> {
 
 impl<T: 'static> MatrixMutRowIter<T> for MatrixOwned<T> {}
 
+impl<'a, T, M> MatrixView<T> for &'a M
+    where M: MatrixView<T>
+{
+    
+    fn row_count(&self) -> usize {
+        (*self).row_count()
+    }
+
+    fn col_count(&self) -> usize {
+        (*self).col_count()
+    }
+
+    fn at(&self, row: usize, col: usize) -> &T {
+        (*self).at(row, col)
+    }
+}
+
+impl<'a, T, M> MatrixView<T> for &'a mut M
+    where M: MatrixView<T>
+{
+    
+    fn row_count(&self) -> usize {
+        (**self).row_count()
+    }
+
+    fn col_count(&self) -> usize {
+        (**self).col_count()
+    }
+
+    fn at(&self, row: usize, col: usize) -> &T {
+        (**self).at(row, col)
+    }
+}
+
+impl<'a, T, M> MatrixViewMut<T> for &'a mut M
+    where M: MatrixViewMut<T>
+{
+    fn at_mut(&mut self, row: usize, col: usize) -> &mut T {
+        (*self).at_mut(row, col)
+    }
+
+    fn swap(&mut self, fst: (usize, usize), snd: (usize, usize)) {
+        (*self).swap(fst, snd);
+    }
+}
+
+impl<'a, 'b, T, M> LifetimeMatrixMutRowIter<'b, T> for &'a mut M
+    where M: LifetimeMatrixMutRowIter<'b, T>
+{
+    type RowRef = M::RowRef;
+    type RowIter = M::RowIter;
+
+    fn rows_mut(&'b mut self) -> Self::RowIter {
+        (*self).rows_mut()
+    }
+}
+
+impl<'a, T, M> MatrixMutRowIter<T> for &'a mut M
+    where M: MatrixMutRowIter<T>
+{
+}
+
 #[test]
 fn test_from_fn() {
     let a = MatrixOwned::from_array([[0, 1], [1, 2]]);

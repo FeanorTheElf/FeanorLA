@@ -58,19 +58,15 @@ impl<M, T> Matrix<M, T>
         self.data.at(row, col)
     }
 
-    pub fn as_ref<'a>(&'a self) -> Matrix<MatrixRef<'a, M, T>, T> {
-        self.submatrix(.., ..)
+    pub fn as_ref<'a>(&'a self) -> Matrix<&'a M, T> {
+        Matrix::new(&self.data)
     }
 
     pub fn transpose(self) -> Matrix<MatrixTranspose<T, M>, T> {
         Matrix::new(MatrixTranspose::new(self.data))
     }
 
-    pub fn submatrix<'a, R, S>(
-        &'a self,
-        rows: R, 
-        cols: S
-    ) -> Matrix<MatrixRef<'a, M, T>, T> 
+    pub fn into_submatrix<R, S>(self, rows: R, cols: S) -> Matrix<Submatrix<M, T>, T> 
         where R: RangeBounds<usize>, S: RangeBounds<usize>
     {
         let rows_begin = match rows.start_bound() {
@@ -93,35 +89,41 @@ impl<M, T> Matrix<M, T>
             Bound::Excluded(x) => *x,
             Bound::Unbounded => self.col_count(),
         };
-        Matrix::new(MatrixRef::new(
-            rows_begin, rows_end, cols_begin, cols_end, &self.data
+        Matrix::new(Submatrix::new(
+            rows_begin, rows_end, cols_begin, cols_end, self.data
         ))
     }
 
-    pub fn rows(&self) -> MatrixRowIter<T, MatrixRef<M, T>> {
-        MatrixRowIter::new(self.as_ref().data)
+    pub fn submatrix<'a, R, S>(&'a self, rows: R, cols: S) -> Matrix<Submatrix<&'a M, T>, T>
+        where R: RangeBounds<usize>, S: RangeBounds<usize>
+    {
+        Matrix::new(&self.data).into_submatrix(rows, cols)
     }
 
-    pub fn row(&self, row: usize) -> Vector<MatrixRow<T, MatrixRef<M, T>>, T> {
+    pub fn rows(&self) -> MatrixRowIter<T, &M> {
+        MatrixRowIter::new(&self.data)
+    }
+
+    pub fn row(&self, row: usize) -> Vector<MatrixRow<T, &M>, T> {
         self.data.assert_row_in_range(row);
-        Vector::new(MatrixRow::new(self.as_ref().data, row))
+        Vector::new(MatrixRow::new(&self.data, row))
     }
 
-    pub fn cols(&self) -> MatrixColIter<T, MatrixRef<M, T>> {
-        MatrixColIter::new(self.as_ref().data)
+    pub fn cols(&self) -> MatrixColIter<T, &M> {
+        MatrixColIter::new(&self.data)
     }
 
-    pub fn col(&self, col: usize) -> Vector<MatrixCol<T, MatrixRef<M, T>>, T> {
+    pub fn col(&self, col: usize) -> Vector<MatrixCol<T, &M>, T> {
         self.data.assert_col_in_range(col);
-        Vector::new(MatrixCol::new(self.as_ref().data, col))
+        Vector::new(MatrixCol::new(&self.data, col))
     }
 
-    pub fn diag(&self) -> Vector<MatrixDiagonal<MatrixRef<M, T>, T>, T> {
+    pub fn diag(&self) -> Vector<MatrixDiagonal<&M, T>, T> {
         self.nonmain_diag(0)
     }
 
-    pub fn nonmain_diag(&self, diag_index: i64) -> Vector<MatrixDiagonal<MatrixRef<M, T>, T>, T> {
-        Vector::new(MatrixDiagonal::new(self.as_ref().data, diag_index))
+    pub fn nonmain_diag(&self, diag_index: i64) -> Vector<MatrixDiagonal<&M, T>, T> {
+        Vector::new(MatrixDiagonal::new(&self.data, diag_index))
     }
 
     pub fn into_row_vec(self) -> Vector<MatrixRow<T, M>, T> {
@@ -142,9 +144,9 @@ impl<M, T> Matrix<M, T>
         self.data.at_mut(row, col)
     }
 
-    pub fn col_mut(&mut self, col: usize) -> Vector<MatrixCol<T, MatrixRefMut<M, T>>, T> {
+    pub fn col_mut(&mut self, col: usize) -> Vector<MatrixCol<T, &mut M>, T> {
         self.data.assert_col_in_range(col);
-        Vector::new(MatrixCol::new(self.as_mut().data, col))
+        Vector::new(MatrixCol::new(&mut self.data, col))
     }
 }
 
@@ -227,40 +229,14 @@ impl<M, T> Matrix<M, T>
         }
     }
 
-    pub fn as_mut<'a>(&'a mut self) -> Matrix<MatrixRefMut<'a, M, T>, T> {
-        self.submatrix_mut(.., ..)
+    pub fn as_mut<'a>(&'a mut self) -> Matrix<&'a mut M, T> {
+        Matrix::new(&mut self.data)
     }
 
-    pub fn submatrix_mut<'a, R, S>(
-        &'a mut self, 
-        rows: R, 
-        cols: S
-    ) -> Matrix<MatrixRefMut<'a, M, T>, T> 
+    pub fn submatrix_mut<'a, R, S>(&'a mut self, rows: R, cols: S) -> Matrix<Submatrix<&'a mut M, T>, T> 
         where R: RangeBounds<usize>, S: RangeBounds<usize>
     {
-        let rows_begin = match rows.start_bound() {
-            Bound::Included(x) => *x,
-            Bound::Excluded(x) => x + 1,
-            Bound::Unbounded => 0,
-        };
-        let rows_end = match rows.end_bound() {
-            Bound::Included(x) => x + 1,
-            Bound::Excluded(x) => *x,
-            Bound::Unbounded => self.row_count(),
-        };
-        let cols_begin = match cols.start_bound() {
-            Bound::Included(x) => *x,
-            Bound::Excluded(x) => x + 1,
-            Bound::Unbounded => 0,
-        };
-        let cols_end = match cols.end_bound() {
-            Bound::Included(x) => x + 1,
-            Bound::Excluded(x) => *x,
-            Bound::Unbounded => self.col_count(),
-        };
-        Matrix::new(MatrixRefMut::new(
-            rows_begin, rows_end, cols_begin, cols_end, &mut self.data
-        ))
+        Matrix::new(&mut self.data).into_submatrix(rows, cols)
     }
 }
 
@@ -590,7 +566,7 @@ impl<M, T, R> std::fmt::Display for DisplayMatrix<M, T, R>
 impl<M, T> Matrix<M, T> 
     where M: MatrixView<T>, T: std::fmt::Debug + Clone
 {
-    pub fn display<'a, 'b, R>(&'b self, ring: &'a R) -> DisplayMatrix<MatrixRef<'b, M, T>, T, &'a R> 
+    pub fn display<'a, 'b, R>(&'b self, ring: &'a R) -> DisplayMatrix<&'b M, T, &'a R> 
         where R: Ring<El = T>
     {
         DisplayMatrix {

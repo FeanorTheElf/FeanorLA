@@ -86,3 +86,39 @@ impl<T> VectorOwned<T>
         VectorOwned::new((0..len).map(|i| if i == index { T::one() } else { T::zero() }).collect::<Vec<T>>().into_boxed_slice())
     }
 }
+
+impl<'a, T, V> VectorView<T> for &'a V
+    where V: VectorView<T>
+{
+    fn len(&self) -> usize {
+        (**self).len()
+    }
+
+    fn at(&self, i: usize) -> &T {
+        (**self).at(i)
+    }
+}
+
+impl<'a, T, V> VectorView<T> for &'a mut V
+    where V: VectorView<T>
+{
+    fn len(&self) -> usize {
+        (**self).len()
+    }
+
+    fn at(&self, i: usize) -> &T {
+        (**self).at(i)
+    }
+}
+
+impl<'a, T, V> VectorViewMut<T> for &'a mut V
+    where V: VectorViewMut<T>
+{
+    fn at_mut(&mut self, i: usize) -> &mut T {
+        (**self).at_mut(i)
+    }
+
+    fn swap(&mut self, fst: usize, snd: usize) {
+        (**self).swap(fst, snd)
+    }
+}
