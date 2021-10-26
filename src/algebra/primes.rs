@@ -3,6 +3,7 @@ use super::factoring;
 use super::bigint::*;
 use super::zn::*;
 
+use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
@@ -51,6 +52,9 @@ pub fn is_prime(n: &BigInt, k: usize) -> bool {
 }
 
 pub fn factor(mut n: BigInt) -> Vec<BigInt> {
+    // honestly, this is much too small, especially given my very slow implementation of the QS
+    // however, now that it exists, I also want to use it :)
+    // and all in all, the whole function is really slow
     const QUADRATIC_SIEVE_BOUND: i64 = 1000000000000;
     const IS_PRIME_ERROR_BOUND: usize = 8;
 
@@ -89,6 +93,15 @@ pub fn factor(mut n: BigInt) -> Vec<BigInt> {
             return result;
         }
     }
+}
+
+pub fn factor_grouped(n: BigInt) -> HashMap<BigInt, usize> {
+    let factors = factor(n);
+    let mut result = HashMap::new();
+    for p in factors {
+        *result.entry(p).or_insert(0) += 1;
+    }
+    return result;
 }
 
 #[test]
