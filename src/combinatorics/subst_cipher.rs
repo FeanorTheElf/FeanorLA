@@ -182,7 +182,7 @@ fn evaluate<S>(text: &[SymbolMask<S>], words: &PrefixDatabase<S>) -> u64
     return partial_sols[text.len()];
 }
 
-fn get_english_word_db() -> PrefixDatabase<char> {
+fn get_word_db() -> PrefixDatabase<char> {
     let mut result = PrefixDatabase::new();
     let words_file = read_words_file().unwrap();
     for w in words_file.split("\r\n") {
@@ -192,7 +192,7 @@ fn get_english_word_db() -> PrefixDatabase<char> {
 }
 
 fn decrypt(ciphertext: &str) -> String {
-    let english_words = get_english_word_db();
+    let english_words = get_word_db();
 
     fn letter_to_number(c: char) -> u8 {
         ((c.to_uppercase().next().unwrap() as u32) - ('A' as u32)) as u8

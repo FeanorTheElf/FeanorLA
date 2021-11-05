@@ -95,6 +95,9 @@ impl<T, M> Iterator for MatrixRowIter<T, M>
     }
 }
 
+impl<T, M> std::iter::FusedIterator for MatrixRowIter<T, M> 
+    where M: MatrixView<T> + Copy {}
+
 impl<T, M> Copy for MatrixRowIter<T, M> 
     where M: MatrixView<T> + Copy {}
 
@@ -208,3 +211,6 @@ impl<T, M> Clone for MatrixColIter<T, M>
         *self
     }
 }
+
+impl<T, M> std::iter::FusedIterator for MatrixColIter<T, M> 
+    where M: MatrixView<T> + Copy {}

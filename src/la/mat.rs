@@ -97,7 +97,7 @@ impl<M, T> Matrix<M, T>
     pub fn submatrix<'a, R, S>(&'a self, rows: R, cols: S) -> Matrix<Submatrix<&'a M, T>, T>
         where R: RangeBounds<usize>, S: RangeBounds<usize>
     {
-        Matrix::new(&self.data).into_submatrix(rows, cols)
+        self.as_ref().into_submatrix(rows, cols)
     }
 
     pub fn rows(&self) -> MatrixRowIter<T, &M> {

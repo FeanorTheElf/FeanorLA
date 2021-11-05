@@ -74,6 +74,10 @@ impl<V, T> Vector<V, T>
     {
         Vector::new(&self.data).into_subvector(range)
     }
+
+    pub fn iter<'a>(&'a self) -> VectorIter<'a, T, V> {
+        VectorIter::new(&self.data)
+    }
 }
 
 impl<V, T> Vector<V, T>
