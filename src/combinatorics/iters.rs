@@ -230,7 +230,7 @@ pub fn bitset_powerset(set: Bitset64) -> BitsetPowerset {
     }
 }
 
-pub struct BitsetSubdivisions<F, T>
+pub struct BitsetPartitions<F, T>
     where F: FnMut(&[Bitset64]) -> T
 {
     converter: F,
@@ -238,7 +238,7 @@ pub struct BitsetSubdivisions<F, T>
     iterators: Vec<(usize, BitsetPowerset)>
 }
 
-impl<F, T> BitsetSubdivisions<F, T>
+impl<F, T> BitsetPartitions<F, T>
     where F: FnMut(&[Bitset64]) -> T
 {
     fn try_next(&mut self, i: usize) -> bool {
@@ -259,7 +259,7 @@ impl<F, T> BitsetSubdivisions<F, T>
     }
 }
 
-impl<F, T> Iterator for BitsetSubdivisions<F, T>
+impl<F, T> Iterator for BitsetPartitions<F, T>
     where F: FnMut(&[Bitset64]) -> T
 {
     type Item = T;
@@ -279,13 +279,13 @@ impl<F, T> Iterator for BitsetSubdivisions<F, T>
     }
 }
 
-pub fn bitset_subdivisions<F, T>(set: Bitset64, f: F) -> BitsetSubdivisions<F, T>
+pub fn bitset_partitions<F, T>(set: Bitset64, f: F) -> BitsetPartitions<F, T>
     where F: FnMut(&[Bitset64]) -> T
 {
     if let Some(el) = set.any_element() {
         let mut iters = Vec::with_capacity(set.len());
         iters.push((el, bitset_powerset(set - Bitset64::singleton(el))));
-        let mut result = BitsetSubdivisions {
+        let mut result = BitsetPartitions {
             converter: f,
             buffer: Vec::with_capacity(set.len()),
             iterators: iters
@@ -293,7 +293,7 @@ pub fn bitset_subdivisions<F, T>(set: Bitset64, f: F) -> BitsetSubdivisions<F, T
         result.try_next(0);
         return result;
     } else {
-        BitsetSubdivisions {
+        BitsetPartitions {
             converter: f,
             buffer: Vec::new(),
             iterators: Vec::new()
@@ -301,8 +301,8 @@ pub fn bitset_subdivisions<F, T>(set: Bitset64, f: F) -> BitsetSubdivisions<F, T
     }
 }
 
-pub fn basic_bitset_subdivisions(set: Bitset64) -> impl Iterator<Item = Box<[Bitset64]>> {
-    bitset_subdivisions(set, clone_slice)
+pub fn basic_bitset_partitions(set: Bitset64) -> impl Iterator<Item = Box<[Bitset64]>> {
+    bitset_partitions(set, clone_slice)
 }
 
 pub fn powerset<I, F, T>(it: I, converter: F) -> impl Iterator<Item = T>
@@ -479,8 +479,8 @@ fn test_bitset_powerset() {
 #[test]
 fn test_subdivisions() {
     let a = bitset!{1, 2, 3, 4};
-    assert_eq!(15, bitset_subdivisions(a, |_| 0).count());
-    for x in bitset_subdivisions(a, clone_slice) {
+    assert_eq!(15, bitset_partitions(a, |_| 0).count());
+    for x in bitset_partitions(a, clone_slice) {
         for s in &*x {
             assert!(s.is_subset(a));
             for t in &*x {
@@ -488,6 +488,12 @@ fn test_subdivisions() {
             }
         }
     }
+}
+
+#[test]
+fn test_subdivisions_emptyset() {
+    let a = bitset!{};
+    assert_eq!(1, bitset_partitions(a, |_| 0).count());
 }
 
 #[test]

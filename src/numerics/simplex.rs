@@ -16,7 +16,7 @@ pub struct SystemUnbounded;
 /// Returns Err if problem is unbounded,
 /// otherwise table (0 | c^T)
 ///                 (b |  A )
-/// with
+/// with ???
 ///
 fn simplex<M, T>(mut table: Matrix<M, T>, basic_vars: &mut BasicVars) -> Result<(), SystemUnbounded> 
     where M: MatrixMutRowIter<T>, T: FieldEl + PartialOrd + Clone + 'static
