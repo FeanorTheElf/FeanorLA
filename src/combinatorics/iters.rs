@@ -325,8 +325,7 @@ pub struct MultisetCombinations<'a, F, T>
     converter: F,
     superset: &'a [usize],
     current: Option<Box<[usize]>>,
-    last_moved: usize,
-    size: usize
+    last_moved: usize
 }
 
 impl<'a, F, T> Iterator for MultisetCombinations<'a, F, T>
@@ -383,17 +382,17 @@ pub fn multiset_combinations<'a, F, T>(multiset: &'a [usize], size: usize, conve
             start[i] = multiset[i];
             to_insert -= multiset[i]
         } else {
-            start[i] += multiset[i];
+            start[i] += to_insert;
             last_moved = i;
             break;
         }
     }
+    println!("{:?}", start);
     return MultisetCombinations {
         converter: converter,
         superset: multiset,
         current: Some(start),
-        last_moved: last_moved,
-        size: size
+        last_moved: last_moved
     };
 }
 
@@ -634,5 +633,7 @@ fn test_multiset_combinations_k_unlimited() {
         if n == 0 { 1 } else { n * fac(n - 1) }
     }
     let a = [10, 10, 10, 10, 10, 10];
-    assert_eq!(fac(6 + 8) / fac(6) / fac(8), multiset_combinations(&a[..], 8, |_| ()).count())
+    assert_eq!(1, multiset_combinations(&a[..], 0, |_| ()).count());
+    assert_eq!(6, multiset_combinations(&a[..], 1, |_| ()).count());
+    assert_eq!(fac(6 + 8 - 1) / fac(6 - 1) / fac(8), multiset_combinations(&a[..], 8, |_| ()).count());
 }
