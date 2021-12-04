@@ -273,11 +273,18 @@ impl<T> Vector<VectorConstant<T>, T>
     }
 }
 
+impl<T> Vector<VectorConstant<T>, T> {
+
+    pub fn constant(len: usize, c: T) -> Self {
+        Vector::new(VectorConstant::new(len, c))
+    }
+}
+
 impl<T> Vector<VectorConstant<T>, T>
     where T: Zero
 {
     pub fn zero(len: usize) -> Self {
-        Vector::new(VectorConstant::new(len, T::zero()))
+        Self::constant(len, T::zero())
     }
 }
 
