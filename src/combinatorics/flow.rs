@@ -85,6 +85,8 @@ fn find_augmenting_path<'a, G>(
 /// Calculates the maximum-flow resp min s-t-cut problem in the given
 /// (directed, positive-integer-edge-weighted) graph.
 /// 
+/// !THIS IS CURRENTLY WRONG!
+/// 
 /// Returns the free edge capacities after having reached a maximum flow
 /// and a compatible min s-t-cut
 /// 

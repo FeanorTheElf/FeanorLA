@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use std::collections::HashMap;
 use std::collections::hash_map;
 use std::marker::PhantomData;

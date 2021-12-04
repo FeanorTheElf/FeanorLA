@@ -319,6 +319,87 @@ pub fn basic_powerset<I>(it: I) -> impl Iterator<Item = Box<[I::Item]>>
 }
 
 #[derive(Debug, Clone)]
+pub struct MultisetCombinations<'a, F, T>
+    where F: FnMut(&[usize]) -> T
+{
+    converter: F,
+    superset: &'a [usize],
+    current: Box<[usize]>,
+    last_moved: usize,
+    size: usize
+}
+
+impl<'a, F, T> MultisetCombinations<'a, F, T>
+    where F: FnMut(&[usize]) -> T
+{
+    fn can_move(&self, i: usize) -> bool {
+        i + 1 < self.superset.len() && self.current[i + 1] < self.superset[i + 1]
+    }
+}
+
+impl<'a, F, T> Iterator for MultisetCombinations<'a, F, T>
+    where F: FnMut(&[usize]) -> T
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        let result = (self.converter)(&self.current);
+        let mut removed = 0;
+        if self.last_moved + 1 == self.superset.len() {
+            let mut found_empty_place = false;
+            while !found_empty_place || self.current[self.last_moved] == 0 {
+                found_empty_place |= self.current[self.last_moved] < self.superset[self.last_moved];
+                removed += self.current[self.last_moved];
+                self.current[self.last_moved] = 0;
+                if self.last_moved == 0 {
+                    unimplemented!("iterator finished");
+                }
+                self.last_moved -= 1;
+            }
+        }
+        removed += 1;
+        self.current[self.last_moved] -= 1;
+        while removed > 0 {
+            self.last_moved += 1;
+            if self.current[self.last_moved] + removed > self.superset[self.last_moved] {
+                removed = self.current[self.last_moved] + removed - self.superset[self.last_moved];
+                self.current[self.last_moved] = self.superset[self.last_moved];
+            } else {
+                self.current[self.last_moved] += removed;
+                removed = 0;
+            }
+        }
+        return Some(result);
+    }
+}
+
+pub fn multiset_combinations<'a, F, T>(multiset: &'a [usize], size: usize, converter: F) -> MultisetCombinations<'a, F, T>
+    where F: FnMut(&[usize]) -> T
+{
+    assert!(multiset.iter().all(|x| *x != 0));
+    let mut start = (0..multiset.len()).map(|_| 0).collect::<Vec<_>>().into_boxed_slice();
+    let mut to_insert = size;
+    let mut last_moved = 0;
+    for i in 0.. {
+        if to_insert > multiset[i] {
+            start[i] = multiset[i];
+            to_insert -= multiset[i]
+        } else {
+            start[i] += multiset[i];
+            last_moved = i;
+            break;
+        }
+    }
+    return MultisetCombinations {
+        converter: converter,
+        superset: multiset,
+        current: start,
+        last_moved: last_moved,
+        size: size
+    };
+}
+
+#[derive(Debug, Clone)]
 pub struct Product<I, J>
     where I: Iterator, I::Item: Clone, J: Iterator + Clone
 {
@@ -527,4 +608,23 @@ fn test_multi_cartesian_product() {
         [1, 1, 1]
     ];
     assert_eq!(expected, it.collect::<Vec<_>>());
+}
+
+#[test]
+fn test_multiset_combinations() {
+    let a = [1, 2, 3, 1];
+    let mut iter = multiset_combinations(&a, 3, clone_slice);
+    assert_eq!(&[1, 2, 0, 0][..], &*iter.next().unwrap());
+    assert_eq!(&[1, 1, 1, 0][..], &*iter.next().unwrap());
+    assert_eq!(&[1, 1, 0, 1][..], &*iter.next().unwrap());
+    assert_eq!(&[1, 0, 2, 0][..], &*iter.next().unwrap());
+    assert_eq!(&[1, 0, 1, 1][..], &*iter.next().unwrap());
+
+    assert_eq!(&[0, 2, 1, 0][..], &*iter.next().unwrap());
+    assert_eq!(&[0, 2, 0, 1][..], &*iter.next().unwrap());
+    assert_eq!(&[0, 1, 2, 0][..], &*iter.next().unwrap());
+    assert_eq!(&[0, 1, 1, 1][..], &*iter.next().unwrap());
+
+    assert_eq!(&[0, 0, 3, 0][..], &*iter.next().unwrap());
+    assert_eq!(&[0, 0, 2, 1][..], &*iter.next().unwrap());
 }
