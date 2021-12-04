@@ -387,7 +387,6 @@ pub fn multiset_combinations<'a, F, T>(multiset: &'a [usize], size: usize, conve
             break;
         }
     }
-    println!("{:?}", start);
     return MultisetCombinations {
         converter: converter,
         superset: multiset,
