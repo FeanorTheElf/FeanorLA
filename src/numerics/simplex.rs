@@ -31,23 +31,24 @@ fn simplex<M, T>(mut table: Matrix<M, T>, basic_vars: &mut BasicVars) -> Result<
  * Find solution of Ax = b with x >= 0
  * table: (b | A)
  */
-pub fn solve<M, T>(table: Matrix<M, T>) -> Option<Vec<T>> 
+pub fn solve<M, T>(table: Matrix<M, T>) -> Option<Vector<VectorOwned<T>, T>> 
     where M: MatrixView<T>, T: FieldEl + PartialOrd + Clone + 'static
 {
     let (mut matrix, mut basic_vars) = add_artificials(table.as_ref());
     simplex(matrix.as_mut(), &mut basic_vars).unwrap();
     let solution = extract_solution(matrix, &basic_vars);
 
-    let result: Vec<T> = Vec::from(&solution[0..(table.col_count() - 1)]);
-    if is_solution(&result, table) {
+    let mut result_data = Vec::from(solution).into_iter();
+    let result = Vector::from_fn(table.col_count() - 1, |_| result_data.next().unwrap());
+    if is_solution(result.as_ref(), table) {
         return Some(result);
     } else {
         return None;
     }
 }
 
-fn is_solution<M, T>(vars: &[T], table: Matrix<M, T>) -> bool 
-    where M: MatrixView<T>, T: FieldEl + PartialOrd + Clone
+fn is_solution<V, M, T>(vars: Vector<V, T>, table: Matrix<M, T>) -> bool 
+    where V: VectorView<T>, M: MatrixView<T>, T: FieldEl + PartialOrd + Clone
 {
     assert_eq!(
         vars.len() + 1,
@@ -213,14 +214,14 @@ fn test_is_solution() {
     #[rustfmt::skip]
 	let m = Matrix::from_array([[1.0, 0.0, 1.0, -1.0, 15.0,  7.0],  
 				                [5.0, 1.0, 0.0, 1.0,  10.0,  2.0]]);
-    assert_eq!(true, is_solution(&[5.0, 1.0, 0.0, 0.0, 0.0], m.as_ref()));
+    assert_eq!(true, is_solution(Vector::from_array([5.0, 1.0, 0.0, 0.0, 0.0]), m.as_ref()));
 
     #[rustfmt::skip]
 	let m = Matrix::from_array([[9.0, 3.0, 0.0, 0.0, 0.0,  2.0],
 	                            [2.0, 1.0, 1.0, 0.0, 10.0, 3.0],
 							    [5.0, 3.0, 0.0, 1.0, 15.0, 2.0]]);
-    assert_eq!(true, is_solution(&[3.0, -1.0, -4.0, 0.0, 0.0], m.as_ref()));
-    assert_eq!(false, is_solution(&[4.0, -1.0, -4.0, 0.0, 0.0], m.as_ref()));
+    assert_eq!(true, is_solution(Vector::from_array([3.0, -1.0, -4.0, 0.0, 0.0]), m.as_ref()));
+    assert_eq!(false, is_solution(Vector::from_array([4.0, -1.0, -4.0, 0.0, 0.0]), m.as_ref()));
 }
 
 #[test]
@@ -246,7 +247,7 @@ fn test_solve() {
 								[4.0,  1.0,  1.0,  0.0, 1.0, 0.0], 
 								[0.0,  1.0,  -1.0, 0.0, 0.0, 1.0]]);
     let solution = solve(m.as_ref());
-    assert!(is_solution(&solution.unwrap()[0..5], m.as_ref()));
+    assert!(is_solution(solution.unwrap(), m.as_ref()));
 }
 
 #[test]
@@ -254,7 +255,7 @@ fn test_solve_zero_vec_solution() {
     #[rustfmt::skip]
 	let m = Matrix::from_array([[0.0, 1.0, 1.0, -1.0, 0.0],
 	                            [0.0, 1.0, 0.0, -1.0, -1.0]]);
-    assert_eq!(&[0.0, 0.0, 0.0, 0.0], &*solve(m.as_ref()).unwrap());
+    assert_eq!(Vector::from_array([0.0, 0.0, 0.0, 0.0]), solve(m.as_ref()).unwrap());
 }
 
 #[test]
