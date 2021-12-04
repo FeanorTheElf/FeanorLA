@@ -324,17 +324,9 @@ pub struct MultisetCombinations<'a, F, T>
 {
     converter: F,
     superset: &'a [usize],
-    current: Box<[usize]>,
+    current: Option<Box<[usize]>>,
     last_moved: usize,
     size: usize
-}
-
-impl<'a, F, T> MultisetCombinations<'a, F, T>
-    where F: FnMut(&[usize]) -> T
-{
-    fn can_move(&self, i: usize) -> bool {
-        i + 1 < self.superset.len() && self.current[i + 1] < self.superset[i + 1]
-    }
 }
 
 impl<'a, F, T> Iterator for MultisetCombinations<'a, F, T>
@@ -343,35 +335,41 @@ impl<'a, F, T> Iterator for MultisetCombinations<'a, F, T>
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
-        let result = (self.converter)(&self.current);
+        if self.current.is_none() {
+            return None;
+        }
+        let current = &mut self.current.as_mut().unwrap();
+        let result = (self.converter)(current);
         let mut removed = 0;
-        if self.last_moved + 1 == self.superset.len() {
-            let mut found_empty_place = false;
-            while !found_empty_place || self.current[self.last_moved] == 0 {
-                found_empty_place |= self.current[self.last_moved] < self.superset[self.last_moved];
-                removed += self.current[self.last_moved];
-                self.current[self.last_moved] = 0;
-                if self.last_moved == 0 {
-                    unimplemented!("iterator finished");
-                }
-                self.last_moved -= 1;
+        let mut found_empty_place = self.last_moved + 1 != self.superset.len();
+        while !found_empty_place || current[self.last_moved] == 0 {
+            found_empty_place |= current[self.last_moved] < self.superset[self.last_moved];
+            removed += current[self.last_moved];
+            current[self.last_moved] = 0;
+            if self.last_moved == 0 {
+                self.current = None;
+                return Some(result);
             }
+            self.last_moved -= 1;
         }
         removed += 1;
-        self.current[self.last_moved] -= 1;
+        current[self.last_moved] -= 1;
         while removed > 0 {
             self.last_moved += 1;
-            if self.current[self.last_moved] + removed > self.superset[self.last_moved] {
-                removed = self.current[self.last_moved] + removed - self.superset[self.last_moved];
-                self.current[self.last_moved] = self.superset[self.last_moved];
+            if current[self.last_moved] + removed > self.superset[self.last_moved] {
+                removed = current[self.last_moved] + removed - self.superset[self.last_moved];
+                current[self.last_moved] = self.superset[self.last_moved];
             } else {
-                self.current[self.last_moved] += removed;
+                current[self.last_moved] += removed;
                 removed = 0;
             }
         }
         return Some(result);
     }
 }
+
+impl<'a, F, T> std::iter::FusedIterator for MultisetCombinations<'a, F, T>
+    where F: FnMut(&[usize]) -> T {}
 
 pub fn multiset_combinations<'a, F, T>(multiset: &'a [usize], size: usize, converter: F) -> MultisetCombinations<'a, F, T>
     where F: FnMut(&[usize]) -> T
@@ -393,7 +391,7 @@ pub fn multiset_combinations<'a, F, T>(multiset: &'a [usize], size: usize, conve
     return MultisetCombinations {
         converter: converter,
         superset: multiset,
-        current: start,
+        current: Some(start),
         last_moved: last_moved,
         size: size
     };
@@ -627,4 +625,14 @@ fn test_multiset_combinations() {
 
     assert_eq!(&[0, 0, 3, 0][..], &*iter.next().unwrap());
     assert_eq!(&[0, 0, 2, 1][..], &*iter.next().unwrap());
+    assert_eq!(None, iter.next());
+}
+
+#[test]
+fn test_multiset_combinations_k_unlimited() {
+    fn fac(n: usize) -> usize {
+        if n == 0 { 1 } else { n * fac(n - 1) }
+    }
+    let a = [10, 10, 10, 10, 10, 10];
+    assert_eq!(fac(6 + 8) / fac(6) / fac(8), multiset_combinations(&a[..], 8, |_| ()).count())
 }
