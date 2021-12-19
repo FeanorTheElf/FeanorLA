@@ -572,14 +572,12 @@ pub trait Ring : std::fmt::Debug + std::clone::Clone {
         write!(f, ")")?;
         return Ok(());
     }
-}
-
-pub fn display_ring_el<'a, R>(ring: &'a R, el: &'a R::El) -> RingElDisplay<'a, R> 
-    where R: Ring
-{
-    RingElDisplay {
-        ring: ring,
-        el: el
+    
+    fn display<'a>(&'a self, el: &'a Self::El) -> RingElDisplay<'a, Self> {
+        RingElDisplay {
+            ring: self,
+            el: el
+        }
     }
 }
 

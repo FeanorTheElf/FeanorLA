@@ -558,7 +558,7 @@ impl<M, T, R> std::fmt::Display for DisplayMatrix<M, T, R>
     where M: MatrixView<T>, R: Ring<El = T>, T: Clone + std::fmt::Debug
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        self.matrix.format_raw(|x| Ok(format!("{}", display_ring_el(&self.ring, x))), f)
+        self.matrix.format_raw(|x| Ok(format!("{}", self.ring.display(x))), f)
     }
 }
 

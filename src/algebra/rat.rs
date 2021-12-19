@@ -130,7 +130,7 @@ macro_rules! assign_or_reduce_on_failure {
                         $target = value;
                     } else {
                         $reduce_fth
-                        $target = ($e).unwrap();
+                        $target = ($e).expect("Overflow in r64 computation");
                     }
                 }
             }
@@ -145,7 +145,7 @@ macro_rules! assign_or_reduce_on_failure {
                 $target = value;
             } else {
                 $reduce_snd
-                $target = ($e).unwrap();
+                $target = ($e).expect("Overflow in r64 computation");
             }
         }
     };
@@ -154,7 +154,7 @@ macro_rules! assign_or_reduce_on_failure {
             $target = value;
         } else {
             $reduce_fst
-            $target = ($e).unwrap();
+            $target = ($e).expect("Overflow in r64 computation");
         }
     };
 }
@@ -348,6 +348,12 @@ impl Display for r64 {
     }
 }
 
+impl std::iter::Sum for r64 {
+
+    fn sum<I: Iterator<Item = r64>>(iter: I) -> Self {
+        iter.fold(r64::ZERO, |a: r64, b: r64| a + b)
+    }
+}
 
 #[test]
 fn test_add_assign() {

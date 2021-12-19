@@ -14,37 +14,52 @@ use oorandom;
 /// 
 /// If n is a prime, this returns true.
 /// If n is not a prime, this returns false with probability greater or 
-/// equal than 1 - 4^k
+/// equal than 1 - 4^(-k).
 /// 
 /// Complexity O(k log(n)^3)
 /// 
+/// # Randomness
+/// 
+/// Note that the randomness used for this function is derived only from
+/// the input, hence it will always yield the same output on the same input.
+/// Technically, it follows that the probability of a wrong output is greater
+/// than 4^(-k) on some outputs (as it is either 0 or 1), but of course
+/// this is not helpful. To be completely precise: If the seed of the used
+/// PRNG would be random, then the probability of a wrong output is at 
+/// most 4^(-k).
+/// 
+#[allow(non_snake_case)]
 pub fn is_prime(n: &BigInt, k: usize) -> bool {
+    if *n <= 2 {
+        return *n == 2;
+    }
+
     let mut hasher = DefaultHasher::new();
     n.hash(&mut hasher);
     let mut rng = oorandom::Rand32::new(hasher.finish());
     let n_minus_one = n.clone() - 1;
     let s = n_minus_one.highest_dividing_power_of_two();
-    let d = n_minus_one >> s;
-    let ring = FactorRingZ::new(n.clone());
+    let d = n_minus_one.clone() >> s;
+    let Z_nZ = FactorRingZ::new(n.clone());
 
     // Admitted, there is no calculation behind this choice
     const STATISTICAL_DISTANCE_ERROR_BOUND: usize = 5;
 
     for _i in 0..k {
-        let a = ring.project(BigInt::get_uniformly_random(
-            || ((rng.rand_u32() as u64) << 32) | (rng.rand_u32() as u64), &n, 
+        let a = Z_nZ.project(BigInt::get_uniformly_random(
+            || ((rng.rand_u32() as u64) << 32) | (rng.rand_u32() as u64), &n_minus_one, 
             STATISTICAL_DISTANCE_ERROR_BOUND
-        ));
-        let mut current = ring.pow_big(&a, &d);
-        let mut miller_rabin_condition = ring.is_one(&current);
+        ) + 1);
+        let mut current = Z_nZ.pow_big(&a, &d);
+        let mut miller_rabin_condition = Z_nZ.is_one(&current);
         for _r in 0..s {
-            miller_rabin_condition |= ring.is_neg_one(&current);
+            miller_rabin_condition |= Z_nZ.is_neg_one(&current);
             if miller_rabin_condition {
                 break;
             }
-            current = ring.mul(current.clone(), current);
+            current = Z_nZ.mul(current.clone(), current);
         }
-        if !miller_rabin_condition {
+        if Z_nZ.is_zero(&current) || !miller_rabin_condition {
             return false;
         }
     }
@@ -106,6 +121,7 @@ pub fn factor_grouped(n: BigInt) -> HashMap<BigInt, usize> {
 
 #[test]
 fn test_is_prime() {
+    assert_eq!(true, is_prime(&BigInt::from(5), 5));
     assert_eq!(true, is_prime(&BigInt::from(97), 5));
     assert_eq!(true, is_prime(&BigInt::from(65537), 5));
     assert_eq!(false, is_prime(&BigInt::from(91), 5));
