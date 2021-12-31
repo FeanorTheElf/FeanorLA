@@ -159,3 +159,35 @@ fn test_gcd() {
     assert_eq!(3, signed_gcd(6, -15));
     assert_eq!(-3, signed_gcd(-6, -15));
 }
+
+#[test]
+fn exp() {
+    use super::fractions::*;
+    use super::poly::*;
+    use super::rat::*;
+    use super::super::alg_env::*;
+
+    let mut var_ring = MultivariatePolyRing::new(r64::RING);
+    let A = var_ring.adjoint("A");
+    let B = var_ring.adjoint("B");
+    let base_ring = FieldOfFractions::new(var_ring);
+    let A = base_ring.from(A);
+    let B = base_ring.from(B);
+    let coord_ring_x = PolyRing::adjoint(base_ring, "x");
+    let A = coord_ring_x.from(A);
+    let B = coord_ring_x.from(B);
+    let x = coord_ring_x.unknown();
+    let A = coord_ring_x.bind::<RingAxiomsEuclideanRing>(A);
+    let B = coord_ring_x.bind(B);
+    let x = coord_ring_x.bind(x);
+    
+    let f = x.clone().pow(3) + A.clone() * x.clone() + B.clone();
+    let g = x.clone().pow(4) - A.clone() * x.clone().pow(2) * 2 - B * x.clone() * 8 + A.pow(2);
+    println!("{}", g);
+    println!("{}", f);
+    println!("{}", g.clone() % f.clone());
+    println!("{}", f.clone() % (g.clone() % f.clone()));
+    println!("{}", (g.clone() % f.clone()) % (f.clone() % (g.clone() % f.clone())));
+    println!("{}", f.ring().display(&gcd(&f.ring(), f, g)));
+    assert!(false);
+}

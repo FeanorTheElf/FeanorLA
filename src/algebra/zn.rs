@@ -162,8 +162,6 @@ fn test_mul() {
     assert!(z257.eq(&z257.one(), &z257.mul(z257.project(x.clone()), z257.project(x))));
 }
 
-
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ZnElImpl<const N: u64, const IS_FIELD: bool> {
     repr: u64

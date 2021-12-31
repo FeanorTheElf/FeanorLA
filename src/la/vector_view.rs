@@ -70,6 +70,10 @@ impl<T> VectorOwned<T> {
     pub fn from_array<const L: usize>(data: [T; L]) -> Self {
         VectorOwned::new(std::array::IntoIter::new(data).collect::<Vec<_>>().into_boxed_slice())
     }
+
+    pub fn raw_data(self) -> Box<[T]> {
+        self.data
+    }
 }
 
 impl<T> VectorOwned<T>

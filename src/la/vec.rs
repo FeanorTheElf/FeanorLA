@@ -153,6 +153,20 @@ impl<V, T> Vector<V, T>
         <R as MatrixAddAssign<_, _>>::sub_assign_matrix(ring, &mut result.as_mut().as_column_vector(), rhs.as_ref().as_column_vector());
         return result;
     }
+
+    pub fn neg<R>(self, ring: &R) -> Vector<VectorOwned<T>, T>
+        where R: Ring<El = T>
+    {
+        let mut result = self.into_owned();
+        <R as MatrixScale<_>>::negate_matrix(ring, &mut result.as_mut().as_column_vector());
+        return result;
+    }
+
+    pub fn eq<R, W>(self, rhs: Vector<W, T>, ring: &R) -> bool
+        where R: Ring<El = T>, W: VectorView<T>
+    {
+        <R as MatrixEq<_, _>>::eq_matrix(ring, &self.as_ref().as_column_vector(), rhs.as_ref().as_column_vector())
+    }
 }
 
 impl<V, W, T, U> PartialEq<Vector<W, U>> for Vector<V, T>
@@ -192,6 +206,18 @@ impl<T> Vector<VectorOwned<T>, T> {
         where F: FnMut(usize) -> T
     {
         Vector::new(VectorOwned::from_fn(len, f))
+    }
+
+    pub fn unit_vector_ring<R>(i: usize, len: usize, ring: &R) -> Self 
+        where R: Ring<El = T>, T: std::fmt::Debug + Clone
+    {
+        let mut result = Vector::zero_ring(len, ring).into_owned();
+        *result.at_mut(i) = ring.one();
+        return result;
+    }
+
+    pub fn raw_data(self) -> Box<[T]> {
+        self.data.raw_data()
     }
 }
 

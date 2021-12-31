@@ -5,6 +5,7 @@ pub trait MatrixScale<M>: Ring
     where M: MatrixViewMut<Self::El>
 {
     fn scale_matrix(&self, l: &Self::El, a: &mut M);
+    fn negate_matrix(&self, a: &mut M);
 }
 
 impl<R: Ring, M: MatrixViewMut<Self::El>> MatrixScale<M> for R {
@@ -14,6 +15,14 @@ impl<R: Ring, M: MatrixViewMut<Self::El>> MatrixScale<M> for R {
         for i in 0..a.row_count() {
             for j in 0..a.col_count() {
                 *a.at_mut(i, j) = self.mul_ref(a.at(i, j), l);
+            }
+        }
+    }
+
+    default fn negate_matrix(&self, a: &mut M) {
+        for i in 0..a.row_count() {
+            for j in 0..a.col_count() {
+                take_mut::take(a.at_mut(i, j), |x| self.neg(x));
             }
         }
     }

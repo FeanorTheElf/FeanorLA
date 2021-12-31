@@ -3,69 +3,6 @@ use super::factoring;
 use super::bigint::*;
 use super::zn::*;
 
-use std::collections::HashMap;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
-
-use oorandom;
-
-///
-/// Miller-Rabin primality test.
-/// 
-/// If n is a prime, this returns true.
-/// If n is not a prime, this returns false with probability greater or 
-/// equal than 1 - 4^(-k).
-/// 
-/// Complexity O(k log(n)^3)
-/// 
-/// # Randomness
-/// 
-/// Note that the randomness used for this function is derived only from
-/// the input, hence it will always yield the same output on the same input.
-/// Technically, it follows that the probability of a wrong output is greater
-/// than 4^(-k) on some outputs (as it is either 0 or 1), but of course
-/// this is not helpful. To be completely precise: If the seed of the used
-/// PRNG would be random, then the probability of a wrong output is at 
-/// most 4^(-k).
-/// 
-#[allow(non_snake_case)]
-pub fn is_prime(n: &BigInt, k: usize) -> bool {
-    if *n <= 2 {
-        return *n == 2;
-    }
-
-    let mut hasher = DefaultHasher::new();
-    n.hash(&mut hasher);
-    let mut rng = oorandom::Rand32::new(hasher.finish());
-    let n_minus_one = n.clone() - 1;
-    let s = n_minus_one.highest_dividing_power_of_two();
-    let d = n_minus_one.clone() >> s;
-    let Z_nZ = FactorRingZ::new(n.clone());
-
-    // Admitted, there is no calculation behind this choice
-    const STATISTICAL_DISTANCE_ERROR_BOUND: usize = 5;
-
-    for _i in 0..k {
-        let a = Z_nZ.project(BigInt::get_uniformly_random(
-            || ((rng.rand_u32() as u64) << 32) | (rng.rand_u32() as u64), &n_minus_one, 
-            STATISTICAL_DISTANCE_ERROR_BOUND
-        ) + 1);
-        let mut current = Z_nZ.pow_big(&a, &d);
-        let mut miller_rabin_condition = Z_nZ.is_one(&current);
-        for _r in 0..s {
-            miller_rabin_condition |= Z_nZ.is_neg_one(&current);
-            if miller_rabin_condition {
-                break;
-            }
-            current = Z_nZ.mul(current.clone(), current);
-        }
-        if Z_nZ.is_zero(&current) || !miller_rabin_condition {
-            return false;
-        }
-    }
-    return true;
-}
-
 pub fn factor(mut n: BigInt) -> Vec<BigInt> {
     // honestly, this is much too small, especially given my very slow implementation of the QS
     // however, now that it exists, I also want to use it :)
@@ -76,19 +13,7 @@ pub fn factor(mut n: BigInt) -> Vec<BigInt> {
     n = n.abs();
     
     if n < QUADRATIC_SIEVE_BOUND {
-        let mut n_int = n.to_int().unwrap();
-        let potential_divisors = factoring::gen_primes((n_int as f64).sqrt() as i64 + 1);
-        let mut result = Vec::new();
-        for p in potential_divisors {
-            while n_int % p == 0 {
-                n_int /= p;
-                result.push(BigInt::from(p));
-            }
-        }
-        if n_int != 1 {
-            result.push(BigInt::from(n_int));
-        }
-        return result;
+        
     } else {
         if is_prime(&n, IS_PRIME_ERROR_BOUND) {
             return vec![n];

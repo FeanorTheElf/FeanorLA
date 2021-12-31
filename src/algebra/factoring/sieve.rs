@@ -153,6 +153,10 @@ fn check_congruent_square<V>(
 /// Do not use this for perfect powers, as it will not terminate for prime powers.
 /// The running time complexity is L_n(1/2, 1).
 /// 
+/// # Note
+/// 
+/// This is only a proof-of-concept implementation, and very slow in practice.
+/// 
 pub fn quadratic_sieve(n: &BigInt) -> BigInt {
     assert!(*n >= 2);
     let n_float = n.to_float_approx();

@@ -234,6 +234,16 @@ pub trait RingEl:
     fn pow(self, exp: u32) -> Self {
         Self::RING.pow(&self, exp)
     }
+
+    ///
+    /// Returns the ring associated to this type, i.e. `Self::RING`.
+    /// This function is useful in case you do not explicitly want
+    /// to write down the type of an element, e.g. because it is the
+    /// result of nesting ring constructors.
+    /// 
+    fn ring(&self) -> Self::RingType {
+        Self::RING
+    }
 }
 
 ///
