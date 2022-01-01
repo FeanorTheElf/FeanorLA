@@ -1,4 +1,5 @@
 use super::super::la::mat::*;
+use super::super::la::algorithms::*;
 use super::super::alg::*;
 use std::ops::MulAssign;
 use std::vec::Vec;
@@ -12,7 +13,7 @@ const CONSTANTS_COL: usize = 0;
 const OBJECTIVE_ROW: usize = 0;
 
 ///
-/// Minimize c^T x with x >= 0 and Ax = b
+/// Maximizes c^T x with x >= 0 and Ax = b
 /// table: (0 | c^T)
 ///        (b |  A )
 /// 
@@ -33,6 +34,9 @@ const OBJECTIVE_ROW: usize = 0;
 /// 
 /// The algorithm itself proceeds by changing the set of basic
 /// variables and adjusting the table correspondingly.
+/// Note that all variables are subject to linear transformations,
+/// so after each pivoting operation, the variable corresponding
+/// to a certain column means something different.
 ///
 fn simplex<M, T>(mut table: Matrix<M, T>, basic_vars: &mut BasicVars) -> Result<(), SystemUnbounded> 
     where M: MatrixMutRowIter<T>, T: FieldEl + PartialOrd + Clone + 'static
@@ -48,39 +52,19 @@ fn simplex<M, T>(mut table: Matrix<M, T>, basic_vars: &mut BasicVars) -> Result<
 /// Find solution of Ax = b with x >= 0
 /// table: (b | A)
 ///
-pub fn solve<M, T>(table: Matrix<M, T>) -> Option<Vector<VectorOwned<T>, T>> 
-    where M: MatrixView<T>, T: FieldEl + PartialOrd + Clone + 'static + std::fmt::Display
+pub fn solve<M, T>(table: Matrix<M, T>, max_squared_error: T) -> Option<Vector<VectorOwned<T>, T>> 
+    where M: MatrixView<T>, T: FieldEl + PartialOrd + Clone + 'static
 {
     let (mut matrix, mut basic_vars) = add_artificials(table.as_ref());
     simplex(matrix.as_mut(), &mut basic_vars).unwrap();
     let (solution, _value) = extract_solution(matrix, &basic_vars);
-    if is_solution(solution.subvector(..(table.col_count() - 1)), table) {
-        return Some(solution);
+    let result = solution.subvector(..(table.col_count() - 1)).into_owned();
+    let artifial_vector = solution.subvector((table.col_count() - 1)..);
+    if T::RING.l2_norm_square(artifial_vector) <= max_squared_error {
+        return Some(result);
     } else {
         return None;
     }
-}
-
-fn is_solution<V, M, T>(vars: Vector<V, T>, table: Matrix<M, T>) -> bool 
-    where V: VectorView<T>, M: MatrixView<T>, T: FieldEl + PartialOrd + Clone
-{
-    assert_eq!(
-        vars.len() + 1,
-        table.col_count(),
-        "Expected one variable for each column except the first, got {} variables and {} columns",
-        vars.len(),
-        table.col_count()
-    );
-    for row_index in 0..table.row_count() {
-        let mut current: T = T::zero();
-        for var_index in 0..vars.len() {
-            current += vars[var_index].clone() * table.at(row_index, var_index + 1).clone();
-        }
-        if current != *table.at(row_index, CONSTANTS_COL) {
-            return false;
-        }
-    }
-    return true;
 }
 
 fn extract_solution<M, T>(table: Matrix<M, T>, basic_vars: &BasicVars) -> (Vector<VectorOwned<T>, T>, T)
@@ -240,23 +224,8 @@ fn test_extract_solution() {
 	                            [1.0,   0.0, 1.0, -1.0, 15.0,  7.0],  
 				                [5.0,   1.0, 0.0, 1.0,  10.0,  2.0]]);
     let basic_vars: Box<[usize]> = Box::new([2, 1]);
-    let solution = extract_solution(m.as_ref(), &basic_vars);
-    assert_eq!(Vector::from_array([5.0, 1.0, 0.0, 0.0, 0.0, 11.0]), solution);
-}
-
-#[test]
-fn test_is_solution() {
-    #[rustfmt::skip]
-	let m = Matrix::from_array([[1.0, 0.0, 1.0, -1.0, 15.0,  7.0],  
-				                [5.0, 1.0, 0.0, 1.0,  10.0,  2.0]]);
-    assert_eq!(true, is_solution(Vector::from_array([5.0, 1.0, 0.0, 0.0, 0.0]), m.as_ref()));
-
-    #[rustfmt::skip]
-	let m = Matrix::from_array([[9.0, 3.0, 0.0, 0.0, 0.0,  2.0],
-	                            [2.0, 1.0, 1.0, 0.0, 10.0, 3.0],
-							    [5.0, 3.0, 0.0, 1.0, 15.0, 2.0]]);
-    assert_eq!(true, is_solution(Vector::from_array([3.0, -1.0, -4.0, 0.0, 0.0]), m.as_ref()));
-    assert_eq!(false, is_solution(Vector::from_array([4.0, -1.0, -4.0, 0.0, 0.0]), m.as_ref()));
+    let (solution, _) = extract_solution(m.as_ref(), &basic_vars);
+    assert_eq!(Vector::from_array([5.0, 1.0, 0.0, 0.0, 0.0]), solution);
 }
 
 #[test]
@@ -281,8 +250,7 @@ fn test_solve() {
 	let m = Matrix::from_array([[-1.0, -1.0, 0.0,  1.0, 0.0, 0.0], 
 								[4.0,  1.0,  1.0,  0.0, 1.0, 0.0], 
 								[0.0,  1.0,  -1.0, 0.0, 0.0, 1.0]]);
-    let solution = solve(m.as_ref());
-    assert!(is_solution(solution.unwrap(), m.as_ref()));
+    assert!(solve(m, 0.0001).is_some());
 }
 
 #[test]
@@ -290,7 +258,7 @@ fn test_solve_zero_vec_solution() {
     #[rustfmt::skip]
 	let m = Matrix::from_array([[0.0, 1.0, 1.0, -1.0, 0.0],
 	                            [0.0, 1.0, 0.0, -1.0, -1.0]]);
-    assert_eq!(Vector::from_array([0.0, 0.0, 0.0, 0.0]), solve(m.as_ref()).unwrap());
+    assert_eq!(Vector::from_array([0.0, 0.0, 0.0, 0.0]), solve(m.as_ref(), 0.0001).unwrap());
 }
 
 #[test]
@@ -298,7 +266,7 @@ fn test_impossible_system_solve() {
     #[rustfmt::skip]
 	let m = Matrix::from_array([[1.0, 1.0,  -1.0],
 	                            [1.0, -1.0, 1.0]]);
-    assert_eq!(None, solve(m.as_ref()));
+    assert_eq!(None, solve(m.as_ref(), 0.0001));
 }
 
 #[test]
@@ -310,5 +278,18 @@ fn test_fractional_solution() {
         [0.6666666666666666,                 0.,                 1.],
         [                1.,                 1.,                 1.]
     ]);
-    assert!(solve(m.as_ref()).is_some());
+    assert!(solve(m.as_ref(), 0.0001).is_some());
+}
+
+#[test]
+fn test_complex_example() {
+    #[rustfmt::skip]
+    let m = Matrix::from_array([
+        [0.14285714285714285,                  1.,                  0.,                  0.],
+        [ 0.8571428571428571,                  0.,                  1.,                  1.],
+        [                0.5,                  1.,                  1.,                  0.],
+        [                0.5,                  0.,                  0.,                  1.],
+        [                 1.,                  1.,                  1.,                  1.]
+    ]);
+    assert!(solve(m.as_ref(), 0.0001).is_some());
 }
