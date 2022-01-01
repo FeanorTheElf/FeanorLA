@@ -28,7 +28,6 @@ pub trait FactoringInformationRing : Ring {
     fn calc_factor(&self, el: &mut Self::El) -> Option<Self::El>;
 }
 
-use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 

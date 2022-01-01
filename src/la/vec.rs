@@ -32,7 +32,7 @@ impl<V, T> Clone for Vector<V, T>
 impl<V, T> Vector<V, T>
     where V: VectorView<T>
 {
-    pub fn new(vector: V) -> Self {
+    pub const fn new(vector: V) -> Self {
         Vector {
             data: vector,
             element: PhantomData

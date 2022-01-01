@@ -6,6 +6,8 @@ pub mod matrix_transpose;
 pub mod constant;
 pub mod matrix_vector;
 pub mod submatrix;
+#[macro_use]
+pub mod const_vector;
 pub mod ops;
 pub mod vec;
 pub mod diagonal;

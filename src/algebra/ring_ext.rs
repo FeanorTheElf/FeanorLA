@@ -4,28 +4,16 @@ use super::super::la::vec::*;
 use super::super::la::vector_view::*;
 
 #[derive(Debug, Clone)]
-pub struct SimpleRingExtension<R>
-    where R: Ring
+pub struct SimpleRingExtension<R, V>
+    where R: Ring, V: VectorView<R::El> + std::fmt::Debug + Clone
 {
     base_ring: R,
-    mipo_values: Box<[R::El]>
+    mipo_values: Vector<V, R::El>
 }
 
-impl<R> SimpleRingExtension<R>
+impl<R> SimpleRingExtension<R, VectorOwned<R::El>>
     where R: Ring
 {
-    ///
-    /// Creates the ring R[X]/(f) where 
-    /// ```
-    /// f = mipo_values[0] + mipo_values[1] * X + ... + mipo_values[n - 1] * X^(n - 1) - X^n
-    /// ```
-    /// 
-    pub fn new(base_ring: R, mipo_values: Box<[R::El]>) -> Self {
-        SimpleRingExtension {
-            base_ring, mipo_values
-        }
-    }
-
     pub fn adjoin_element<F>(base_ring: R, mipo: F) -> Self
         where F: FnOnce(&PolyRing<&R>) -> <PolyRing<R> as Ring>::El
     {
@@ -34,8 +22,24 @@ impl<R> SimpleRingExtension<R>
         let scaling_factor = base_ring.neg(base_ring.div(base_ring.one(), ring.lc(&mipo).expect("Minimal polynomial must not be constant when creating a new ring")));
         mipo = ring.mul(mipo, ring.from(scaling_factor));
         let degree = mipo.iter().enumerate().filter(|(_, x)| !base_ring.is_zero(x)).map(|(i, _)| i).max().unwrap();
-        let mipo_values = mipo.into_iter().take(degree).collect::<Vec<_>>().into_boxed_slice();
+        let mipo_values = Vector::new(VectorOwned::new(mipo.into_iter().take(degree).collect::<Vec<_>>().into_boxed_slice()));
         return Self::new(base_ring, mipo_values);
+    }
+}
+
+impl<R, V> SimpleRingExtension<R, V>
+    where R: Ring, V: VectorView<R::El> + std::fmt::Debug + Clone
+{
+    ///
+    /// Creates the ring R[X]/(f) where 
+    /// ```
+    /// f = mipo_values[0] + mipo_values[1] * X + ... + mipo_values[n - 1] * X^(n - 1) - X^n
+    /// ```
+    /// 
+    pub const fn new(base_ring: R, mipo_values: Vector<V, R::El>) -> Self {
+        SimpleRingExtension {
+            base_ring, mipo_values
+        }
     }
 
     pub fn degree(&self) -> usize {
@@ -57,8 +61,8 @@ impl<R> SimpleRingExtension<R>
     }
 }
 
-impl<R> Ring for SimpleRingExtension<R>
-    where R: Ring
+impl<R, V> Ring for SimpleRingExtension<R, V>
+    where R: Ring, V: VectorView<R::El> + std::fmt::Debug + Clone
 {
     type El = Vector<VectorOwned<R::El>, R::El>;
 
@@ -141,7 +145,7 @@ impl<R> Ring for SimpleRingExtension<R>
         return false
     }
 
-    default fn euclidean_div_rem(&self, lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) {
+    default fn euclidean_div_rem(&self, _lhs: Self::El, _rhs: &Self::El) -> (Self::El, Self::El) {
         panic!("Not a euclidean domain")
     }
 
@@ -160,7 +164,7 @@ impl<R> Ring for SimpleRingExtension<R>
 
 #[test]
 fn test_format() {
-    let ring = SimpleRingExtension::new(i64::RING, vec![-1, 0].into_boxed_slice());
+    let ring = SimpleRingExtension::new(i64::RING, Vector::from_array([-1, 0]));
     let i = ring.generator();
     assert_eq!("α", format!("{}", ring.display(&i)));
     assert_eq!("-1", format!("{}", ring.display(&ring.mul_ref(&i, &i))));

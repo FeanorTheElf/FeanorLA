@@ -19,6 +19,7 @@ pub mod alg_macros;
 pub mod float;
 pub mod alg_env;
 
+#[macro_use]
 pub mod la;
 pub mod numerics;
 pub mod algebra;
