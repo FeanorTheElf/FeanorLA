@@ -1,7 +1,9 @@
 use super::super::alg::*;
 use super::poly::*;
+use super::super::la::mat::*;
 use super::super::la::vec::*;
 use super::super::la::vector_view::*;
+use super::super::la::algorithms::*;
 
 #[derive(Debug, Clone)]
 pub struct SimpleRingExtension<R, V>
@@ -59,6 +61,24 @@ impl<R, V> SimpleRingExtension<R, V>
     pub fn generator(&self) -> <Self as Ring>::El {
         Vector::unit_vector_ring(1, self.degree(), &self.base_ring)
     }
+
+    fn create_multiplication_matrix(&self, el: <Self as Ring>::El) -> Matrix<MatrixOwned<R::El>, R::El> {
+        let d = self.degree();
+        let mut matrix = Matrix::zero_ring(d, d, &self.base_ring).into_owned();
+        for (j, x) in el.raw_data().to_vec().into_iter().enumerate() {
+            *matrix.at_mut(j, 0) = x;
+        }
+        for i in 1..d {
+            for j in 1..d {
+                *matrix.at_mut(j, i) = matrix.at(j - 1, i - 1).clone();
+            }
+            let last_el = matrix.at(d - 1, i - 1).clone();
+            for j in 0..d {
+                *matrix.at_mut(j, i) =self.base_ring.mul_ref(&self.mipo_values[j], &last_el);
+            }
+        }
+        return matrix;
+    }
 }
 
 impl<R, V> Ring for SimpleRingExtension<R, V>
@@ -81,7 +101,9 @@ impl<R, V> Ring for SimpleRingExtension<R, V>
         let mut result = (0..(2 * self.degree())).map(|_| self.base_ring.zero()).collect::<Vec<_>>();
         for i in 0..lhs.len() {
             for j in 0..rhs.len() {
-                result[i + j] = self.base_ring.mul_ref(&lhs[i], &rhs[j]);
+                take_mut::take(&mut result[i + j], |y| self.base_ring.add(y, 
+                    self.base_ring.mul_ref(&lhs[i], &rhs[j])
+                ));
             }
         }
         for i in (self.degree()..result.len()).rev() {
@@ -149,11 +171,17 @@ impl<R, V> Ring for SimpleRingExtension<R, V>
         panic!("Not a euclidean domain")
     }
 
-    fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
+    fn div(&self, mut lhs: Self::El, rhs: &Self::El) -> Self::El {
         self.assert_valid_element(&lhs);
         self.assert_valid_element(rhs);
         assert!(!self.is_zero(rhs));
-        unimplemented!()
+        if self.base_ring.is_field() {
+            let multiplication_matrix = self.create_multiplication_matrix(rhs.clone());
+            <R as MatrixSolve>::solve_linear_equation(&self.base_ring, multiplication_matrix, &mut Matrix::col_vec(lhs.as_mut())).unwrap();
+            return lhs;
+        } else {
+            unimplemented!()
+        }
     }
 
     fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {

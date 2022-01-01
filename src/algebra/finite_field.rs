@@ -22,3 +22,17 @@ pub const F4: SimpleRingExtension<StaticRing::<ZnEl<2>>, F4MipoType> = SimpleRin
 fn test_zero_size() {
     assert_eq!(0, std::mem::size_of_val(&F4));
 }
+
+#[test]
+fn test_arithmetic() {
+    let a = F4.generator();
+    assert!(!F4.eq(&a, &F4.one()));
+    assert!(F4.eq(&F4.pow(&a, 3), &F4.one()));
+    assert!(F4.eq(&F4.pow(&F4.add(a, F4.one()), 3), &F4.one()));
+}
+
+#[test]
+fn test_division() {
+    let a = F4.generator();
+    assert!(F4.eq(&F4.div(F4.one(), &a), &F4.add_ref(F4.one(), &a)));
+}

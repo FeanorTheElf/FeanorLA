@@ -257,6 +257,23 @@ impl<M, T> Matrix<M, T>
     {
         self.data.rows_mut().map(|r| Vector::new(r))
     }
+
+    pub fn two_rows_mut<'a>(
+        &'a mut self,
+        i: usize,
+        j: usize
+    ) -> (Vector<<M as LifetimeMatrixMutRowIter<'a, T>>::RowRef, T> , Vector<<M as LifetimeMatrixMutRowIter<'a, T>>::RowRef, T> )
+    {
+        assert_ne!(i, j);
+        self.data.assert_row_in_range(i);
+        self.data.assert_row_in_range(j);
+        let mut it = self.rows_mut();
+        if i < j {
+            (it.by_ref().nth(i).unwrap(), it.by_ref().nth(j - i).unwrap())
+        } else {
+            (it.by_ref().nth(j).unwrap(), it.by_ref().nth(i - j).unwrap())
+        }
+    }
 }
 
 impl<M, T> Matrix<M, T>

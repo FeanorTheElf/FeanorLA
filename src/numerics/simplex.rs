@@ -8,40 +8,54 @@ type BasicVars = Box<[usize]>;
 #[derive(Debug, PartialEq)]
 pub struct SystemUnbounded;
 
+const CONSTANTS_COL: usize = 0;
+const OBJECTIVE_ROW: usize = 0;
+
 ///
-/// Optimize c^T x with x >= 0 and Ax=b
+/// Minimize c^T x with x >= 0 and Ax = b
 /// table: (0 | c^T)
 ///        (b |  A )
 /// 
 /// Returns Err if problem is unbounded,
 /// otherwise table (0 | c^T)
 ///                 (b |  A )
-/// with ???
+/// together with the basic variables, such that
+/// setting all variables not occuring in basic_vars
+/// to zero and the variables occuring in basic_vars to
+/// the value required for satisfying Ax = b is the
+/// optimal solution.
+/// 
+/// Requires that for the i-th row except for the first one,
+/// the basic_vars[i]-th column contains the (i + 1)-th unit
+/// vector. The variables corresponding to these columns
+/// are called basic variables, and are computed by linear
+/// elimination after setting the other variables to zero.
+/// 
+/// The algorithm itself proceeds by changing the set of basic
+/// variables and adjusting the table correspondingly.
 ///
 fn simplex<M, T>(mut table: Matrix<M, T>, basic_vars: &mut BasicVars) -> Result<(), SystemUnbounded> 
     where M: MatrixMutRowIter<T>, T: FieldEl + PartialOrd + Clone + 'static
 {
-    while let Some(pivot_col) = find_pivot_col(table.row(0)) {
+    assert_eq!(table.row_count(), basic_vars.len() + 1);
+    while let Some(pivot_col) = find_pivot_col(table.row(OBJECTIVE_ROW)) {
         pivot(table.as_mut(), pivot_col, basic_vars)?;
     }
     return Ok(());
 }
 
-/*
- * Find solution of Ax = b with x >= 0
- * table: (b | A)
- */
+///
+/// Find solution of Ax = b with x >= 0
+/// table: (b | A)
+///
 pub fn solve<M, T>(table: Matrix<M, T>) -> Option<Vector<VectorOwned<T>, T>> 
-    where M: MatrixView<T>, T: FieldEl + PartialOrd + Clone + 'static
+    where M: MatrixView<T>, T: FieldEl + PartialOrd + Clone + 'static + std::fmt::Display
 {
     let (mut matrix, mut basic_vars) = add_artificials(table.as_ref());
     simplex(matrix.as_mut(), &mut basic_vars).unwrap();
-    let solution = extract_solution(matrix, &basic_vars);
-
-    let mut result_data = Vec::from(solution).into_iter();
-    let result = Vector::from_fn(table.col_count() - 1, |_| result_data.next().unwrap());
-    if is_solution(result.as_ref(), table) {
-        return Some(result);
+    let (solution, _value) = extract_solution(matrix, &basic_vars);
+    if is_solution(solution.as_ref(), table) {
+        return Some(solution);
     } else {
         return None;
     }
@@ -62,28 +76,23 @@ fn is_solution<V, M, T>(vars: Vector<V, T>, table: Matrix<M, T>) -> bool
         for var_index in 0..vars.len() {
             current += vars[var_index].clone() * table.at(row_index, var_index + 1).clone();
         }
-        if current != *table.at(row_index, 0) {
+        if current != *table.at(row_index, CONSTANTS_COL) {
             return false;
         }
     }
     return true;
 }
 
-fn extract_solution<M, T>(table: Matrix<M, T>, basic_vars: &BasicVars) -> Box<[T]> 
+fn extract_solution<M, T>(table: Matrix<M, T>, basic_vars: &BasicVars) -> (Vector<VectorOwned<T>, T>, T)
     where M: MatrixView<T>, T: FieldEl + Clone
 {
     assert_eq!(basic_vars.len(), table.row_count() - 1);
-    let mut result: Box<[T]> = {
-        let mut vec = Vec::new();
-        vec.resize(table.col_count(), T::zero());
-        vec.into_boxed_slice()
-    };
+    let mut result = Vector::zero(table.col_count() - 1).into_owned();
     for row_index in 0..basic_vars.len() {
-        result[basic_vars[row_index] - 1] = table.at(row_index + 1, 0).clone();
+        *result.at_mut(basic_vars[row_index] - 1) = table.at(row_index + 1, CONSTANTS_COL).clone();
         debug_assert!(*table.at(row_index + 1, basic_vars[row_index]) == T::one());
     }
-    result[table.col_count() - 1] = -table.at(0, 0).clone();
-    return result;
+    return (result, -table.at(OBJECTIVE_ROW, CONSTANTS_COL).clone());
 }
 
 fn pivot<M, T>(
@@ -93,12 +102,22 @@ fn pivot<M, T>(
 ) -> Result<(), SystemUnbounded> 
     where M: MatrixMutRowIter<T>, T: FieldEl + PartialOrd + Clone
 {
+    // the variable with pivot column index replaces another
+    // basic variable, i.e. we set the variable with index pivot
+    // column index to zero
     let pivot_row_index: usize = find_pivot_row(table.as_ref(), pivot_col_index)?;
     basic_vars[pivot_row_index - 1] = pivot_col_index;
     eliminate(table, pivot_row_index, pivot_col_index);
     return Ok(());
 }
 
+///
+/// Subtracts multiples of the row with given index from all other
+/// rows, such that the only non-zero entry in the column with given
+/// index is in this row.
+/// 
+/// Obviously requires that the entry at row_index, col_index is nonzero.
+/// 
 fn eliminate<M, T>(mut table: Matrix<M, T>, row_index: usize, col_index: usize) 
     where M: MatrixMutRowIter<T>, T: FieldEl + PartialOrd + Clone
 {
@@ -116,14 +135,18 @@ fn eliminate<M, T>(mut table: Matrix<M, T>, row_index: usize, col_index: usize)
     }
 }
 
+///
+/// Finds the row in the table that corresponds to the
+/// constraint that prevents decreasing the variable with given
+/// index most.
+/// 
 fn find_pivot_row<M, T>(table: Matrix<M, T>, pivot_col_index: usize) -> Result<usize, SystemUnbounded> 
     where M: MatrixView<T>, T: FieldEl + PartialOrd + Clone
 {
-    let last_col: usize = table.col_count() - 1;
     let mut current_min: Option<(usize, T)> = None;
     for row_index in 1..table.row_count() {
         if *table.at(row_index, pivot_col_index) > T::zero() {
-            let row_value = table.at(row_index, last_col).clone() / table.at(row_index, pivot_col_index).clone();
+            let row_value = table.at(row_index, CONSTANTS_COL).clone() / table.at(row_index, pivot_col_index).clone();
             if current_min.as_ref().map_or(true, |(_index, min)| *min > row_value) {
                 current_min = Some((row_index, row_value));
             }
@@ -136,6 +159,11 @@ fn find_pivot_row<M, T>(table: Matrix<M, T>, pivot_col_index: usize) -> Result<u
     }
 }
 
+///
+/// Finds the index of a variable such that decreasing it will
+/// decrease the value of the objective function, given by 
+/// c^T x where c is the given vector.
+/// 
 fn find_pivot_col<V, T>(row: Vector<V, T>) -> Option<usize> 
     where V: VectorView<T>, T: FieldEl + PartialOrd
 {
@@ -147,6 +175,13 @@ fn find_pivot_col<V, T>(row: Vector<V, T>) -> Option<usize>
     return None;
 }
 
+///
+/// Creates a simplex tableau that contains the variables from the original
+/// table without objective function (i.e. just (b | A)), and an additional
+/// variable for each constraint, representing the deviation from that constraint.
+/// Apart from that, the resulting table contains an objective function that
+/// corresponds to minimizing the deviation from the constraints.
+/// 
 fn add_artificials<M, T>(table: Matrix<M, T>) -> (Matrix<MatrixOwned<T>, T>, BasicVars) 
     where M: MatrixView<T>, T: FieldEl + Clone + PartialOrd, T: 'static
 {
@@ -206,7 +241,7 @@ fn test_extract_solution() {
 				                [5.0,   1.0, 0.0, 1.0,  10.0,  2.0]]);
     let basic_vars: Box<[usize]> = Box::new([2, 1]);
     let solution = extract_solution(m.as_ref(), &basic_vars);
-    assert_eq!(&[5.0, 1.0, 0.0, 0.0, 0.0, 11.0], &*solution);
+    assert_eq!(Vector::from_array([5.0, 1.0, 0.0, 0.0, 0.0, 11.0]), solution);
 }
 
 #[test]
@@ -264,4 +299,16 @@ fn test_impossible_system_solve() {
 	let m = Matrix::from_array([[1.0, 1.0,  -1.0],
 	                            [1.0, -1.0, 1.0]]);
     assert_eq!(None, solve(m.as_ref()));
+}
+
+#[test]
+fn test_fractional_solution() {
+    #[rustfmt::skip]
+    let m = Matrix::from_array([
+        [                1.,                 1.,                 1.],
+        [0.3333333333333333,                 1.,                 0.],
+        [0.6666666666666666,                 0.,                 1.],
+        [                1.,                 1.,                 1.]
+    ]);
+    assert!(solve(m.as_ref()).is_some());
 }
