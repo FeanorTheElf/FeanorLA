@@ -54,7 +54,7 @@ pub fn solve<M, T>(table: Matrix<M, T>) -> Option<Vector<VectorOwned<T>, T>>
     let (mut matrix, mut basic_vars) = add_artificials(table.as_ref());
     simplex(matrix.as_mut(), &mut basic_vars).unwrap();
     let (solution, _value) = extract_solution(matrix, &basic_vars);
-    if is_solution(solution.as_ref(), table) {
+    if is_solution(solution.subvector(..(table.col_count() - 1)), table) {
         return Some(solution);
     } else {
         return None;
