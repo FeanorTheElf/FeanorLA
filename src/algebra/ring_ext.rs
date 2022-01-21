@@ -1,8 +1,6 @@
 use super::super::alg::*;
 use super::poly::*;
 use super::super::la::mat::*;
-use super::super::la::vec::*;
-use super::super::la::vector_view::*;
 use super::super::la::algorithms::*;
 
 #[derive(Debug, Clone)]
@@ -62,6 +60,12 @@ impl<R, V> SimpleRingExtension<R, V>
         Vector::unit_vector_ring(1, self.degree(), &self.base_ring)
     }
 
+    pub fn from(&self, el: R::El) -> <Self as Ring>::El {
+        let mut result = Vector::zero_ring(self.degree(), &self.base_ring).into_owned();
+        *result.at_mut(0) = el;
+        return result;
+    }
+
     fn create_multiplication_matrix(&self, el: <Self as Ring>::El) -> Matrix<MatrixOwned<R::El>, R::El> {
         let d = self.degree();
         let mut matrix = Matrix::zero_ring(d, d, &self.base_ring).into_owned();
@@ -101,7 +105,7 @@ impl<R, V> Ring for SimpleRingExtension<R, V>
         let mut result = (0..(2 * self.degree())).map(|_| self.base_ring.zero()).collect::<Vec<_>>();
         for i in 0..lhs.len() {
             for j in 0..rhs.len() {
-                take_mut::take(&mut result[i + j], |y| self.base_ring.add(y, 
+                take_mut::take_or_recover(&mut result[i + j], || self.base_ring.unspecified_element(), |y| self.base_ring.add(y, 
                     self.base_ring.mul_ref(&lhs[i], &rhs[j])
                 ));
             }
@@ -109,7 +113,7 @@ impl<R, V> Ring for SimpleRingExtension<R, V>
         for i in (self.degree()..result.len()).rev() {
             let x = result.pop().unwrap();
             for j in (i - self.degree())..i {
-                take_mut::take(&mut result[j], |y| self.base_ring.add(y, 
+                take_mut::take_or_recover(&mut result[j], || self.base_ring.unspecified_element(), |y| self.base_ring.add(y, 
                     self.base_ring.mul_ref(&self.mipo_values[j + self.degree() - i], &x)
                 ));
             }

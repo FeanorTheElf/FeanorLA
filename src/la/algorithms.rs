@@ -136,7 +136,7 @@ impl<M, T> Matrix<M, T>
             H: FnMut(usize, T, usize, &mut S),
             R: Ring<El = T>
     {
-        assert!(ring.is_field());
+        debug_assert!(ring.is_field());
 
         for i in 0..std::cmp::min(self.col_count(), self.row_count()) {
             // pivot
@@ -200,7 +200,7 @@ impl<M, T> Matrix<M, T>
     fn solve_modifying<R, N>(&mut self, rhs: &mut Matrix<N, T>, ring: &R) -> Result<(), usize>
         where N: MatrixViewMut<T>, R: Ring<El = T>
     {
-        assert!(ring.is_field());
+        debug_assert!(ring.is_field());
         assert_eq!(self.row_count(), self.col_count());
         assert_eq!(self.row_count(), rhs.row_count());
         
@@ -227,7 +227,7 @@ impl<M, T> Matrix<M, T>
     fn kernel_base_modifying<R>(&mut self, ring: &R) -> Option<Matrix<MatrixOwned<T>, T>> 
         where R: Ring<El = T>
     {
-        assert!(ring.is_field());
+        debug_assert!(ring.is_field());
 
         // the approach is to transform the matrix in upper triangle form, 
         // so ( U | R ) with an upper triangle matrix U and a nonsquare 

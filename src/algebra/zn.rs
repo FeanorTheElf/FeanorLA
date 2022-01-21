@@ -1,14 +1,17 @@
 use super::super::alg::*;
 use super::bigint::*;
 use super::eea::*;
+use super::primality::FactoringInformationRing;
 
+use std::cell::Cell;
 use std::ops::{AddAssign, MulAssign, SubAssign, DivAssign, Add, Mul, Sub, Div, Neg};
 
 #[derive(Debug, Clone)]
 pub struct FactorRingZ {
     modulus: BigInt,
     inverse_modulus: BigInt,
-    inverse_modulus_bitshift: usize
+    inverse_modulus_bitshift: usize,
+    integral: Cell<Option<bool>>
 }
 
 impl FactorRingZ {
@@ -23,7 +26,8 @@ impl FactorRingZ {
         return FactorRingZ {
             modulus: modulus,
             inverse_modulus: inverse_modulus,
-            inverse_modulus_bitshift: k
+            inverse_modulus_bitshift: k,
+            integral: Cell::from(None)
         };
     }
 
@@ -52,7 +56,7 @@ impl FactorRingZ {
             red_n += &self.modulus;
         }
         debug_assert!(red_n < self.modulus);
-        return QuotientRingZEl(red_n);
+        return FactorRingZEl(red_n);
     }
 
     ///
@@ -70,13 +74,13 @@ impl FactorRingZ {
 }
 
 #[derive(Debug, Clone)]
-pub struct QuotientRingZEl(BigInt);
+pub struct FactorRingZEl(BigInt);
 
 impl Ring for FactorRingZ {
 
-    type El = QuotientRingZEl;
+    type El = FactorRingZEl;
 
-    fn add_ref(&self, QuotientRingZEl(lhs): Self::El, QuotientRingZEl(rhs): &Self::El) -> Self::El {
+    fn add_ref(&self, FactorRingZEl(lhs): Self::El, FactorRingZEl(rhs): &Self::El) -> Self::El {
         assert!(lhs < self.modulus);
         assert!(rhs < &self.modulus);
 
@@ -86,10 +90,10 @@ impl Ring for FactorRingZ {
         }
 
         assert!(result < self.modulus);
-        return QuotientRingZEl(result);
+        return FactorRingZEl(result);
     }
 
-    fn mul_ref(&self, QuotientRingZEl(lhs): &Self::El, QuotientRingZEl(rhs): &Self::El) -> Self::El {
+    fn mul_ref(&self, FactorRingZEl(lhs): &Self::El, FactorRingZEl(rhs): &Self::El) -> Self::El {
         assert!(*lhs < self.modulus);
         assert!(*rhs < self.modulus);
 
@@ -98,10 +102,10 @@ impl Ring for FactorRingZ {
         );
 
         assert!(result < self.modulus);
-        return QuotientRingZEl(result);
+        return FactorRingZEl(result);
     }
 
-    fn neg(&self, QuotientRingZEl(val): Self::El) -> Self::El {
+    fn neg(&self, FactorRingZEl(val): Self::El) -> Self::El {
         assert!(val < self.modulus);
 
         let mut result = -val;
@@ -110,25 +114,29 @@ impl Ring for FactorRingZ {
         }
 
         assert!(result < self.modulus);
-        return QuotientRingZEl(result);
+        return FactorRingZEl(result);
     }
 
     fn zero(&self) -> Self::El {
-        QuotientRingZEl(BigInt::zero())
+        FactorRingZEl(BigInt::zero())
     }
 
     fn one(&self) -> Self::El {
-        QuotientRingZEl(BigInt::one())
+        FactorRingZEl(BigInt::one())
     }
 
-    fn eq(&self, QuotientRingZEl(lhs): &Self::El, QuotientRingZEl(rhs): &Self::El) -> bool {
+    fn eq(&self, FactorRingZEl(lhs): &Self::El, FactorRingZEl(rhs): &Self::El) -> bool {
         assert!(lhs < &self.modulus);
         assert!(rhs < &self.modulus);
         lhs == rhs
     }
 
     fn is_integral(&self) -> bool {
-        unimplemented!()
+        if self.integral.get().is_none() {
+            let modulus_prime = BigInt::RING.is_prime(&self.modulus);
+            self.integral.set(Some(modulus_prime));
+        }
+        return self.integral.get().unwrap();
     }
 
     fn is_euclidean(&self) -> bool {
@@ -143,14 +151,14 @@ impl Ring for FactorRingZ {
         panic!("Not a euclidean domain!");
     }
 
-    fn div(&self, QuotientRingZEl(lhs): Self::El, QuotientRingZEl(rhs): &Self::El) -> Self::El { 
+    fn div(&self, FactorRingZEl(lhs): Self::El, FactorRingZEl(rhs): &Self::El) -> Self::El { 
         match self.invert(rhs.clone()) {
             Err(factor) => panic!("Tried to divide in Z/{}Z, however this is not a field and the divisor is not invertible (the modulus has the nontrivial factor {})", self.modulus, factor),
-            Ok(inverse) => self.mul(QuotientRingZEl(lhs), QuotientRingZEl(inverse))
+            Ok(inverse) => self.mul(FactorRingZEl(lhs), FactorRingZEl(inverse))
         }
     }
 
-    fn format(&self, QuotientRingZEl(el): &Self::El, f: &mut std::fmt::Formatter, _in_prod: bool) -> std::fmt::Result {
+    fn format(&self, FactorRingZEl(el): &Self::El, f: &mut std::fmt::Formatter, _in_prod: bool) -> std::fmt::Result {
         write!(f, "{} mod {}", el, self.modulus)
     }
 }

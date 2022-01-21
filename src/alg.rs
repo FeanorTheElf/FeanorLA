@@ -439,9 +439,13 @@ pub trait Ring : std::fmt::Debug + std::clone::Clone {
     fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool;
 
     ///
-    /// Returns a ring element that can be used as drop-in if one needs some 
+    /// Returns any element of the ring.
+    /// 
+    /// This ring element might be used as drop-in if one needs some 
     /// unspecified element. This is used only in very exceptional cases.
     /// Best do not touch this - chances are, you will never encounter it.
+    /// Because of this, it is sensible to choose an element that is very
+    /// cheap to construct, probably that is zero.
     /// 
     /// # Example
     /// 

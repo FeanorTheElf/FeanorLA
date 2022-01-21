@@ -130,6 +130,14 @@ impl<T> MatrixOwned<T> {
         ).collect::<Vec<T>>().into_boxed_slice();
         Self::from_data(data, R, C)
     }
+
+    ///
+    /// Converts the data stored in self into an iterator that
+    /// yields all elements, row by row.
+    /// 
+    pub fn into_data_iter(self) -> std::vec::IntoIter<T> {
+        self.data.into_vec().into_iter()
+    }
 }
 
 impl<T> FromFnCreateable<T> for MatrixOwned<T> {
@@ -230,7 +238,6 @@ impl<T: 'static> MatrixMutRowIter<T> for MatrixOwned<T> {}
 impl<'a, T, M> MatrixView<T> for &'a M
     where M: MatrixView<T>
 {
-    
     fn row_count(&self) -> usize {
         (*self).row_count()
     }
@@ -247,7 +254,6 @@ impl<'a, T, M> MatrixView<T> for &'a M
 impl<'a, T, M> MatrixView<T> for &'a mut M
     where M: MatrixView<T>
 {
-    
     fn row_count(&self) -> usize {
         (**self).row_count()
     }

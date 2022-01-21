@@ -77,9 +77,9 @@ pub trait BindableElementRing: Ring {
 impl<R: Ring> BindableElementRing for R {
     
     fn bind<A: RingAxioms>(&self, el: Self::El) -> RingReferencingEl<Self, A> {
-        assert!(self.is_euclidean() == A::is_euclidean());
-        assert!(self.is_field() == A::is_field());
-        assert!(self.is_integral() == A::is_integral());
+        debug_assert!(self.is_euclidean() == A::is_euclidean());
+        debug_assert!(self.is_field() == A::is_field());
+        debug_assert!(self.is_integral() == A::is_integral());
         RingReferencingEl::create(self, el)
     }
 }

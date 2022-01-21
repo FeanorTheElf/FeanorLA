@@ -202,6 +202,19 @@ impl<T> Matrix<MatrixOwned<T>, T> {
     {
         Self::new(MatrixOwned::from_array(array))
     }
+
+    // Sadly, we cannot implement the trait From as it would conflict
+    // with the default implementation From<T> for T
+    pub fn from<U, M>(matrix: Matrix<M, U>) -> Self
+        where M: MatrixView<U>, T: From<U>, U: Clone
+    {
+        let row_count = matrix.row_count();
+        let col_count = matrix.col_count();
+        let mut data_it = matrix.into_owned().data.into_data_iter().map(T::from);
+        let result = Self::from_fn(row_count, col_count, |_, _| data_it.next().unwrap());
+        debug_assert!(data_it.next().is_none());
+        return result;
+    }
 }
 
 impl<M, T> Matrix<M, T>

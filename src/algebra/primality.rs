@@ -3,7 +3,30 @@ use super::bigint::*;
 use super::zn::*;
 use super::factoring;
 
-pub trait FactoringInformationRing : Ring {
+pub trait DivisibilityInformationRing : Ring {
+
+    ///
+    /// Returns whether this ring supports computing divisibility information.
+    /// 
+    fn is_divisibility_computable(&self) -> bool;
+
+    ///
+    /// Checks whether one element divides another.
+    /// This may panic if `is_divisibility_computable()` returns false.
+    /// 
+    fn divides(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+        self.quotient(lhs, rhs).is_some()
+    }
+
+    ///
+    /// Computes the quotient of two elements, if one divides the other.
+    /// If this is not the case, None is returned.
+    /// This may panic if `is_divisibility_computable()` returns false.
+    /// 
+    fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El>;
+}
+
+pub trait FactoringInformationRing : DivisibilityInformationRing {
 
     ///
     /// Determines whether elements in this ring have a unique prime factorization.
@@ -90,8 +113,23 @@ pub fn miller_rabin(n: &BigInt, k: usize) -> bool {
     return true;
 }
 
+impl DivisibilityInformationRing for BigIntRing {
 
-impl FactoringInformationRing for StaticRing<BigInt> {
+    fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<BigInt> {
+        let (quo, rem) = self.euclidean_div_rem(lhs.clone(), rhs);
+        if rem == 0 {
+            return Some(quo);
+        } else {
+            return None;
+        }
+    }
+
+    fn is_divisibility_computable(&self) -> bool {
+        true
+    }
+}
+
+impl FactoringInformationRing for BigIntRing {
 
     fn is_ufd(&self) -> bool {
         true

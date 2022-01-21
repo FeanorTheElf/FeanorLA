@@ -22,7 +22,7 @@ impl<R: Ring, M: MatrixViewMut<Self::El>> MatrixScale<M> for R {
     default fn negate_matrix(&self, a: &mut M) {
         for i in 0..a.row_count() {
             for j in 0..a.col_count() {
-                take_mut::take(a.at_mut(i, j), |x| self.neg(x));
+                take_mut::take_or_recover(a.at_mut(i, j), || self.unspecified_element(), |x| self.neg(x));
             }
         }
     }
