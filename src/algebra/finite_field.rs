@@ -34,5 +34,10 @@ fn test_arithmetic() {
 #[test]
 fn test_division() {
     let a = F4.generator();
-    assert!(F4.eq(&F4.div(F4.one(), &a), &F4.add_ref(F4.one(), &a)));
+    println!("Found gen");
+    let b = F4.add_ref(F4.one(), &a);
+    println!("Found b");
+    let c = F4.div(F4.one(), &a);
+    println!("Found c");
+    assert!(F4.eq(&b, &c));
 }

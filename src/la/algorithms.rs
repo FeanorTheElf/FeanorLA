@@ -203,7 +203,6 @@ impl<M, T> Matrix<M, T>
         debug_assert!(ring.is_field());
         assert_eq!(self.row_count(), self.col_count());
         assert_eq!(self.row_count(), rhs.row_count());
-        
         self.gaussion_elimination_half(
             |row, a, rhs| rhs.submatrix_mut(row..=row, 0..).scale(&a, ring), 
             |i, j, rhs| rhs.swap_rows(i, j), 

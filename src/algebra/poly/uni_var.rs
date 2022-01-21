@@ -175,35 +175,10 @@ impl<R> Ring for PolyRing<R>
     }
 
     fn format(&self, el: &<Self as Ring>::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
-        if self.is_zero(el) {
-            return self.base_ring.format(&self.base_ring.zero(), f, in_prod);
-        } else if in_prod {
-            return self.format_in_brackets(el, f);
+        if in_prod {
+            self.format_in_brackets(el, f)
         } else {
-            let mut monomial_it = el.iter().enumerate().filter(|(_i, x)| !self.base_ring.is_zero(x));
-
-            let print_monomial = |pow, coeff, formatter: &mut std::fmt::Formatter| {
-                if !self.base_ring.is_one(coeff) {
-                    self.base_ring.format(coeff, formatter, true)?;
-                    if pow > 0 {
-                        write!(formatter, " * ")?;
-                    }
-                }
-                if pow == 1 {
-                    write!(formatter, "{}", self.var_name)?;
-                } else if pow > 0 {
-                    write!(formatter, "{}^{}", self.var_name, pow)?;
-                }
-                return Ok(());
-            };
-
-            let (fst_pow, fst_coeff) = monomial_it.next().unwrap();
-            print_monomial(fst_pow, fst_coeff, f)?;
-            for (pow, coeff) in monomial_it {
-                write!(f, " + ")?;
-                print_monomial(pow, coeff, f)?;
-            }
-            return Ok(());
+            poly_format(&self.base_ring, el.as_ref(), f, self.var_name)
         }
     }
 }
@@ -251,7 +226,7 @@ fn test_format() {
     let one = x.ring().from_z(1);
 
     let poly = &x * &x * &x + (&one + &one) * &x * &x - &one;
-    assert_eq!("X^3 + 2 * X^2 + -1", format!("{}", poly));
+    assert_eq!("-1 + 2 * X^2 + X^3", format!("{}", poly));
 }
 
 #[test]
@@ -265,4 +240,13 @@ fn test_poly_div() {
     let result = ring.bind(ring.poly_division(p.val_mut().unwrap(), q.val().unwrap(), |x| Ok(*x)).unwrap());
     assert_eq!(ring.bind(ring.zero()), p);
     assert_eq!(expected, result);
+}
+
+#[test]
+fn test_poly_degree() {
+    let ring = PolyRing::adjoint(i32::RING, "X");
+    let x = ring.bind::<RingAxiomsIntegralRing>(ring.unknown());
+
+    let p = &x * &x * &x + 4;
+    assert_eq!(Some(3), ring.deg(p.unwrap()));
 }

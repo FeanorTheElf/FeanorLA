@@ -1,11 +1,12 @@
 use super::super::super::alg::*;
 use super::super::super::la::vec::*;
+use super::super::super::la::mat::*;
 use super::super::super::la::vector_view::*;
 
 pub fn poly_degree<V, R>(coeff_ring: &R, poly_coeffs: Vector<V, R::El>) -> Option<usize>
     where R: Ring, V: VectorView<R::El>
 {
-    poly_coeffs.iter().enumerate().filter(|(_, x)| !coeff_ring.is_zero(x)).map(|(i, _)| i).next()
+    poly_coeffs.iter().enumerate().filter(|(_, x)| !coeff_ring.is_zero(x)).map(|(i, _)| i).max()
 }
 
 ///
@@ -70,7 +71,7 @@ pub fn poly_add<R, V, W>(coeff_ring: &R, lhs: Vector<V, R::El>, rhs: Vector<W, R
 pub fn poly_mul<R, V, W>(coeff_ring: &R, lhs: Vector<V, R::El>, rhs: Vector<W, R::El>) -> Vector<VectorOwned<R::El>, R::El>
     where R: Ring, V: VectorView<R::El>, W: VectorView<R::El>
 {
-    let mut result = Vec::with_capacity(lhs.len() + rhs.len());
+    let mut result = Vec::with_capacity(lhs.len() + rhs.len() + 1);
     for i in 0..(lhs.len() + rhs.len()) {
         let mut val = coeff_ring.zero();
         for j in (rhs.len().max(i + 1) - rhs.len())..lhs.len().min(i + 1) {
@@ -79,4 +80,37 @@ pub fn poly_mul<R, V, W>(coeff_ring: &R, lhs: Vector<V, R::El>, rhs: Vector<W, R
         result.push(val);
     }
     return Vector::new(result);
+}
+
+pub fn poly_format<R, V>(coeff_ring: &R, el: Vector<V, R::El>, f: &mut std::fmt::Formatter, var_name: &str) -> std::fmt::Result
+    where R: Ring, V: VectorView<R::El>
+{
+    if poly_degree(coeff_ring, el.as_ref()).is_none() {
+        return coeff_ring.format(&coeff_ring.zero(), f, false);
+    } else {
+        let mut monomial_it = el.iter().enumerate().filter(|(_i, x)| !coeff_ring.is_zero(x));
+
+        let print_monomial = |pow, coeff, formatter: &mut std::fmt::Formatter| {
+            if !coeff_ring.is_one(coeff) {
+                coeff_ring.format(coeff, formatter, true)?;
+                if pow > 0 {
+                    write!(formatter, " * ")?;
+                }
+            }
+            if pow == 1 {
+                write!(formatter, "{}", var_name)?;
+            } else if pow > 0 {
+                write!(formatter, "{}^{}", var_name, pow)?;
+            }
+            return Ok(());
+        };
+
+        let (fst_pow, fst_coeff) = monomial_it.next().unwrap();
+        print_monomial(fst_pow, fst_coeff, f)?;
+        for (pow, coeff) in monomial_it {
+            write!(f, " + ")?;
+            print_monomial(pow, coeff, f)?;
+        }
+        return Ok(());
+    }
 }

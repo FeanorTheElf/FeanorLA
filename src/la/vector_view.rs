@@ -1,5 +1,3 @@
-use super::super::alg::*;
-
 use std::marker::PhantomData;
 
 pub trait VectorView<T>: Sized {
@@ -48,7 +46,10 @@ impl<T> VectorViewMut<T> for VectorOwned<T> {
         if i == j {
             return;
         }
-        self.swap(i, j);
+        // I got an infinite recursion here before, so I want to be
+        // explicit that I don't call `<Vec<T> as VectorViewMut<T>>::swap`
+        let self_ref: &mut [T] = &mut self[..];
+        self_ref.swap(i, j);
     }
 }
 
@@ -142,4 +143,11 @@ impl<'a, T, V> Clone for VectorIter<'a, T, V>
     fn clone(&self) -> Self {
         *self
     }
+}
+
+#[test]
+fn test_vec_swap() {
+    let mut a = vec![1, 2];
+    <VectorOwned<i32> as VectorViewMut<i32>>::swap(&mut a, 0, 1);
+    assert_eq!(2, *a.at(0));
 }

@@ -107,6 +107,10 @@ where R: Ring, A: RingAxioms
         }
     }
 
+    pub fn unwrap(&self) -> &R::El {
+        self.val().unwrap()
+    }
+
     ///
     /// Returns a mutable reference to the underlying ring element. 
     /// For some integer constants, the underlying ring might not be 
