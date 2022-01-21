@@ -1,12 +1,23 @@
 use super::super::super::alg::*;
 use super::super::super::la::vec::*;
-use super::super::super::la::mat::*;
 use super::super::super::la::vector_view::*;
 
 pub fn poly_degree<V, R>(coeff_ring: &R, poly_coeffs: Vector<V, R::El>) -> Option<usize>
     where R: Ring, V: VectorView<R::El>
 {
     poly_coeffs.iter().enumerate().filter(|(_, x)| !coeff_ring.is_zero(x)).map(|(i, _)| i).max()
+}
+
+pub fn poly_formal_derivative<R, V>(coeff_ring: &R, mut el: Vector<V, R::El>)
+    where R: Ring, V: VectorViewMut<R::El>
+{
+    let mut tmp: R::El = coeff_ring.zero();
+    if let Some(deg) = poly_degree(coeff_ring, el.as_ref()) {
+        for i in (0..=deg).rev() {
+            let old_coeff = std::mem::replace(el.at_mut(i), tmp);
+            tmp = coeff_ring.mul(old_coeff, coeff_ring.from_z(i as i64));
+        }
+    }
 }
 
 ///
@@ -91,7 +102,7 @@ pub fn poly_format<R, V>(coeff_ring: &R, el: Vector<V, R::El>, f: &mut std::fmt:
         let mut monomial_it = el.iter().enumerate().filter(|(_i, x)| !coeff_ring.is_zero(x));
 
         let print_monomial = |pow, coeff, formatter: &mut std::fmt::Formatter| {
-            if !coeff_ring.is_one(coeff) {
+            if !coeff_ring.is_one(coeff) || pow == 0 {
                 coeff_ring.format(coeff, formatter, true)?;
                 if pow > 0 {
                     write!(formatter, " * ")?;

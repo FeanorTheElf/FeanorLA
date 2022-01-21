@@ -14,7 +14,7 @@ pub trait DivisibilityInformationRing : Ring {
     /// Checks whether one element divides another.
     /// This may panic if `is_divisibility_computable()` returns false.
     /// 
-    fn divides(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+    fn is_divisible_by(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
         self.quotient(lhs, rhs).is_some()
     }
 
@@ -33,8 +33,8 @@ impl<'a, R> DivisibilityInformationRing for &'a R
         (**self).is_divisibility_computable()
     }
 
-    fn divides(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
-        (**self).divides(lhs, rhs)
+    fn is_divisible_by(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+        (**self).is_divisible_by(lhs, rhs)
     }
 
     fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
@@ -66,6 +66,28 @@ pub trait FactoringInformationRing : DivisibilityInformationRing {
     /// 
     fn calc_factor(&self, el: &mut Self::El) -> Option<Self::El>;
 }
+
+impl<T> DivisibilityInformationRing for StaticRingImpl<RingAxiomsField, T> 
+    where T: FieldEl
+{
+    fn is_divisibility_computable(&self) -> bool { 
+        true
+    }
+
+    fn is_divisible_by(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+        self.is_zero(lhs) || !self.is_zero(rhs)
+    }
+
+    fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
+        if self.is_divisible_by(lhs, rhs) {
+            Some(self.div(lhs.clone(), rhs))
+        } else {
+            None
+        }
+    }
+}
+
+
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};

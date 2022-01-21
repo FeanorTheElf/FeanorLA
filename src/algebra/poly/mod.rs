@@ -1,4 +1,5 @@
 pub mod ops;
+pub mod factoring;
 pub mod uni_var;
 pub mod multi_var;
 

@@ -14,12 +14,10 @@ pub struct PolyRing<R>
 impl<R> PolyRing<R>
     where R: Ring
 {
-    pub fn derive(&self, el: &<Self as Ring>::El) -> <Self as Ring>::El {
-        let mut result = Vec::with_capacity(el.len());
-        for i in 1..el.len() {
-            result.push(self.base_ring.mul_ref(&self.base_ring.from_z(i as i64), &el[i]));
-        }
-        return Vector::new(result);
+    pub fn derive(&self, el: <Self as Ring>::El) -> <Self as Ring>::El {
+        let mut result = el.into_owned();
+        poly_formal_derivative(&self.base_ring, result.as_mut());
+        return result;
     }
 
     pub const fn adjoint(base_ring: R, var_name: &'static str) -> Self {
@@ -63,6 +61,10 @@ impl<R> PolyRing<R>
         result.push(self.base_ring.zero());
         result.push(self.base_ring.one());
         return Vector::new(result);
+    }
+
+    pub fn base_ring(&self) -> &R {
+        &self.base_ring
     }
 }
 
@@ -209,23 +211,21 @@ use super::super::super::alg_env::*;
 fn test_poly_arithmetic() {
     let ring = PolyRing::adjoint(i32::RING, "X");
     let x = ring.bind::<RingAxiomsIntegralRing>(ring.unknown());
-    let one = ring.bind(ring.one());
 
-    let x2_2x_1 = (&x * &x) + (&x + &x) + &one;
-    let x_one_square = (&x + &one) * (&x + &one);
+    let x2_2x_1 = (&x * &x) + (&x + &x) + 1;
+    let x_1_square = (&x + 1) * (&x + 1);
 
-    assert_eq!(x2_2x_1, x_one_square);
+    assert_eq!(x2_2x_1, x_1_square);
     assert!(x2_2x_1 != x);
-    assert_eq!(ring.bind(ring.zero()), x2_2x_1 - x_one_square);
+    assert_eq!(ring.bind(ring.zero()), x2_2x_1 - x_1_square);
 }
 
 #[test]
 fn test_format() {
     let ring = PolyRing::adjoint(i32::RING, "X");
     let x = ring.bind::<RingAxiomsIntegralRing>(ring.unknown());
-    let one = x.ring().from_z(1);
 
-    let poly = &x * &x * &x + (&one + &one) * &x * &x - &one;
+    let poly = &x * &x * &x + &x * &x * 2 - 1;
     assert_eq!("-1 + 2 * X^2 + X^3", format!("{}", poly));
 }
 
