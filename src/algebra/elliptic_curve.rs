@@ -28,7 +28,7 @@ impl<K: Ring> EllipticCurve<K> {
     /// 
     pub fn coordinate_ring(&self) -> (CoordRing<K>, <CoordRing<K> as Ring>::El, <CoordRing<K> as Ring>::El) {
         let poly_ring = PolyRing::adjoint(self.base_field.clone(), "X");
-        let mipo = VectorOwned::from_array([poly_ring.zero(), 
+        let mipo = Vector::from_array([poly_ring.zero(), 
             poly_ring.add(
                 poly_ring.pow(&poly_ring.unknown(), 3),
                 poly_ring.add(
@@ -38,7 +38,7 @@ impl<K: Ring> EllipticCurve<K> {
             )
         ]);
         let poly_ring_x = poly_ring.unknown();
-        let result = SimpleRingExtension::new(poly_ring, Vector::new(mipo));
+        let result = SimpleRingExtension::new(poly_ring, mipo);
         let X = result.from(poly_ring_x);
         let Y = result.generator();
         return (result, X, Y);

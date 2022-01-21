@@ -1,5 +1,7 @@
-use super::super::alg::*;
-use super::super::la::mat::*;
+use super::super::super::alg::*;
+use super::super::super::la::mat::*;
+use super::uni_var::*;
+use super::super::primality::*;
 
 use std::ops::Index;
 use std::collections::BTreeMap;
@@ -71,13 +73,13 @@ impl<R> MultivariatePolyRing<R>
         for coeff in &result {
             self.assert_valid(coeff);
         }
-        return result;
+        return Vector::new(result);
     }
 
     fn de_elevate_var(&self, variable: Var, x: <PolyRing<&MultivariatePolyRing<R>> as Ring>::El) -> <Self as Ring>::El {
         let var = variable.0;
         let mut result = BTreeMap::new();
-        for (pow, coeff) in x.into_iter().enumerate() {
+        for (pow, coeff) in x.raw_data().into_vec().into_iter().enumerate() {
             result.extend(coeff.into_iter().map(|(mut key, c)| {
                 if pow > 0 {
                     key.resize(key.len().max(var + 1), 0);
@@ -438,252 +440,46 @@ impl<R> Ring for MultivariatePolyRing<R>
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct PolyRing<R>
-    where R: Ring
+impl<R> DivisibilityInformationRing for MultivariatePolyRing<R> 
+    where R: DivisibilityInformationRing
 {
-    base_ring: R,
-    var_name: &'static str
-}
 
-impl<R> PolyRing<R>
-    where R: Ring
-{
-    pub fn derive(&self, el: &<Self as Ring>::El) -> <Self as Ring>::El {
-        let mut result = Vec::with_capacity(el.len());
-        for i in 1..el.len() {
-            result.push(self.base_ring.mul_ref(&self.base_ring.from_z(i as i64), &el[i]));
-        }
-        return result;
+    fn is_divisibility_computable(&self) -> bool {
+        self.base_ring.is_divisibility_computable()
     }
 
-    pub const fn adjoint(base_ring: R, var_name: &'static str) -> Self {
-        PolyRing {
-            base_ring, var_name
-        }
-    }
-
-    pub fn from(&self, el: R::El) -> <Self as Ring>::El {
-        let mut result = Vec::with_capacity(1);
-        result.push(el);
-        return result;
-    }
-
-    pub fn deg(&self, el: &<Self as Ring>::El) -> Option<usize> {
-        el.iter().enumerate().filter(|(_i, x)| !self.base_ring.is_zero(x)).map(|(i, _x)| i).max()
-    }
-
-    pub fn lc<'a>(&self, el: &'a <Self as Ring>::El) -> Option<&'a R::El> {
-        self.deg(el).map(|i| &el[i])
-    }
-
-    ///
-    /// Performs polynomial division, so computes q and r such that lhs = q * rhs + r
-    /// with deg(r) < deg(lhs). q is returned and r is contained in lhs after the function 
-    /// returned. 
-    /// Note that this function has to compute divisions by the leading coefficient of rhs, 
-    /// which must be given via a function object. Special cases, e.g when the base ring is a
-    /// field and this is just field division can be accessed via the corresponding function
-    /// (in this case, `PolyRing::div`). Errors from this function are forwarded, and this is
-    /// the only case in which this function returns Err(()).
-    /// 
-    pub fn poly_division<F>(&self, lhs: &mut <Self as Ring>::El, rhs: &<Self as Ring>::El, mut div_lc: F) -> Result<<Self as Ring>::El, ()>
-        where F: FnMut(&R::El) -> Result<R::El, ()>
-    {
+    fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
         assert!(!self.is_zero(rhs));
-        let rhs_deg = self.deg(rhs).unwrap();
-        let mut result = Vec::new();
-        result.resize_with(self.deg(lhs).unwrap_or(0) + 1, || self.base_ring.zero());
-        while self.deg(lhs) >= self.deg(rhs) {
-            let lhs_deg = self.deg(lhs).unwrap();
-            let coeff = div_lc(&lhs[lhs_deg])?;
-            let pow = lhs_deg - rhs_deg;
-            result[pow] = coeff;
-            for i in 0..=rhs_deg {
+        if let Some(division_var) = rhs.iter()
+            .filter_map(|(key, _coeff)| 
+                key.iter().enumerate().filter(|(_i, pow)| **pow != 0).map(|(i, _pow)| i).next()
+            ).min() 
+        {
+            let ring = self.elevate_var_ring(Var(division_var));
+            let lhs_new = self.elevate_var(Var(division_var), lhs.clone());
+            let rhs_new = self.elevate_var(Var(division_var), rhs.clone());
+            let result = ring.quotient(&lhs_new, &rhs_new)?;
+            return Some(self.de_elevate_var(Var(division_var), result));
+        } else {
+            let mut result = lhs.clone();
+            // rhs is only a scalar
+            debug_assert!(rhs.len() == 1);
+            let (key, scalar) = rhs.iter().next().unwrap();
+            debug_assert_eq!(Vec::<usize>::new(), *key);
+            for coeff in result.values_mut() {
                 take_mut::take_or_recover(
-                    &mut lhs[i + pow], 
+                    coeff, 
                     || self.base_ring.unspecified_element(), 
-                    |v| self.base_ring.sub(v, self.base_ring.mul_ref(&result[pow], &rhs[i]))
+                    |v| self.base_ring.div(v, &scalar)
                 );
             }
-            if !self.base_ring.is_zero(&lhs[lhs_deg]) {
-                panic!("Passed division function yielded the wrong result!");
-            }
-        }
-        return Ok(result);
-    }
-
-    pub fn unknown(&self) -> <Self as Ring>::El {
-        let mut result = Vec::with_capacity(2);
-        result.push(self.base_ring.zero());
-        result.push(self.base_ring.one());
-        return result;
-    }
-}
-
-impl<R> Ring for PolyRing<R>
-    where R: Ring
-{
-    type El = Vec<R::El>;
-
-    fn add_ref(&self, mut lhs: Self::El, rhs: &Self::El) -> Self::El {
-        for i in 0..rhs.len() {
-            if lhs.len() <= i {
-                lhs.push(rhs[i].clone());
-            } else {
-                take_mut::take_or_recover(
-                    &mut lhs[i], 
-                    || self.base_ring.unspecified_element(), 
-                    |v| self.base_ring.add_ref(v, &rhs[i])
-                );
-            }
-        }
-        return lhs;
-    }
-
-    fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El {
-        let mut result = Vec::with_capacity(lhs.len() + rhs.len());
-        for i in 0..(lhs.len() + rhs.len()) {
-            let mut val = self.base_ring.zero();
-            for j in (rhs.len().max(i + 1) - rhs.len())..lhs.len().min(i + 1) {
-                val = self.base_ring.add(val, self.base_ring.mul_ref(&lhs[j], &rhs[i - j]));
-            }
-            result.push(val);
-        }
-        return result;
-    }
-
-    fn neg(&self, mut val: Self::El) -> Self::El {
-        for i in 0..val.len() {
-            take_mut::take_or_recover(
-                &mut val[i], 
-                || self.base_ring.unspecified_element(), 
-                |v| self.base_ring.neg(v)
-            );
-        }
-        return val;
-    }
-
-    fn zero(&self) -> Self::El {
-        let result = Vec::new();
-        return result;
-    }
-
-    fn one(&self) -> Self::El {
-        let result = self.from(self.base_ring.one());
-        return result;
-    }
-
-    fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
-        let (shorter, longer) = if lhs.len() <= rhs.len() {
-            (lhs, rhs)
-        } else {
-            (rhs, lhs)
-        };
-        for i in 0..shorter.len() {
-            if !self.base_ring.eq(&shorter[i], &longer[i]) {
-                return false;
-            }
-        }
-        for i in shorter.len()..longer.len() {
-            if !self.base_ring.is_zero(&longer[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    fn is_zero(&self, val: &Self::El) -> bool {
-        val.iter().all(|x| self.base_ring.is_zero(x))
-    }
-
-    fn is_integral(&self) -> bool {
-        self.base_ring.is_integral()
-    }
-
-    fn is_euclidean(&self) -> bool {
-        self.base_ring.is_field()
-    }
-
-    fn is_field(&self) -> bool {
-        false
-    }
-    
-    fn euclidean_div_rem(&self, mut lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) {
-        assert!(!self.is_zero(&rhs));
-        let rhs_lc = self.lc(&rhs).unwrap();
-        let rhs_lc_inv = self.base_ring.div(self.base_ring.one(), rhs_lc);
-        let q = self.poly_division(
-            &mut lhs, 
-            &rhs, 
-            |x| Ok(self.base_ring.mul_ref(x, &rhs_lc_inv))
-        ).unwrap();
-        return (q, lhs);
-    }
-
-    ///
-    /// Calculates the polynomial division.
-    /// This function panics if the division function panics when called with the leading 
-    /// coefficient of rhs as second argument, or if lhs is not divisble by rhs.
-    /// 
-    /// Therefore, if the base ring division works for all divisible pairs of arguments,
-    /// this is also the case for this function.
-    /// 
-    fn div(&self, mut lhs: Self::El, rhs: &Self::El) -> Self::El {
-        assert!(!self.is_zero(&rhs));
-        let rhs_lc = self.lc(&rhs).unwrap();
-        if self.base_ring.is_field() {
-            let rhs_lc_inv = self.base_ring.div(self.base_ring.one(), rhs_lc);
-            self.poly_division(
-                &mut lhs, 
-                &rhs, 
-                |x| Ok(self.base_ring.mul_ref(x, &rhs_lc_inv))
-            ).unwrap()
-        } else {
-            self.poly_division(
-                &mut lhs, 
-                &rhs, 
-                |x| Ok(self.base_ring.div(x.clone(), rhs_lc))
-            ).unwrap()
-        }
-    }
-
-    fn format(&self, el: &<Self as Ring>::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
-        if self.is_zero(el) {
-            return self.base_ring.format(&self.base_ring.zero(), f, in_prod);
-        } else if in_prod {
-            return self.format_in_brackets(el, f);
-        } else {
-            let mut monomial_it = el.iter().enumerate().filter(|(_i, x)| !self.base_ring.is_zero(x)).rev();
-
-            let print_monomial = |pow, coeff, formatter: &mut std::fmt::Formatter| {
-                if !self.base_ring.is_one(coeff) {
-                    self.base_ring.format(coeff, formatter, true)?;
-                    if pow > 0 {
-                        write!(formatter, " * ")?;
-                    }
-                }
-                if pow == 1 {
-                    write!(formatter, "{}", self.var_name)?;
-                } else if pow > 0 {
-                    write!(formatter, "{}^{}", self.var_name, pow)?;
-                }
-                return Ok(());
-            };
-
-            let (fst_pow, fst_coeff) = monomial_it.next().unwrap();
-            print_monomial(fst_pow, fst_coeff, f)?;
-            for (pow, coeff) in monomial_it {
-                write!(f, " + ")?;
-                print_monomial(pow, coeff, f)?;
-            }
-            return Ok(());
+            return Some(result);
         }
     }
 }
 
 #[cfg(test)]
-use super::super::alg_env::*;
+use super::super::super::alg_env::*;
 
 #[test]
 fn test_binomial_formula() {
@@ -735,30 +531,6 @@ fn test_assumption_option_ord() {
 }
 
 #[test]
-fn test_poly_arithmetic() {
-    let ring = PolyRing::adjoint(i32::RING, "X");
-    let x = ring.bind::<RingAxiomsIntegralRing>(ring.unknown());
-    let one = ring.bind(ring.one());
-
-    let x2_2x_1 = (&x * &x) + (&x + &x) + &one;
-    let x_one_square = (&x + &one) * (&x + &one);
-
-    assert_eq!(x2_2x_1, x_one_square);
-    assert!(x2_2x_1 != x);
-    assert_eq!(ring.bind(ring.zero()), x2_2x_1 - x_one_square);
-}
-
-#[test]
-fn test_format() {
-    let ring = PolyRing::adjoint(i32::RING, "X");
-    let x = ring.bind::<RingAxiomsIntegralRing>(ring.unknown());
-    let one = x.ring().from_z(1);
-
-    let poly = &x * &x * &x + (&one + &one) * &x * &x - &one;
-    assert_eq!("X^3 + 2 * X^2 + -1", format!("{}", poly));
-}
-
-#[test]
 fn test_format_multivar_poly_ring() {
     let mut ring = MultivariatePolyRing::new(i32::RING);
     let x = ring.adjoint("X");
@@ -769,19 +541,6 @@ fn test_format_multivar_poly_ring() {
 
     let poly = &x * &x * &x - &y + (&one + &one) * &y * &x - &one;
     assert_eq!("-1 + -1 * Y + 2 * XY + X^3", format!("{}", poly));
-}
-
-#[test]
-fn test_poly_div() {
-    let ring = PolyRing::adjoint(i32::RING, "X");
-    let x = ring.bind::<RingAxiomsIntegralRing>(ring.unknown());
-
-    let mut p = &x * &x * &x + &x * &x + &x + 1;
-    let q = &x + 1;
-    let expected = &x * &x + 1;
-    let result = ring.bind(ring.poly_division(p.val_mut().unwrap(), q.val().unwrap(), |x| Ok(*x)).unwrap());
-    assert_eq!(ring.bind(ring.zero()), p);
-    assert_eq!(expected, result);
 }
 
 #[test]

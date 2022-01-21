@@ -86,3 +86,50 @@ impl<T> VectorView<T> for VectorConstant<T> {
         &self.constant
     }
 }
+
+#[derive(Debug)]
+pub struct VectorUnit<T>
+{
+    len: usize,
+    index: usize,
+    zero: T,
+    one: T
+}
+
+impl<T> Copy for VectorUnit<T>
+    where T: Copy
+{}
+
+impl<T> Clone for VectorUnit<T>
+    where T: Clone
+{
+    fn clone(&self) -> Self {
+        Self::new(self.len, self.index, self.zero.clone(), self.one.clone())
+    }
+}
+
+impl<T> VectorUnit<T>
+{
+    pub fn new(len: usize, index: usize, zero: T, one: T) -> Self {
+        assert!(index < len);
+        VectorUnit {
+            len, index, zero, one
+        }
+    }
+}
+
+impl<T> VectorView<T> for VectorUnit<T> {
+    
+    fn len(&self) -> usize {
+        self.len
+    }
+
+    fn at(&self, i: usize) -> &T {
+        self.assert_in_range(i);
+        if i == self.index {
+            return &self.one;
+        } else {
+            return &self.zero;
+        }
+    }
+}

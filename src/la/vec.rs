@@ -198,14 +198,14 @@ impl<T> Vector<VectorOwned<T>, T> {
     
     pub fn from_array<const L: usize>(data: [T; L]) -> Self {
         Vector::new(
-            VectorOwned::from_array(data)
+            std::array::IntoIter::new(data).collect::<Vec<_>>()
         )
     }
 
     pub fn from_fn<F>(len: usize, f: F) -> Self
         where F: FnMut(usize) -> T
     {
-        Vector::new(VectorOwned::from_fn(len, f))
+        Vector::new((0..len).map(f).collect())
     }
 
     pub fn unit_vector_ring<R>(i: usize, len: usize, ring: &R) -> Self 
@@ -217,7 +217,7 @@ impl<T> Vector<VectorOwned<T>, T> {
     }
 
     pub fn raw_data(self) -> Box<[T]> {
-        self.data.raw_data()
+        self.data.into_boxed_slice()
     }
 }
 
@@ -314,11 +314,11 @@ impl<T> Vector<VectorConstant<T>, T>
     }
 }
 
-impl<T> Vector<VectorOwned<T>, T>
+impl<T> Vector<VectorUnit<T>, T>
     where T: Zero + One
 {
     pub fn unit_vector(i: usize, len: usize) -> Self {
-        Vector::new(VectorOwned::unit_vector(i, len))
+        Vector::new(VectorUnit::new(len, i, T::zero(), T::one()))
     }
 }
 

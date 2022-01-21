@@ -1,7 +1,7 @@
 use super::super::alg::*;
 use super::bigint::*;
 use super::zn::*;
-use super::factoring;
+use super::factoring_algorithms;
 
 pub trait DivisibilityInformationRing : Ring {
 
@@ -24,6 +24,22 @@ pub trait DivisibilityInformationRing : Ring {
     /// This may panic if `is_divisibility_computable()` returns false.
     /// 
     fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El>;
+}
+
+impl<'a, R> DivisibilityInformationRing for &'a R
+    where R: DivisibilityInformationRing
+{
+    fn is_divisibility_computable(&self) -> bool { 
+        (**self).is_divisibility_computable()
+    }
+
+    fn divides(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+        (**self).divides(lhs, rhs)
+    }
+
+    fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
+        (**self).quotient(lhs, rhs)
+    }
 }
 
 pub trait FactoringInformationRing : DivisibilityInformationRing {
@@ -154,7 +170,7 @@ impl FactoringInformationRing for BigIntRing {
         
         if n < QUADRATIC_SIEVE_BOUND {
             let n_int = n.to_int().unwrap();
-            let potential_divisors = factoring::gen_primes((n_int as f64).sqrt() as i64 + 1);
+            let potential_divisors = factoring_algorithms::gen_primes((n_int as f64).sqrt() as i64 + 1);
             for p in potential_divisors {
                 if n_int % p == 0 {
                     return Some(BigInt::from(p))
@@ -171,7 +187,7 @@ impl FactoringInformationRing for BigIntRing {
                         return Some(root);
                     }
                 }
-                return Some(factoring::sieve::quadratic_sieve(&n));
+                return Some(factoring_algorithms::sieve::quadratic_sieve(&n));
             }
         }
     }

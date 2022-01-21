@@ -22,7 +22,7 @@ impl<R> SimpleRingExtension<R, VectorOwned<R::El>>
         let scaling_factor = base_ring.neg(base_ring.div(base_ring.one(), ring.lc(&mipo).expect("Minimal polynomial must not be constant when creating a new ring")));
         mipo = ring.mul(mipo, ring.from(scaling_factor));
         let degree = mipo.iter().enumerate().filter(|(_, x)| !base_ring.is_zero(x)).map(|(i, _)| i).max().unwrap();
-        let mipo_values = Vector::new(VectorOwned::new(mipo.into_iter().take(degree).collect::<Vec<_>>().into_boxed_slice()));
+        let mipo_values = Vector::new(mipo.raw_data().into_vec().into_iter().take(degree).collect::<Vec<_>>());
         return Self::new(base_ring, mipo_values);
     }
 }
@@ -118,7 +118,7 @@ impl<R, V> Ring for SimpleRingExtension<R, V>
                 ));
             }
         }
-        return Vector::new(VectorOwned::new(result.into_boxed_slice()));
+        return Vector::new(result);
     }
 
     fn neg(&self, val: Self::El) -> Self::El {
