@@ -24,6 +24,14 @@ pub trait DivisibilityInformationRing : Ring {
     /// This may panic if `is_divisibility_computable()` returns false.
     /// 
     fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El>;
+
+    ///
+    /// Checks whether an element in this ring is a unit.
+    /// This may panic if `is_ufd()` returns false.
+    /// 
+    fn is_unit(&self, el: &Self::El) -> bool {
+        self.quotient(&self.one(), el).is_some()
+    }
 }
 
 impl<'a, R> DivisibilityInformationRing for &'a R
@@ -40,6 +48,10 @@ impl<'a, R> DivisibilityInformationRing for &'a R
     fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
         (**self).quotient(lhs, rhs)
     }
+
+    fn is_unit(&self, el: &Self::El) -> bool {
+        (**self).is_unit(el)
+    }
 }
 
 pub trait FactoringInformationRing : DivisibilityInformationRing {
@@ -55,11 +67,6 @@ pub trait FactoringInformationRing : DivisibilityInformationRing {
     /// This may panic if `is_ufd()` returns false.
     /// 
     fn is_prime(&self, el: &Self::El) -> bool;
-    ///
-    /// Checks whether an element in this ring is a unit.
-    /// This may panic if `is_ufd()` returns false.
-    /// 
-    fn is_unit(&self, el: &Self::El) -> bool;
     ///
     /// Returns a nontrivial factor of the given element, or None if the element is a unit.
     /// This may panic if `is_ufd()` returns false.
@@ -85,9 +92,45 @@ impl<T> DivisibilityInformationRing for StaticRingImpl<RingAxiomsField, T>
             None
         }
     }
+
+    fn is_unit(&self, el: &Self::El) -> bool {
+        !self.is_zero(el)
+    }
 }
 
+impl DivisibilityInformationRing for StaticRing<i32> {
+    
+    fn is_divisibility_computable(&self) -> bool { true }
 
+    fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> { 
+        if lhs % rhs != 0 {
+            None
+        } else {
+            Some(lhs / rhs)
+        }
+    }
+
+    fn is_unit(&self, el: &Self::El) -> bool {
+        *el == 1 || *el == -1
+    }
+}
+
+impl DivisibilityInformationRing for StaticRing<i64> {
+    
+    fn is_divisibility_computable(&self) -> bool { true }
+
+    fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> { 
+        if lhs % rhs != 0 {
+            None
+        } else {
+            Some(lhs / rhs)
+        }
+    }
+
+    fn is_unit(&self, el: &Self::El) -> bool {
+        *el == 1 || *el == -1
+    }
+}
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -131,9 +174,8 @@ pub fn miller_rabin(n: &BigInt, k: usize) -> bool {
     const STATISTICAL_DISTANCE_ERROR_BOUND: usize = 5;
 
     for _i in 0..k {
-        let a = Z_nZ.project(BigInt::get_uniformly_random(
-            || ((rng.rand_u32() as u64) << 32) | (rng.rand_u32() as u64), &n_minus_one, 
-            STATISTICAL_DISTANCE_ERROR_BOUND
+        let a = Z_nZ.project(BigInt::get_uniformly_random_oorandom(
+            &mut rng, &n_minus_one, STATISTICAL_DISTANCE_ERROR_BOUND
         ) + 1);
         let mut current = Z_nZ.pow_big(&a, &d);
         let mut miller_rabin_condition = Z_nZ.is_one(&current);
@@ -165,6 +207,10 @@ impl DivisibilityInformationRing for BigIntRing {
     fn is_divisibility_computable(&self) -> bool {
         true
     }
+
+    fn is_unit(&self, el: &Self::El) -> bool {
+        self.is_one(el) || self.is_neg_one(el)
+    }
 }
 
 impl FactoringInformationRing for BigIntRing {
@@ -175,10 +221,6 @@ impl FactoringInformationRing for BigIntRing {
 
     fn is_prime(&self, el: &Self::El) -> bool {
         miller_rabin(el, 10)
-    }
-
-    fn is_unit(&self, el: &Self::El) -> bool {
-        self.is_one(el) || self.is_neg_one(el)
     }
 
     fn calc_factor(&self, el: &mut Self::El) -> Option<Self::El> {

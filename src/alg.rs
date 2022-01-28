@@ -564,16 +564,27 @@ pub trait Ring : std::fmt::Debug + std::clone::Clone {
     /// 
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El;
 
-    fn from_z(&self, x: i64) -> Self::El {
+    fn from_z_big(&self, x: BigInt) -> Self::El {
+        if x == 0 {
+            return self.zero();
+        }
         let mut result = self.zero();
-        for _ in 0..x.abs() {
-            result = self.add(self.one(), result);
+        for i in (0..(x.log2_floor() + 1)).rev() {
+            if x.is_bit_set(i) {
+                result = self.add(self.add_ref(self.one(), &result), result);
+            } else {
+                result = self.add_ref(result.clone(), &result);
+            }
         }
         if x < 0 {
             return self.neg(result);
         } else {
             return result;
         }
+    }
+
+    fn from_z(&self, x: i64) -> Self::El {
+        self.from_z_big(BigInt::from(x))
     }
 
     fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, _in_prod: bool) -> std::fmt::Result {
@@ -800,4 +811,9 @@ pub type StaticRing<R> = StaticRingImpl<<R as RingEl>::Axioms, R>;
 #[test]
 fn test_pow() {
     assert_eq!(81 * 81 * 3, i64::RING.pow(&3, 9));
+}
+
+#[test]
+fn test_from_z() {
+    assert_eq!(38762, i64::RING.from_z(38762));
 }

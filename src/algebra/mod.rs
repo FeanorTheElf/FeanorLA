@@ -4,6 +4,7 @@ pub mod bigint;
 pub mod zn;
 pub mod factoring_algorithms;
 pub mod primality;
+pub mod p_adic;
 pub mod fractions;
 pub mod poly;
 pub mod ring_ext;

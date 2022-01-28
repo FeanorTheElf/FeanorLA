@@ -53,8 +53,7 @@ impl<R> MultivariatePolyRing<R>
         PolyRing::adjoint(self, self.var_names[var.0])
     }
 
-    fn elevate_var(&self, variable: Var, x: <Self as Ring>::El) -> <PolyRing<&MultivariatePolyRing<R>> as Ring>::El
-    {
+    fn elevate_var(&self, variable: Var, x: <Self as Ring>::El) -> <PolyRing<&MultivariatePolyRing<R>> as Ring>::El {
         self.assert_valid(&x);
 
         let var = variable.0;
@@ -450,7 +449,7 @@ impl<R> DivisibilityInformationRing for MultivariatePolyRing<R>
 
     fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
         assert!(!self.is_zero(rhs));
-        if let Some(division_var) = rhs.iter()
+        if let Some(division_var) = self.nonzero_monomials(rhs)
             .filter_map(|(key, _coeff)| 
                 key.iter().enumerate().filter(|(_i, pow)| **pow != 0).map(|(i, _pow)| i).next()
             ).min() 
@@ -463,15 +462,11 @@ impl<R> DivisibilityInformationRing for MultivariatePolyRing<R>
         } else {
             let mut result = lhs.clone();
             // rhs is only a scalar
-            debug_assert!(rhs.len() == 1);
-            let (key, scalar) = rhs.iter().next().unwrap();
+            let (key, scalar) = self.nonzero_monomials(rhs).next().unwrap();
             debug_assert_eq!(Vec::<usize>::new(), *key);
             for coeff in result.values_mut() {
-                take_mut::take_or_recover(
-                    coeff, 
-                    || self.base_ring.unspecified_element(), 
-                    |v| self.base_ring.div(v, &scalar)
-                );
+                let new_coeff = self.base_ring.quotient(&coeff, &scalar)?;
+                *coeff = new_coeff;
             }
             return Some(result);
         }
@@ -601,4 +596,26 @@ fn test_gradient() {
 
     assert_eq!(dx, ring.bind(ring.derive(p.val().unwrap(), ring.get_var("X"))));
     assert_eq!(dy, ring.bind(ring.derive(p.val().unwrap(), ring.get_var("Y"))));
+}
+
+#[test]
+fn test_quotient() {
+    let mut ring = MultivariatePolyRing::new(i32::RING);
+    let x = ring.adjoint("X");
+    ring.adjoint("Y");
+    let x = ring.bind::<RingAxiomsIntegralRing>(x);
+
+    assert_eq!(None, ring.quotient(&ring.one(), (&x + 1).unwrap()));
+}
+
+#[test]
+fn test_is_unit() {
+    let mut ring = MultivariatePolyRing::new(i32::RING);
+    let x = ring.adjoint("X");
+    ring.adjoint("Y");
+    let x = ring.bind::<RingAxiomsIntegralRing>(x);
+
+    assert_eq!(false, ring.is_unit(&(x + 1).unwrap()));
+    assert_eq!(false, ring.is_unit(&ring.from_z(2)));
+    assert_eq!(true, ring.is_unit(&ring.from_z(-1)));
 }

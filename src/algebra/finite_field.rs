@@ -16,7 +16,11 @@ mod internal_definitions{
 
 use internal_definitions::*;
 
-pub const F4: SimpleRingExtension<StaticRing::<ZnEl<2>>, F4MipoType> = SimpleRingExtension::new(ZnEl::<2>::RING, F4_MIPO);
+pub const F2: StaticRing::<ZnEl<2>> = ZnEl::<2>::RING;
+pub const F3: StaticRing::<ZnEl<3>> = ZnEl::<3>::RING;
+pub const F5: StaticRing::<ZnEl<5>> = ZnEl::<5>::RING;
+pub const F7: StaticRing::<ZnEl<7>> = ZnEl::<7>::RING;
+pub const F4: SimpleRingExtension<StaticRing::<ZnEl<2>>, F4MipoType> = SimpleRingExtension::new(F2, F4_MIPO);
 
 #[test]
 fn test_zero_size() {

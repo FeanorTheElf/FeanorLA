@@ -691,6 +691,22 @@ impl BigInt {
     /// l1-statistical distance 2^(-statistical_distance_bound) of a true 
     /// uniformly random distribution
     /// 
+    pub fn get_uniformly_random_oorandom(
+        rng: &mut oorandom::Rand32,
+        end_exclusive: &BigInt,
+        statistical_distance_bound: usize
+    ) -> BigInt {
+        Self::get_uniformly_random(|| ((rng.rand_u32() as u64) << 32) | (rng.rand_u32() as u64), end_exclusive, statistical_distance_bound)
+    }
+
+    ///
+    /// Generates a uniformly random number from the range 0 to end_exclusive, using
+    /// entropy from the given rng.
+    /// 
+    /// The distribution may not be perfectly uniform, but within 
+    /// l1-statistical distance 2^(-statistical_distance_bound) of a true 
+    /// uniformly random distribution
+    /// 
     pub fn get_uniformly_random<G>(
         mut rng: G, 
         end_exclusive: &BigInt, 

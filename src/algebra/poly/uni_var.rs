@@ -195,12 +195,21 @@ impl<R> DivisibilityInformationRing for PolyRing<R>
     fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
         assert!(!self.is_zero(rhs));
         let lc = self.lc(rhs).unwrap();
-        return poly_division(
-            &self.base_ring, 
-            lhs.clone().into_owned(), 
-            rhs.as_ref(), 
+        let mut p = lhs.clone();
+        let result = self.poly_division(
+            &mut p, 
+            &rhs, 
             |x| self.base_ring.quotient(x, lc).ok_or(())
-        ).ok();
+        ).ok()?;
+        if self.is_zero(&p) {
+            return Some(result);
+        } else {
+            return None;
+        }
+    }
+
+    fn is_unit(&self, el: &Self::El) -> bool {
+        self.deg(el).map(|d| d == 0).unwrap_or(false) && self.base_ring.is_unit(&el[0])
     }
 }
 
@@ -240,6 +249,16 @@ fn test_poly_div() {
     let result = ring.bind(ring.poly_division(p.val_mut().unwrap(), q.val().unwrap(), |x| Ok(*x)).unwrap());
     assert_eq!(ring.bind(ring.zero()), p);
     assert_eq!(expected, result);
+}
+
+#[test]
+fn test_quotient() {
+    let ring = PolyRing::adjoint(i32::RING, "X");
+    let x = ring.bind::<RingAxiomsIntegralRing>(ring.unknown());
+
+    let p = ring.bind::<RingAxiomsIntegralRing>(ring.one());
+    let q = &x + 1;
+    assert_eq!(None, ring.quotient(p.unwrap(), q.unwrap()));
 }
 
 #[test]
