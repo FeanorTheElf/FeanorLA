@@ -1,5 +1,56 @@
 use super::super::alg::*;
 use super::eea::*;
+use super::primality::*;
+
+pub trait FieldOfFractionsInformationRing: Ring {
+    type FieldOfFractions: Ring;
+    type CanonicalEmbedding: FnMut(Self::El) -> <Self::FieldOfFractions as Ring>::El;
+
+    fn field_of_fractions(&self) -> (Self::FieldOfFractions, Self::CanonicalEmbedding);
+}
+
+impl<R> FieldOfFractionsInformationRing for R
+    where R: Ring
+{
+    type FieldOfFractions = FieldOfFractions<R>;
+    type CanonicalEmbedding = FieldOfFractionsEmbedding<R>;
+
+    fn field_of_fractions(&self) -> (Self::FieldOfFractions, Self::CanonicalEmbedding) {
+        assert!(self.is_integral());
+        let field = FieldOfFractions { base_ring: self.clone() };
+        (field.clone(), FieldOfFractionsEmbedding { field_of_fractions: field })
+    }
+}
+
+pub struct FieldOfFractionsEmbedding<R>
+    where R: Ring
+{
+    field_of_fractions: FieldOfFractions<R>
+}
+
+impl<R> FnOnce<(R::El, )> for FieldOfFractionsEmbedding<R> 
+    where R: Ring
+{
+    type Output = <FieldOfFractions<R> as Ring>::El;
+
+    extern "rust-call" fn call_once(
+        mut self, 
+        (x, ): (R::El, )
+    ) -> Self::Output {
+        self.call_mut((x, ))
+    }
+}
+
+impl<R> FnMut<(R::El, )> for FieldOfFractionsEmbedding<R> 
+    where R: Ring
+{
+    extern "rust-call" fn call_mut(
+        &mut self, 
+        (x, ): (R::El, )
+    ) -> Self::Output {
+        self.field_of_fractions.from(x)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct FieldOfFractions<R>
@@ -11,11 +62,6 @@ pub struct FieldOfFractions<R>
 impl<R> FieldOfFractions<R>
     where R: Ring
 {
-    pub fn new(base_ring: R) -> Self {
-        assert!(base_ring.is_integral());
-        Self { base_ring }
-    }
-
     pub fn from(&self, el: R::El) -> <Self as Ring>::El {
         (el, self.base_ring.one())
     }
@@ -41,6 +87,15 @@ impl<R> FieldOfFractions<R>
         } else {
             return el;
         }
+    }
+}
+
+impl<R> FieldOfFractions<R>
+    where R: DivisibilityInformationRing
+{
+    pub fn in_base_ring(&self, (num, den): &<Self as Ring>::El) -> Option<R::El> {
+        assert!(self.base_ring.is_divisibility_computable());
+        self.base_ring.quotient(num, den)
     }
 }
 
@@ -129,6 +184,22 @@ impl<R> Ring for FieldOfFractions<R>
     }
 }
 
+impl<R> DivisibilityInformationRing for FieldOfFractions<R>
+    where R: Ring
+{
+    fn is_divisibility_computable(&self) -> bool {
+        true
+    }
+
+    fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
+        if self.is_zero(rhs) {
+            None
+        } else {
+            Some(self.div(lhs.clone(), rhs))
+        }
+    }
+}
+
 #[cfg(test)]
 use super::bigint::BigInt;
 #[cfg(test)]
@@ -138,7 +209,7 @@ use super::super::alg_macros::*;
 
 #[test]
 fn test_add() {
-    let rats = FieldOfFractions::new(BigInt::RING);
+    let (rats, _) = BigInt::RING.field_of_fractions();
     let two = rats.bind::<RingAxiomsField>(rats.from(BigInt::from(2)));
     let three = rats.bind(rats.from(BigInt::from(3)));
     let two_thirds = two.clone() / three.clone();
@@ -149,7 +220,7 @@ fn test_add() {
 
 #[test]
 fn test_mul() {
-    let rats = FieldOfFractions::new(BigInt::RING);
+    let (rats, _) = BigInt::RING.field_of_fractions();
     let two = rats.bind::<RingAxiomsField>(rats.from(BigInt::from(2)));
     let three = rats.bind(rats.from(BigInt::from(3)));
     let two_thirds = two.clone() / three.clone();

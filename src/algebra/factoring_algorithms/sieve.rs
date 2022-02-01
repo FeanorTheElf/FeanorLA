@@ -1,6 +1,6 @@
 use super::super::super::alg::*;
 use super::super::super::la::mat::*;
-use super::super::super::la::algorithms::MatrixKernelBase;
+use super::super::super::la::algorithms::*;
 use super::super::bigint::*;
 use super::super::zn::*;
 use super::super::eea::*;

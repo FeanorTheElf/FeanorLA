@@ -123,7 +123,11 @@ impl<M, T> Matrix<M, T>
     }
 
     pub fn nonmain_diag(&self, diag_index: i64) -> Vector<MatrixDiagonal<&M, T>, T> {
-        Vector::new(MatrixDiagonal::new(&self.data, diag_index))
+        self.as_ref().into_nonmain_diag(diag_index)
+    }
+
+    pub fn into_nonmain_diag(self, diag_index: i64) -> Vector<MatrixDiagonal<M, T>, T> {
+        Vector::new(MatrixDiagonal::new(self.data, diag_index))
     }
 
     pub fn into_row_vec(self) -> Vector<MatrixRow<T, M>, T> {
@@ -333,7 +337,6 @@ impl<M, T> Matrix<M, T>
         return result;
     }
 
-
     pub fn sub<R, N>(self, rhs: Matrix<N, T>, ring: &R) -> Matrix<MatrixOwned<T>, T>
         where R: Ring<El = T>, N: MatrixView<T>
     {
@@ -346,6 +349,12 @@ impl<M, T> Matrix<M, T>
         where R: Ring<El = T>, N: MatrixView<T>
     {
         <R as MatrixEq<M, N>>::eq_matrix(ring, self.data, rhs.data)
+    }
+
+    pub fn frobenius_norm_square<R>(self, ring: &R) -> R::El
+        where R: Ring<El = T>
+    {
+        <R as MatrixFrobenius<M>>::calc_matrix_frobenius_norm_square(ring, self.data)
     }
 }
 

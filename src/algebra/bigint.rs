@@ -917,6 +917,15 @@ impl Ring for BigIntRing {
     }
 }
 
+impl BigIntRing {
+
+    pub fn z_embedding<'a, R>(&self, target: &'a R) -> impl 'a + FnMut(BigInt) -> R::El
+        where R: Ring
+    {
+        move |x| target.from_z_big(x)
+    }
+}
+
 impl PartialEq<i64> for BigInt {
 
     fn eq(&self, rhs: &i64) -> bool {

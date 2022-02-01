@@ -1,4 +1,5 @@
 use super::matrix_view::*;
+use super::vector_view::*;
 use super::super::alg::*;
 
 pub trait MatrixScale<M>: Ring 
@@ -125,5 +126,26 @@ impl<T: Clone, M: MatrixViewMut<T>, N: MatrixView<T>> MatrixAssign<M, N> for T {
                 *a.at_mut(row, col) = b.at(row, col).clone();
             }
         }
+    }
+}
+
+pub trait MatrixFrobenius<M>: Ring
+    where M: MatrixView<Self::El>
+{
+    fn calc_matrix_frobenius_norm_square(&self, a: M) -> Self::El;
+}
+
+impl<R, M> MatrixFrobenius<M> for R 
+    where R: Ring, M: MatrixView<R::El>
+{
+    default fn calc_matrix_frobenius_norm_square(&self, a: M) -> Self::El
+    {
+        let mut result = self.zero();
+        for i in 0..a.row_count() {
+            for j in 0..a.col_count() {
+                result = self.add(result, self.mul_ref(a.at(i, j), a.at(i, j)));
+            }
+        }
+        return result;
     }
 }

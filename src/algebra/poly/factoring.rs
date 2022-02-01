@@ -57,6 +57,8 @@ fn distinct_degree_factorization<F>(prime_field: F, p: BigInt, mut f: Vector<Vec
 /// over a finite field, that is squarefree and consists only of irreducible factors of 
 /// degree d.
 /// 
+/// 
+/// 
 /// # Algorithm
 /// 
 /// The algorithm relies on the fact that for some monic polynomial T over Fp have
@@ -73,12 +75,13 @@ fn distinct_degree_factorization<F>(prime_field: F, p: BigInt, mut f: Vector<Vec
 /// gives a nontrivial factor of f. When f has two irreducible factors, with roots a, b
 /// in Fq, then this works if exactly one of them maps to zero under the polynomial
 /// `T^((q - 1)/2) - 1`. Now observe that this is the case if and only if `T(a)` resp.
-/// `T(b)` is a square in Fq. For a polynomial chosen uniformly at random among among
-/// all monic Fp[X] of degree < 2d, T(a) and T(b) are independent and distributed uniformly
-/// on Fq. Hence, we successfully separate them with probability 1/2.
-/// 
+/// `T(b)` is a square in Fq. Now apparently, for a polynomial chosen uniformly at random
+/// among all monic polynomials of degree ? in Fp[X], the values T(a) and T(b) are close
+/// to independent and uniform on Fq, and thus the probability that one is a square and
+/// the other is not is approximately 1/2.
+///
 #[allow(non_snake_case)]
-fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<F::El>, F::El>, d: usize) -> Vector<VectorOwned<F::El>, F::El>
+fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<<F as Ring>::El>, <F as Ring>::El>, d: u32) -> Vector<VectorOwned<<F as Ring>::El>, <F as Ring>::El>
     where F: DivisibilityInformationRing
 {
     assert!(*p != 2);
@@ -95,8 +98,9 @@ fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<F::El>
             poly_ring.unknown()
         );
         let T = poly_ring.add(T0, T1);
-        let exp = (p.clone() - 1) / 2;
-        let g = eea(&poly_ring, f.clone(), pow_mod_f(&poly_ring, &T, &f, &exp)).2;
+        let exp = (p.clone().pow(d) - 1) / 2;
+        let G = poly_ring.sub(pow_mod_f(&poly_ring, &T, &f, &exp), poly_ring.one());
+        let g = eea(&poly_ring, f.clone(), G.clone()).2;
         if !poly_ring.is_unit(&g) && poly_ring.quotient(&g, &f).is_none() {
             return g;
         }
@@ -162,7 +166,7 @@ fn test_distinct_degree_factorization() {
     }
 }
 
-#[ignore]
+//#[ignore]
 #[test]
 fn test_cantor_zassenhaus() {
     type Z7 = ZnEl<7>;

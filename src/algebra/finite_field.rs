@@ -8,19 +8,32 @@ mod internal_definitions{
 
     // because of a (probable) compiler bug, `ZnEl<2>` does not work here
     type F2El = ZnElImpl<2, true>;
-    
+    type F7El = ZnElImpl<7, true>;
+
     gen_const_vector!(ConstVector2F2; F2El; V0, V1);
     pub type F4MipoType = ConstVector2F2<{F2El::project(-1)}, {F2El::project(-1)}>;
     pub const F4_MIPO: Vector<F4MipoType, F2El> = Vector::new(F4MipoType {});
+
+    gen_const_vector!(ConstVector2F7; F7El; V0, V1);
+    pub type F49MipoType = ConstVector2F7<{F7El::project(1)}, {F7El::project(0)}>;
+    pub const F49_MIPO: Vector<F49MipoType, F7El> = Vector::new(F49MipoType {});
 }
 
 use internal_definitions::*;
 
-pub const F2: StaticRing::<ZnEl<2>> = ZnEl::<2>::RING;
-pub const F3: StaticRing::<ZnEl<3>> = ZnEl::<3>::RING;
-pub const F5: StaticRing::<ZnEl<5>> = ZnEl::<5>::RING;
-pub const F7: StaticRing::<ZnEl<7>> = ZnEl::<7>::RING;
-pub const F4: SimpleRingExtension<StaticRing::<ZnEl<2>>, F4MipoType> = SimpleRingExtension::new(F2, F4_MIPO);
+pub type F2Type = StaticRing::<ZnEl<2>>;
+pub type F3Type = StaticRing::<ZnEl<3>>;
+pub type F5Type = StaticRing::<ZnEl<5>>;
+pub type F7Type = StaticRing::<ZnEl<7>>;
+pub const F2: F2Type = ZnEl::<2>::RING;
+pub const F3: F3Type = ZnEl::<3>::RING;
+pub const F5: F5Type = ZnEl::<5>::RING;
+pub const F7: F7Type = ZnEl::<7>::RING;
+
+pub type F4Type = SimpleRingExtension<StaticRing::<ZnEl<2>>, F4MipoType>;
+pub type F49Type = SimpleRingExtension<StaticRing::<ZnEl<7>>, F49MipoType>;
+pub const F4: F4Type = SimpleRingExtension::new(F2, F4_MIPO);
+pub const F49: F49Type = SimpleRingExtension::new(F7, F49_MIPO);
 
 #[test]
 fn test_zero_size() {

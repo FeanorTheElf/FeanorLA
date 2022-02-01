@@ -135,6 +135,7 @@ impl<V, T> Vector<V, T>
         <R as MatrixAddAssign<_, _>>::sub_assign_matrix(ring, &mut self.as_mut().as_column_vector(), rhs.as_ref().as_column_vector());
     }
 }
+
 impl<V, T> Vector<V, T>
     where V: VectorView<T>, T: Clone + std::fmt::Debug
 {
@@ -165,7 +166,13 @@ impl<V, T> Vector<V, T>
     pub fn eq<R, W>(self, rhs: Vector<W, T>, ring: &R) -> bool
         where R: Ring<El = T>, W: VectorView<T>
     {
-        <R as MatrixEq<_, _>>::eq_matrix(ring, &self.as_ref().as_column_vector(), rhs.as_ref().as_column_vector())
+        <R as MatrixEq<_, _>>::eq_matrix(ring, self.as_ref().as_column_vector(), rhs.as_ref().as_column_vector())
+    }
+
+    pub fn l2_norm_square<R>(self, ring: &R) -> R::El
+        where R: Ring<El = T>
+    {
+        <R as MatrixFrobenius<_>>::calc_matrix_frobenius_norm_square(ring, self.as_ref().as_column_vector())
     }
 }
 

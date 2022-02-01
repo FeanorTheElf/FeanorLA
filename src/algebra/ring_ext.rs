@@ -66,6 +66,10 @@ impl<R, V> SimpleRingExtension<R, V>
         return result;
     }
 
+    pub fn canonical_embedding<'a>(&'a self) -> impl 'a + FnMut(R::El) -> <Self as Ring>::El {
+        move |x| self.from(x)
+    }
+
     fn create_multiplication_matrix(&self, el: <Self as Ring>::El) -> Matrix<MatrixOwned<R::El>, R::El> {
         let d = self.degree();
         let mut matrix = Matrix::zero_ring(d, d, &self.base_ring).into_owned();

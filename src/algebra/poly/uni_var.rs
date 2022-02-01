@@ -2,6 +2,7 @@ use super::super::super::alg::*;
 use super::super::super::la::vec::*;
 use super::ops::*;
 use super::super::primality::*;
+use super::super::bigint::*;
 
 #[derive(Debug, Clone)]
 pub struct PolyRing<R>
@@ -26,10 +27,33 @@ impl<R> PolyRing<R>
         }
     }
 
+    pub fn evaluate(&self, poly: &<Self as Ring>::El, value: R::El) -> R::El {
+        poly_evaluate(&self.base_ring, value, poly.as_ref())
+    }
+
     pub fn from(&self, el: R::El) -> <Self as Ring>::El {
         let mut result = Vec::with_capacity(1);
         result.push(el);
         return Vector::new(result);
+    }
+
+    pub fn canonical_embedding<'a>(&'a self) -> impl 'a + FnMut(R::El) -> <Self as Ring>::El {
+        move |x| self.from(x)
+    }
+
+    pub fn evaluation_hom<'a>(&'a self, x: R::El) -> impl 'a + FnMut(<Self as Ring>::El) -> R::El {
+        move |poly| self.evaluate(&poly, x.clone())
+    }
+
+    pub fn lift_hom<F, S>(&self, (ring_ext, mut hom): (S, F)) -> (PolyRing<S>, impl FnMut(<Self as Ring>::El) -> <PolyRing<S> as Ring>::El)
+        where S: Ring, F: FnMut(R::El) -> S::El
+    {
+        (
+            PolyRing::adjoint(ring_ext, self.var_name),
+            move |poly| {
+                Vector::new(poly.raw_data().into_vec().into_iter().map(&mut hom).collect())
+            }
+        )
     }
 
     pub fn deg(&self, el: &<Self as Ring>::El) -> Option<usize> {
@@ -135,6 +159,14 @@ impl<R> Ring for PolyRing<R>
 
     fn is_field(&self) -> bool {
         false
+    }
+
+    fn from_z(&self, x: i64) -> Self::El {
+        self.from(self.base_ring().from_z(x))
+    }
+
+    fn from_z_big(&self, x: BigInt) -> Self::El {
+        self.from(self.base_ring().from_z_big(x))
     }
     
     fn euclidean_div_rem(&self, mut lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) {

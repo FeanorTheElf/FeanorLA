@@ -125,3 +125,15 @@ pub fn poly_format<R, V>(coeff_ring: &R, el: Vector<V, R::El>, f: &mut std::fmt:
         return Ok(());
     }
 }
+
+pub fn poly_evaluate<R, V>(coeff_ring: &R, value: R::El, poly: Vector<V, R::El>) -> R::El
+    where R: Ring, V: VectorView<R::El>
+{
+    let mut result = poly.at(0).clone();
+    let mut current_power = value.clone();
+    for i in 1..poly.len() {
+        result = coeff_ring.add(result, coeff_ring.mul_ref(poly.at(i), &current_power));
+        current_power = coeff_ring.mul(current_power, value.clone());
+    }
+    return result;
+}

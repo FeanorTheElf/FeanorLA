@@ -60,7 +60,7 @@ pub fn solve<M, T>(table: Matrix<M, T>, max_squared_error: T) -> Option<Vector<V
     let (solution, _value) = extract_solution(matrix, &basic_vars);
     let result = solution.subvector(..(table.col_count() - 1)).into_owned();
     let artifial_vector = solution.subvector((table.col_count() - 1)..);
-    if T::RING.l2_norm_square(artifial_vector) <= max_squared_error {
+    if artifial_vector.l2_norm_square(&T::RING) <= max_squared_error {
         return Some(result);
     } else {
         return None;

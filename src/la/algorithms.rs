@@ -17,16 +17,7 @@ pub trait MatrixSolve: Ring {
     /// self is nxn and rhs is nxm.
     /// 
     fn solve_linear_equation<M: MatrixView<Self::El>, N: MatrixViewMut<Self::El>>(&self, a: Matrix<M, Self::El>, b: &mut Matrix<N, Self::El>) -> Result<(), usize>;
-}
 
-impl<R: Ring> MatrixSolve for R {
-
-    default fn solve_linear_equation<M: MatrixView<Self::El>, N: MatrixViewMut<Self::El>>(&self, a: Matrix<M, Self::El>, b: &mut Matrix<N, Self::El>) -> Result<(), usize> {
-        a.into_owned().solve_modifying(b, self)
-    }
-}
-
-pub trait MatrixKernelBase: Ring {
     ///
     /// Calculates a base of the (right)-kernel of this matrix, or returns None 
     /// if this kernel is trivial. These are all vectors x such that A * x = 0.
@@ -36,30 +27,14 @@ pub trait MatrixKernelBase: Ring {
     fn calc_matrix_kernel_space<M: MatrixView<Self::El>>(&self, a: Matrix<M, Self::El>) -> Option<Matrix<MatrixOwned<Self::El>, Self::El>>;
 }
 
-impl<R: Ring> MatrixKernelBase for R {
+impl<R: Ring> MatrixSolve for R {
+
+    default fn solve_linear_equation<M: MatrixView<Self::El>, N: MatrixViewMut<Self::El>>(&self, a: Matrix<M, Self::El>, b: &mut Matrix<N, Self::El>) -> Result<(), usize> {
+        a.into_owned().solve_modifying(b, self)
+    }
     
     default fn calc_matrix_kernel_space<M: MatrixView<Self::El>>(&self, a: Matrix<M, Self::El>) -> Option<Matrix<MatrixOwned<Self::El>, Self::El>> {
         a.into_owned().kernel_base_modifying(self)
-    }
-}
-
-pub trait MatrixFrobenius: Ring {
-    fn calc_matrix_frobenius_norm_square<M: MatrixView<Self::El>>(&self, a: Matrix<M, Self::El>) -> Self::El;
-
-    fn l2_norm_square<V: VectorView<Self::El>>(&self, v: Vector<V, Self::El>) -> Self::El {
-        self.calc_matrix_frobenius_norm_square(Matrix::row_vec(v))
-    }
-}
-
-impl<R: Ring> MatrixFrobenius for R {
-    
-    default fn calc_matrix_frobenius_norm_square<M: MatrixView<Self::El>>(&self, a: Matrix<M, Self::El>) -> Self::El
-    {
-        let mut it = a.rows().flat_map(|r| 
-            (0..r.len()).map(move |i| self.mul_ref(r.at(i), r.at(i)))
-        );
-        let initial = it.next().unwrap();
-        return it.fold(initial, |a, b| self.add(a, b));
     }
 }
 
@@ -136,7 +111,7 @@ impl<M, T> Matrix<M, T>
             H: FnMut(usize, T, usize, &mut S),
             R: Ring<El = T>
     {
-        debug_assert!(ring.is_field());
+        assert!(ring.is_field());
 
         for i in 0..std::cmp::min(self.col_count(), self.row_count()) {
             // pivot
@@ -200,7 +175,7 @@ impl<M, T> Matrix<M, T>
     fn solve_modifying<R, N>(&mut self, rhs: &mut Matrix<N, T>, ring: &R) -> Result<(), usize>
         where N: MatrixViewMut<T>, R: Ring<El = T>
     {
-        debug_assert!(ring.is_field());
+        assert!(ring.is_field());
         assert_eq!(self.row_count(), self.col_count());
         assert_eq!(self.row_count(), rhs.row_count());
         self.gaussion_elimination_half(
@@ -226,7 +201,7 @@ impl<M, T> Matrix<M, T>
     fn kernel_base_modifying<R>(&mut self, ring: &R) -> Option<Matrix<MatrixOwned<T>, T>> 
         where R: Ring<El = T>
     {
-        debug_assert!(ring.is_field());
+        assert!(ring.is_field());
 
         // the approach is to transform the matrix in upper triangle form, 
         // so ( U | R ) with an upper triangle matrix U and a nonsquare 

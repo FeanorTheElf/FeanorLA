@@ -13,3 +13,4 @@ pub mod vec;
 pub mod diagonal;
 pub mod mat;
 pub mod algorithms;
+pub mod determinant;

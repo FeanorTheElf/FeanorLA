@@ -11,6 +11,10 @@ use super::primality::*;
 /// Returns None if the valuation is infinite. Note that if the input
 /// ring is not noetherian, this function might loop forever.
 /// 
+/// # Complexity
+/// 
+/// The algorithm runs in O(log(v)^2) where v is the p-adic valuation of x.
+/// 
 pub fn p_adic_valuation<R>(ring: &R, x: R::El, p: &R::El) -> Option<u32>
     where R: DivisibilityInformationRing
 {
