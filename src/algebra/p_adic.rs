@@ -1,6 +1,6 @@
-use super::super::alg::*;
+use super::super::ring::*;
+use super::super::primitive::*;
 use super::rat::*;
-use super::primality::*;
 
 ///
 /// Returns an integer n such that p^n divides x and p^(n + 1) does not.
@@ -15,9 +15,10 @@ use super::primality::*;
 /// The algorithm runs in O(log(v)^2) where v is the p-adic valuation of x.
 /// 
 pub fn p_adic_valuation<R>(ring: &R, x: R::El, p: &R::El) -> Option<u32>
-    where R: DivisibilityInformationRing
+    where R: DivisibilityInfoRing
 {
-    assert!(ring.is_integral());
+    assert!(ring.is_integral().can_use());
+    assert!(ring.is_noetherian());
     // using integrality and noetherianity, it is easy to show
     // that in all other cases, there exists some n with p^n does
     // not divide x

@@ -39,11 +39,13 @@ pub fn newton_multidim<T, F, S>(
 }
 
 #[cfg(test)]
-use super::super::alg::*;
+use super::super::ring::*;
 #[cfg(test)]
 use super::super::algebra::poly::*;
 #[cfg(test)]
 use super::super::la::algorithms::*;
+#[cfg(test)]
+use super::super::primitive::*;
 
 #[test]
 fn test_newton_multidim() {
@@ -59,8 +61,6 @@ fn test_newton_multidim() {
                                        [ring.derive(&f2, ring.get_var("x")), ring.derive(&f2, ring.get_var("y"))]]);
                                        
     let function = Vector::from_array([f1, f2]);
-    println!("Function: {}", Matrix::col_vec(function.as_ref()).display(&ring));
-    println!("Jacobian: {}", jacobian.display(&ring));
     
     let function = |point: PointRef<f64>| {
         ring.evaluate_vector_at(function.as_ref(), &point)

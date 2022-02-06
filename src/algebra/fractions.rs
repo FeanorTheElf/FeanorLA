@@ -1,22 +1,21 @@
-use super::super::alg::*;
+use super::super::ring::*;
 use super::eea::*;
-use super::primality::*;
 
-pub trait FieldOfFractionsInformationRing: Ring {
+pub trait FieldOfFractionsInfoRing: Ring {
     type FieldOfFractions: Ring;
     type CanonicalEmbedding: FnMut(Self::El) -> <Self::FieldOfFractions as Ring>::El;
 
     fn field_of_fractions(&self) -> (Self::FieldOfFractions, Self::CanonicalEmbedding);
 }
 
-impl<R> FieldOfFractionsInformationRing for R
+impl<R> FieldOfFractionsInfoRing for R
     where R: Ring
 {
     type FieldOfFractions = FieldOfFractions<R>;
     type CanonicalEmbedding = FieldOfFractionsEmbedding<R>;
 
     fn field_of_fractions(&self) -> (Self::FieldOfFractions, Self::CanonicalEmbedding) {
-        assert!(self.is_integral());
+        assert!(self.is_integral().can_use());
         let field = FieldOfFractions { base_ring: self.clone() };
         (field.clone(), FieldOfFractionsEmbedding { field_of_fractions: field })
     }
@@ -79,9 +78,26 @@ impl<R> FieldOfFractions<R>
         }
         return Ok(());
     }
+}
 
-    pub fn soft_reduce(&self, el: <Self as Ring>::El) -> <Self as Ring>::El {
-        if self.base_ring.is_euclidean() {
+trait SoftReducable: Ring {
+
+    fn soft_reduce(&self, el: <Self as Ring>::El) -> <Self as Ring>::El;
+}
+
+impl<R> SoftReducable for FieldOfFractions<R>
+    where R: Ring
+{
+    default fn soft_reduce(&self, el: <Self as Ring>::El) -> <Self as Ring>::El {
+        el
+    }
+}
+
+impl<R> SoftReducable for FieldOfFractions<R>
+    where R: EuclideanInfoRing
+{
+    fn soft_reduce(&self, el: <Self as Ring>::El) -> <Self as Ring>::El {
+        if self.base_ring.is_euclidean().can_use() {
             let d = gcd(&self.base_ring, el.0.clone(), el.1.clone());
             return (self.base_ring.euclidean_div(el.0, &d), self.base_ring.euclidean_div(el.1, &d));
         } else {
@@ -91,7 +107,7 @@ impl<R> FieldOfFractions<R>
 }
 
 impl<R> FieldOfFractions<R>
-    where R: DivisibilityInformationRing
+    where R: DivisibilityInfoRing
 {
     pub fn in_base_ring(&self, (num, den): &<Self as Ring>::El) -> Option<R::El> {
         assert!(self.base_ring.is_divisibility_computable());
@@ -150,20 +166,16 @@ impl<R> Ring for FieldOfFractions<R>
         (self.base_ring.unspecified_element(), self.base_ring.unspecified_element())
     }
 
-    fn is_integral(&self) -> bool {
+    fn is_integral(&self) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn is_noetherian(&self) -> bool {
         true
     }
 
-    fn is_euclidean(&self) -> bool {
-        false
-    }
-
-    fn is_field(&self) -> bool {
-        true
-    }
-    
-    fn euclidean_div_rem(&self, _: Self::El, _: &Self::El) -> (Self::El, Self::El) {
-        panic!("Not a euclidean domain!")
+    fn is_field(&self) -> RingPropValue {
+        RingPropValue::True
     }
 
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
@@ -184,7 +196,7 @@ impl<R> Ring for FieldOfFractions<R>
     }
 }
 
-impl<R> DivisibilityInformationRing for FieldOfFractions<R>
+impl<R> DivisibilityInfoRing for FieldOfFractions<R>
     where R: Ring
 {
     fn is_divisibility_computable(&self) -> bool {
@@ -201,29 +213,27 @@ impl<R> DivisibilityInformationRing for FieldOfFractions<R>
 }
 
 #[cfg(test)]
-use super::bigint::BigInt;
+use super::super::bigint::BigInt;
 #[cfg(test)]
-use super::super::alg_env::*;
-#[cfg(test)]
-use super::super::alg_macros::*;
+use super::super::wrapper::*;
 
 #[test]
 fn test_add() {
     let (rats, _) = BigInt::RING.field_of_fractions();
-    let two = rats.bind::<RingAxiomsField>(rats.from(BigInt::from(2)));
+    let two = rats.bind(rats.from(BigInt::from(2)));
     let three = rats.bind(rats.from(BigInt::from(3)));
     let two_thirds = two.clone() / three.clone();
     assert_eq!(two, rats.bind(rats.from_z(2)));
     let one_half = rats.bind(rats.one()) / two;
-    assert_eq!(rats.bind::<RingAxiomsField>(rats.from_z(7)) / rats.bind(rats.from_z(6)), two_thirds + one_half);
+    assert_eq!(rats.bind(rats.from_z(7)) / rats.bind(rats.from_z(6)), two_thirds + one_half);
 }
 
 #[test]
 fn test_mul() {
     let (rats, _) = BigInt::RING.field_of_fractions();
-    let two = rats.bind::<RingAxiomsField>(rats.from(BigInt::from(2)));
+    let two = rats.bind(rats.from(BigInt::from(2)));
     let three = rats.bind(rats.from(BigInt::from(3)));
     let two_thirds = two.clone() / three.clone();
     let one_half = rats.bind(rats.one()) / two;
-    assert_eq!(rats.bind::<RingAxiomsField>(rats.from_z(1)) / rats.bind(rats.from_z(3)), two_thirds * one_half);
+    assert_eq!(rats.bind(rats.from_z(1)) / rats.bind(rats.from_z(3)), two_thirds * one_half);
 }

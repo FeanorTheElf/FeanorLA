@@ -1,7 +1,7 @@
-use super::super::alg::*;
-use super::bigint::*;
+use super::super::ring::*;
+use super::super::bigint::*;
+use super::super::primitive::*;
 use super::eea::*;
-use super::primality::FactoringInformationRing;
 
 use std::cell::Cell;
 use std::ops::{AddAssign, MulAssign, SubAssign, DivAssign, Add, Mul, Sub, Div, Neg};
@@ -22,7 +22,7 @@ impl FactorRingZ {
         // then (2^k / modulus) * x >> k differs at most 1 from floor(x / modulus)
         // if x < n^2, which is the case after multiplication
         let k = modulus.log2_floor() * 2 + 2;
-        let inverse_modulus = BigInt::power_of_two(k) / modulus.clone();
+        let inverse_modulus = BigInt::RING.euclidean_div(BigInt::power_of_two(k), &modulus);
         return FactorRingZ {
             modulus: modulus,
             inverse_modulus: inverse_modulus,
@@ -33,12 +33,12 @@ impl FactorRingZ {
 
     fn project_leq_n_square(&self, mut n: BigInt) -> BigInt {
         let mut subtract = n.clone();
-        subtract *= &self.inverse_modulus;
+        subtract = subtract * self.inverse_modulus.clone();
         subtract = subtract >> self.inverse_modulus_bitshift;
-        subtract *= &self.modulus;
-        n -= subtract;
+        subtract = subtract *  self.modulus.clone();
+        n = n - subtract;
         if n >= self.modulus {
-            n -= &self.modulus;
+            n = n - self.modulus.clone();
         }
         return n;
     }
@@ -49,11 +49,11 @@ impl FactorRingZ {
         } else if n.log2_floor() + 1 < 2 * self.modulus.log2_floor() {
             self.project_leq_n_square(n)
         } else {
-            n.clone() - (n / self.modulus.clone()) * self.modulus.clone()
+            n.clone() - BigInt::RING.euclidean_div(n, &self.modulus) * self.modulus.clone()
         };
         if red_n < BigInt::ZERO {
             red_n = -red_n;
-            red_n += &self.modulus;
+            red_n = red_n + self.modulus.clone();
         }
         debug_assert!(red_n < self.modulus);
         return FactorRingZEl(red_n);
@@ -84,9 +84,9 @@ impl Ring for FactorRingZ {
         assert!(lhs < self.modulus);
         assert!(rhs < &self.modulus);
 
-        let mut result = lhs + rhs;
+        let mut result = lhs + rhs.clone();
         if result >= self.modulus {
-            result -= &self.modulus;
+            result = result - self.modulus.clone();
         }
 
         assert!(result < self.modulus);
@@ -110,7 +110,7 @@ impl Ring for FactorRingZ {
 
         let mut result = -val;
         if result < 0 {
-            result += &self.modulus;
+            result = result + self.modulus.clone();
         }
 
         assert!(result < self.modulus);
@@ -118,11 +118,11 @@ impl Ring for FactorRingZ {
     }
 
     fn zero(&self) -> Self::El {
-        FactorRingZEl(BigInt::zero())
+        FactorRingZEl(BigInt::ZERO)
     }
 
     fn one(&self) -> Self::El {
-        FactorRingZEl(BigInt::one())
+        FactorRingZEl(BigInt::RING.one())
     }
 
     fn eq(&self, FactorRingZEl(lhs): &Self::El, FactorRingZEl(rhs): &Self::El) -> bool {
@@ -131,24 +131,23 @@ impl Ring for FactorRingZ {
         lhs == rhs
     }
 
-    fn is_integral(&self) -> bool {
+    fn is_integral(&self) -> RingPropValue {
         if self.integral.get().is_none() {
             let modulus_prime = BigInt::RING.is_prime(&self.modulus);
             self.integral.set(Some(modulus_prime));
         }
-        return self.integral.get().unwrap();
+        return match self.integral.get().unwrap() {
+            true => RingPropValue::True,
+            false => RingPropValue::False
+        }
     }
 
-    fn is_euclidean(&self) -> bool {
-        false
+    fn is_noetherian(&self) -> bool {
+        true
     }
 
-    fn is_field(&self) -> bool {
+    fn is_field(&self) -> RingPropValue {
         self.is_integral()
-    }
-
-    fn euclidean_div_rem(&self, _lhs: Self::El, _rhs: &Self::El) -> (Self::El, Self::El) { 
-        panic!("Not a euclidean domain!");
     }
 
     fn div(&self, FactorRingZEl(lhs): Self::El, FactorRingZEl(rhs): &Self::El) -> Self::El { 
@@ -261,7 +260,7 @@ impl<const N: u64> DivAssign for ZnElImpl<N, true> {
         assert!(is_prime(N));
         debug_assert!(self.repr < N);
         debug_assert!(rhs.repr < N);
-        let (s, _t, _d) = signed_eea(rhs.repr as i64, N as i64);
+        let (s, _t, _d) = signed_eea(rhs.repr as i64, N as i64, &i64::RING);
         let mut result = ((s as i128 * self.repr as i128) % N as i128) as i64;
         if result < 0 {
             result += N as i64;
@@ -353,7 +352,7 @@ impl<const N: u64> RingEl for ZnElImpl<N, true> {
 }
 
 impl<const N: u64> RingEl for ZnElImpl<N, false> {
-    type Axioms = RingAxiomsRing;
+    type Axioms = RingAxiomsGeneral;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
 }

@@ -1,7 +1,8 @@
-use super::super::super::alg::*;
+use super::super::super::ring::*;
 use super::super::super::la::mat::*;
 use super::super::super::la::algorithms::*;
-use super::super::bigint::*;
+use super::super::super::bigint::*;
+use super::super::super::primitive::*;
 use super::super::zn::*;
 use super::super::eea::*;
 use super::gen_primes;
@@ -38,7 +39,7 @@ fn check_smooth(mut k: BigInt, factor_base: &Vec<i64>) -> Option<RelVec> {
         *result.at_mut(0) = 1;
         k = -k;
     }
-    let mut tmp = BigInt::zero();
+    let mut tmp = BigInt::ZERO;
     for i in 1..factor_base.len() {
         let mut dividing_power = 0;
         tmp.assign(&k);
@@ -54,7 +55,7 @@ fn check_smooth(mut k: BigInt, factor_base: &Vec<i64>) -> Option<RelVec> {
         }
         *result.at_mut(i) = dividing_power;
     }
-    if k == BigInt::one() {
+    if k == BigInt::RING.one() {
         return Some(result);
     } else {
         return None;
@@ -91,8 +92,8 @@ fn collect_relations<I>(
         k.assign(&m);
         k += d;
         let mut square = k.clone();
-        square *= &k;
-        square -= n;
+        square = square * k.clone();
+        square = square - n.clone();
 
         // the probability that the found square is B-smooth is given by
         // the Canfield-Erdös-Pomerance theorem, concretely it is u^(-u(1 + o(1)))
@@ -124,24 +125,24 @@ fn check_congruent_square<V>(
 ) -> Result<BigInt, ()>
     where V: VectorView<ZnEl<2>>
 {
-    let mut x = BigInt::one();
+    let mut x = BigInt::RING.one();
     let mut y_powers = Vector::zero(factor_base.len()).into_owned();
     for (i, rel) in relations.iter().enumerate() {
         if *sol.at(i) == F2::ONE {
-            x *= &rel.0;
+            x = x * rel.0.clone();
             y_powers += rel.1.as_ref();
         }
     }
 
-    let mut y = BigInt::one();
+    let mut y = BigInt::RING.one();
     for i in 0..factor_base.len() {
         let power = *y_powers.at(i);
         debug_assert!(power % 2 == 0);
-        y *= BigInt::from(factor_base[i]).pow(power as u32 / 2);
+        y = y * BigInt::from(factor_base[i]).pow(power as u32 / 2);
     }
 
     let factor = gcd(&BigInt::RING, n.clone(), x.clone() - y.clone());
-    if factor != BigInt::one() && factor != *n {
+    if factor != BigInt::RING.one() && factor != *n {
         return Ok(factor);
     } else {
         return Err(());
@@ -220,7 +221,7 @@ pub fn quadratic_sieve(n: &BigInt) -> BigInt {
         let matrix = Matrix::from_fn(factor_base.len(), relations.len(), |r, c| 
             F2::project(*relations[c].1.at(r) as i64)
         );
-        let solutions = StaticRing::<F2>::RING.calc_matrix_kernel_space(matrix).unwrap();
+        let solutions = F2::RING.calc_matrix_kernel_space(matrix).unwrap();
 
         for i in 0..solutions.col_count() {
 
@@ -242,5 +243,5 @@ fn test_quadratic_sieve() {
     let factor = quadratic_sieve(&f5);
     assert!(factor != f5);
     assert!(factor != 1);
-    assert_eq!(f5 % factor, 0);
+    assert_eq!(BigInt::RING.euclidean_rem(f5, &factor), 0);
 }

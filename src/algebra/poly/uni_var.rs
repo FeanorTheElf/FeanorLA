@@ -1,8 +1,7 @@
-use super::super::super::alg::*;
+use super::super::super::ring::*;
 use super::super::super::la::vec::*;
+use super::super::super::bigint::*;
 use super::ops::*;
-use super::super::primality::*;
-use super::super::bigint::*;
 
 #[derive(Debug, Clone)]
 pub struct PolyRing<R>
@@ -149,16 +148,16 @@ impl<R> Ring for PolyRing<R>
         val.iter().all(|x| self.base_ring.is_zero(x))
     }
 
-    fn is_integral(&self) -> bool {
+    fn is_integral(&self) -> RingPropValue {
         self.base_ring.is_integral()
     }
 
-    fn is_euclidean(&self) -> bool {
-        self.base_ring.is_field()
+    fn is_noetherian(&self) -> bool {
+        self.base_ring.is_noetherian()
     }
 
-    fn is_field(&self) -> bool {
-        false
+    fn is_field(&self) -> RingPropValue {
+        RingPropValue::False
     }
 
     fn from_z(&self, x: i64) -> Self::El {
@@ -169,18 +168,6 @@ impl<R> Ring for PolyRing<R>
         self.from(self.base_ring().from_z_big(x))
     }
     
-    fn euclidean_div_rem(&self, mut lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) {
-        assert!(!self.is_zero(&rhs));
-        let rhs_lc = self.lc(&rhs).unwrap();
-        let rhs_lc_inv = self.base_ring.div(self.base_ring.one(), rhs_lc);
-        let q = self.poly_division(
-            &mut lhs, 
-            &rhs, 
-            |x| Ok(self.base_ring.mul_ref(x, &rhs_lc_inv))
-        ).unwrap();
-        return (q, lhs);
-    }
-
     ///
     /// Calculates the polynomial division.
     /// This function panics if the division function panics when called with the leading 
@@ -192,7 +179,7 @@ impl<R> Ring for PolyRing<R>
     fn div(&self, mut lhs: Self::El, rhs: &Self::El) -> Self::El {
         assert!(!self.is_zero(&rhs));
         let rhs_lc = self.lc(&rhs).unwrap();
-        if self.base_ring.is_field() {
+        if self.base_ring.is_field().can_use() {
             let rhs_lc_inv = self.base_ring.div(self.base_ring.one(), rhs_lc);
             self.poly_division(
                 &mut lhs, 
@@ -217,8 +204,8 @@ impl<R> Ring for PolyRing<R>
     }
 }
 
-impl<R> DivisibilityInformationRing for PolyRing<R> 
-    where R: DivisibilityInformationRing
+impl<R> DivisibilityInfoRing for PolyRing<R> 
+    where R: DivisibilityInfoRing
 {
     fn is_divisibility_computable(&self) -> bool {
         self.base_ring.is_divisibility_computable()
@@ -245,13 +232,40 @@ impl<R> DivisibilityInformationRing for PolyRing<R>
     }
 }
 
+impl<R> EuclideanInfoRing for PolyRing<R> 
+    where R: Ring
+{
+    fn is_euclidean(&self) -> RingPropValue {
+        self.base_ring.is_field()
+    }
+
+    fn euclidean_deg(&self, el: Self::El) -> BigInt {
+        self.deg(&el).map(|x| (x + 1) as i64).map(BigInt::from).unwrap_or(BigInt::ZERO)
+    }
+
+    fn euclidean_div_rem(&self, mut lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) {
+        assert!(!self.is_zero(&rhs));
+        let rhs_lc = self.lc(&rhs).unwrap();
+        let rhs_lc_inv = self.base_ring.div(self.base_ring.one(), rhs_lc);
+        let q = self.poly_division(
+            &mut lhs, 
+            &rhs, 
+            |x| Ok(self.base_ring.mul_ref(x, &rhs_lc_inv))
+        ).unwrap();
+        return (q, lhs);
+    }
+
+}
+
 #[cfg(test)]
-use super::super::super::alg_env::*;
+use super::super::super::wrapper::*;
+#[cfg(test)]
+use super::super::super::primitive::*;
 
 #[test]
 fn test_poly_arithmetic() {
     let ring = PolyRing::adjoint(i32::RING, "X");
-    let x = ring.bind::<RingAxiomsIntegralRing>(ring.unknown());
+    let x = ring.bind(ring.unknown());
 
     let x2_2x_1 = (&x * &x) + (&x + &x) + 1;
     let x_1_square = (&x + 1) * (&x + 1);
@@ -264,7 +278,7 @@ fn test_poly_arithmetic() {
 #[test]
 fn test_format() {
     let ring = PolyRing::adjoint(i32::RING, "X");
-    let x = ring.bind::<RingAxiomsIntegralRing>(ring.unknown());
+    let x = ring.bind(ring.unknown());
 
     let poly = &x * &x * &x + &x * &x * 2 - 1;
     assert_eq!("-1 + 2 * X^2 + X^3", format!("{}", poly));
@@ -273,12 +287,12 @@ fn test_format() {
 #[test]
 fn test_poly_div() {
     let ring = PolyRing::adjoint(i32::RING, "X");
-    let x = ring.bind::<RingAxiomsIntegralRing>(ring.unknown());
+    let x = ring.bind(ring.unknown());
 
     let mut p = &x * &x * &x + &x * &x + &x + 1;
     let q = &x + 1;
     let expected = &x * &x + 1;
-    let result = ring.bind(ring.poly_division(p.val_mut().unwrap(), q.val().unwrap(), |x| Ok(*x)).unwrap());
+    let result = ring.bind(ring.poly_division(p.val_mut(), q.val(), |x| Ok(*x)).unwrap());
     assert_eq!(ring.bind(ring.zero()), p);
     assert_eq!(expected, result);
 }
@@ -286,18 +300,18 @@ fn test_poly_div() {
 #[test]
 fn test_quotient() {
     let ring = PolyRing::adjoint(i32::RING, "X");
-    let x = ring.bind::<RingAxiomsIntegralRing>(ring.unknown());
+    let x = ring.bind(ring.unknown());
 
-    let p = ring.bind::<RingAxiomsIntegralRing>(ring.one());
+    let p = ring.bind(ring.one());
     let q = &x + 1;
-    assert_eq!(None, ring.quotient(p.unwrap(), q.unwrap()));
+    assert_eq!(None, ring.quotient(p.val(), q.val()));
 }
 
 #[test]
 fn test_poly_degree() {
     let ring = PolyRing::adjoint(i32::RING, "X");
-    let x = ring.bind::<RingAxiomsIntegralRing>(ring.unknown());
+    let x = ring.bind(ring.unknown());
 
     let p = &x * &x * &x + 4;
-    assert_eq!(Some(3), ring.deg(p.unwrap()));
+    assert_eq!(Some(3), ring.deg(p.val()));
 }

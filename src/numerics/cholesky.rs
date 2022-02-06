@@ -1,10 +1,9 @@
 #![allow(non_snake_case)]
 use super::super::la::mat::*;
-use super::super::alg::*;
 use super::super::float::*;
 
 pub fn cholesky<M, T>(A: &mut Matrix<M, T>)
-    where M: MatrixViewMut<T>, T: Float + Root
+    where M: MatrixViewMut<T>, T: Float
 {
     assert_eq!(A.row_count(), A.col_count());
     let n = A.row_count();

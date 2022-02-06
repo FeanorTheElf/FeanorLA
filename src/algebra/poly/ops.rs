@@ -1,4 +1,4 @@
-use super::super::super::alg::*;
+use super::super::super::ring::*;
 use super::super::super::la::vec::*;
 use super::super::super::la::vector_view::*;
 

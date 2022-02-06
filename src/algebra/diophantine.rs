@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 use super::super::la::mat::*;
-use super::super::alg::*;
+use super::super::primitive::*;
 use super::eea::{signed_eea, signed_gcd};
 
 type Item = i32;
@@ -99,7 +99,7 @@ fn transform_pivot_gcd_col<M, N, T>(
     mut iL: Matrix<N, T>, 
     pivot: usize
 ) -> bool
-    where M: MatrixViewMut<T>, N: MatrixViewMut<T>, T: Integer
+    where M: MatrixViewMut<T>, N: MatrixViewMut<T>, T: EuclideanEl + Ord
 {
     let pivot_row = pivot;
     let pivot_col = pivot;
@@ -112,7 +112,7 @@ fn transform_pivot_gcd_col<M, N, T>(
     }
     while current != 0 {
         let (a, b) = (A.at(pivot_row, pivot_col).clone(), A.at(pivot_row + current, pivot_col).clone());
-        let (s, t, _) = signed_eea(a.clone(), b.clone());
+        let (s, t, _) = signed_eea(a.clone(), b.clone(), &StaticRing::<T>::RING);
         let gcd = s.clone() * a.clone() + t.clone() * b.clone();
         let transform = [s, t, -b / gcd.clone(), a / gcd];
         A.transform_two_dims_left(pivot_row, pivot_row + current, &transform, &T::RING);
@@ -130,7 +130,7 @@ fn transform_pivot_gcd_row<M, N, T>(
     mut iR: Matrix<N, T>, 
     pivot: usize
 ) -> bool 
-    where M: MatrixViewMut<T>, N: MatrixViewMut<T>, T: Integer
+    where M: MatrixViewMut<T>, N: MatrixViewMut<T>, T: EuclideanEl + Ord
 {
     let pivot_row = pivot;
     let pivot_col = pivot;
@@ -143,7 +143,7 @@ fn transform_pivot_gcd_row<M, N, T>(
     }
     while current != 0 {
         let (a, b) = (A.at(pivot_row, pivot_col).clone(), A.at(pivot_row, pivot_col + current).clone());
-        let (s, t, _) = signed_eea(a.clone(), b.clone());
+        let (s, t, _) = signed_eea(a.clone(), b.clone(), &StaticRing::<T>::RING);
         let gcd = s.clone() * a.clone() + t.clone() * b.clone();
         let transform = [s, -b / gcd.clone(), t, a / gcd];
         A.transform_two_dims_right(pivot_col, pivot_col + current, &transform, &T::RING);
@@ -160,7 +160,7 @@ fn find_min<T, I, F, Int>(mut it: I, mut f: F) -> Option<T>
 where
     I: Iterator<Item = T>,
     F: FnMut(&T) -> Int,
-    Int: Integer
+    Int: RingEl + Ord
 {
     let mut result: T = it.next()?;
     let mut current_val: Int = f(&result);
@@ -175,18 +175,18 @@ where
 }
 
 fn find_smallest_gcd_entry_in_pivot_row<M, T>(A: Matrix<M, T>) -> usize 
-    where M: MatrixViewMut<T>, T: Integer
+    where M: MatrixViewMut<T>, T: EuclideanEl + Ord
 {
     find_min(0..A.col_count(), |col: &usize| 
-        signed_gcd(A.at(0, 0).clone(), A.at(0, *col).clone())
+        signed_gcd(A.at(0, 0).clone(), A.at(0, *col).clone(), &StaticRing::<T>::RING)
     ).unwrap()
 }
 
 fn find_smallest_gcd_entry_in_pivot_col<M, T>(A: Matrix<M, T>) -> usize
-    where M: MatrixViewMut<T>, T: Integer
+    where M: MatrixViewMut<T>, T: EuclideanEl + Ord
 {
     find_min(0..A.row_count(), |row: &usize| 
-        signed_gcd(A.at(0, 0).clone(), A.at(*row, 0).clone())
+        signed_gcd(A.at(0, 0).clone(), A.at(*row, 0).clone(), &StaticRing::<T>::RING)
     ).unwrap()
 }
 
@@ -196,7 +196,7 @@ fn swap_pivot_entry_if_zero<M, N, K, T>(
     mut iR: Matrix<K, T>,
     pivot: usize,
 ) -> bool 
-    where M: MatrixViewMut<T>, N: MatrixViewMut<T>, K: MatrixViewMut<T>, T: Integer
+    where M: MatrixViewMut<T>, N: MatrixViewMut<T>, K: MatrixViewMut<T>, T: RingEl + Ord
 {
     let pivot_row = pivot;
     let pivot_col = pivot;
@@ -214,7 +214,7 @@ fn swap_pivot_entry_if_zero<M, N, K, T>(
 }
 
 fn find_not_zero<M, T>(mat: Matrix<M, T>) -> Option<(usize, usize)> 
-    where M: MatrixView<T>, T: Integer
+    where M: MatrixView<T>, T: RingEl + Ord
 {
     for row in 0..mat.row_count() {
         for col in 0..mat.col_count() {

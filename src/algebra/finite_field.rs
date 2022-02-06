@@ -4,7 +4,8 @@ mod internal_definitions{
     pub use super::super::zn::*;
     pub use super::super::super::la::vec::*;
     pub use super::super::super::la::const_vector::*;
-    pub use super::super::super::alg::*;
+    pub use super::super::super::ring::*;
+    pub use super::super::super::primitive::*;
 
     // because of a (probable) compiler bug, `ZnEl<2>` does not work here
     type F2El = ZnElImpl<2, true>;

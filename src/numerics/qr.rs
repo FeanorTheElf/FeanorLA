@@ -1,15 +1,13 @@
 #![allow(non_snake_case)]
 use super::super::la::mat::*;
-use super::super::alg::*;
+use super::super::primitive::*;
 use super::super::float::*;
-use std::ops::AddAssign;
+use std::ops::Add;
 
 fn two<T>() -> T
-    where T: AddAssign + One
+    where T: Add<T, Output = T> + One
 {
-    let mut two = T::one();
-    two += T::one();
-    two
+    T::one() + T::one()
 }
 
 fn householder_left<V, M, T>(y: Vector<V, T>, mut A: Matrix<M, T>)
@@ -62,7 +60,7 @@ fn sgn<T>(val: &T) -> T
 /// and R is assigned to the input matrix.
 /// 
 pub fn qr_decompose<M, T>(A: &mut Matrix<M, T>) -> Matrix<MatrixOwned<T>, T>
-    where M: MatrixViewMut<T>, T: Float + Root
+    where M: MatrixViewMut<T>, T: Float
 {
     let mut Q = Matrix::identity(A.row_count(), A.row_count());
     let mut y_base = Vector::zero(A.row_count()).into_owned();

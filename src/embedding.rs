@@ -57,11 +57,11 @@ impl<R> CanonicalEmbeddingInfo<BigIntRing> for R
 {
     type Embedding = BigIntEmbedding<R>;
 
-    fn has_embedding(&self, from: &BigIntRing) -> RingPropValue {
+    fn has_embedding(&self, _from: &BigIntRing) -> RingPropValue {
         RingPropValue::True
     }
 
-    fn embedding(self, from: BigIntRing) -> Self::Embedding {
+    fn embedding(self, _from: BigIntRing) -> Self::Embedding {
         BigIntEmbedding {
             target: self
         }

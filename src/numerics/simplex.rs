@@ -1,6 +1,5 @@
 use super::super::la::mat::*;
-use super::super::la::algorithms::*;
-use super::super::alg::*;
+use super::super::primitive::*;
 use std::ops::MulAssign;
 use std::vec::Vec;
 

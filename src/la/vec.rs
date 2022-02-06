@@ -1,4 +1,5 @@
-use super::super::alg::*;
+use super::super::ring::*;
+use super::super::primitive::*;
 use super::vector_view::*;
 use super::matrix_vector::*;
 use super::diagonal::*;

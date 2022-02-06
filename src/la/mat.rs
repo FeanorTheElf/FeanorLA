@@ -1,4 +1,5 @@
-use super::super::alg::*;
+use super::super::ring::*;
+use super::super::primitive::*;
 use super::ops::*;
 
 pub use super::matrix_view::*;

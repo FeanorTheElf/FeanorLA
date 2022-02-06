@@ -1,4 +1,4 @@
-use super::alg::FieldEl;
+use super::primitive::FieldEl;
 use super::la::mat::*;
 
 pub trait ApproxEq<Rhs = Self, D = Self> {
@@ -80,7 +80,21 @@ impl<V, W, T, D> ApproxEq<Vector<W, T>, D> for Vector<V, T>
 ///
 /// For types that may have rounding errors
 /// 
-pub trait Float: Clone + ApproxEq + PartialEq + PartialOrd + FieldEl {}
+pub trait Float: Clone + ApproxEq + PartialEq + PartialOrd + FieldEl {
 
-impl Float for f32 {}
-impl Float for f64 {}
+    fn sqrt(&self) -> Self;
+}
+
+impl Float for f32 {
+
+    fn sqrt(&self) -> Self {
+        (*self).sqrt()
+    }
+}
+
+impl Float for f64 {
+
+    fn sqrt(&self) -> Self {
+        (*self).sqrt()
+    }
+}

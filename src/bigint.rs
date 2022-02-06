@@ -1,4 +1,5 @@
 use super::ring::*;
+use super::algebra::primes;
 
 use std::cmp::Ordering;
 use std::ops::*;
@@ -986,6 +987,15 @@ impl PartialOrd for BigInt {
     }
 }
 
+impl Neg for BigInt {
+
+    type Output = BigInt;
+
+    fn neg(self) -> BigInt {
+        BigInt::RING.neg(self)
+    }
+}
+
 impl Ord for BigInt {
 
     fn cmp(&self, rhs: &BigInt) -> Ordering {
@@ -1177,6 +1187,41 @@ impl std::str::FromStr for BigInt {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::from_str_radix(s, 10)
+    }
+}
+
+impl DivisibilityInfoRing for BigIntRing {
+
+    fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<BigInt> {
+        let (quo, rem) = self.euclidean_div_rem(lhs.clone(), rhs);
+        if rem == 0 {
+            return Some(quo);
+        } else {
+            return None;
+        }
+    }
+
+    fn is_divisibility_computable(&self) -> bool {
+        true
+    }
+
+    fn is_unit(&self, el: &Self::El) -> bool {
+        self.is_one(el) || self.is_neg_one(el)
+    }
+}
+
+impl FactoringInfoRing for BigIntRing {
+
+    fn is_ufd(&self) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn is_prime(&self, el: &Self::El) -> bool {
+        primes::miller_rabin(el, 10)
+    }
+
+    fn calc_factor(&self, el: &mut Self::El) -> Option<Self::El> {
+        primes::calc_factor(el)
     }
 }
 

@@ -1,6 +1,5 @@
 #![allow(non_snake_case)]
-
-use super::super::alg::*;
+use super::super::ring::*;
 use super::super::la::mat::*;
 use super::ring_ext::*;
 use super::poly::*;
@@ -16,7 +15,7 @@ pub type CoordRing<K> = SimpleRingExtension<PolyRing<K>, VectorOwned<<PolyRing<K
 impl<K: Ring> EllipticCurve<K> {
 
     pub fn new(base_field: K, A: K::El, B: K::El) -> Self {
-        debug_assert!(base_field.is_field());
+        assert!(base_field.is_field().can_use());
         EllipticCurve {
             base_field, A, B
         }

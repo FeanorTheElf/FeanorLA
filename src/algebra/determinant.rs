@@ -1,6 +1,5 @@
-use super::super::alg::*;
-use super::mat::*;
-use super::super::algebra::primality::*;
+use super::super::ring::*;
+use super::super::la::mat::*;
 use super::super::algebra::fractions::*;
 
 pub trait MatrixDeterminant<M>: Ring
@@ -12,7 +11,7 @@ pub trait MatrixDeterminant<M>: Ring
 fn compute_det<F>(field: F, mut work_matrix: Matrix<MatrixOwned<F::El>, F::El>) -> F::El
     where F: Ring
 {
-    assert!(field.is_field());
+    assert!(field.is_field().can_use());
     let mut det_factor = field.one();
     let mut negated = false;
     let result = work_matrix.gaussion_elimination_half(
@@ -38,12 +37,12 @@ fn compute_det<F>(field: F, mut work_matrix: Matrix<MatrixOwned<F::El>, F::El>) 
 }
 
 impl<R, M> MatrixDeterminant<M> for R
-    where R: DivisibilityInformationRing, M: MatrixView<R::El>
+    where R: DivisibilityInfoRing, M: MatrixView<R::El>
 {
     default fn matrix_determinant(&self, matrix: Matrix<M, R::El>) -> R::El {
-        if self.is_field() {
+        if self.is_field().can_use() {
             compute_det(self, matrix.into_owned())
-        } else if self.is_integral() {
+        } else if self.is_integral().can_use() {
             assert!(self.is_divisibility_computable());
             let (field, mut incl) = self.field_of_fractions();
             let work_matrix = Matrix::from_fn(matrix.row_count(), matrix.col_count(), |i, j| incl(matrix.at(i, j).clone()));
@@ -59,14 +58,17 @@ impl<M, T> Matrix<M, T>
     where M: MatrixView<T>
 {
     pub fn det<R>(&self, ring: &R) -> R::El
-        where R: Ring<El = T> + DivisibilityInformationRing
+        where R: Ring<El = T> + DivisibilityInfoRing
     {
         ring.matrix_determinant(self.as_ref())
     }
 }
 
+#[cfg(test)]
+use super::super::primitive::*;
+
 #[test]
 fn test_det() {
     let a = Matrix::from_array([[1, 2], [3, 4]]);
-    assert_eq!(-2, i32::RING.matrix_determinant(a));
+    assert_eq!(-2, a.det(&i32::RING));
 }

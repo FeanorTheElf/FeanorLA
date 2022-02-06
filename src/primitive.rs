@@ -1,7 +1,8 @@
 use super::ring::*;
 use super::bigint::*;
 use std::ops::{ 
-    Add, Mul, Sub, Neg, Div, Rem, DivAssign, RemAssign 
+    Add, Mul, Sub, Neg, Div, Rem,
+    AddAssign, MulAssign, SubAssign, DivAssign
 };
 
 pub trait Zero: Sized + Add<Self, Output = Self> {
@@ -173,6 +174,18 @@ pub trait RingAxioms: 'static {
 pub struct RingAxiomsEuclidean;
 #[derive(Debug)]
 pub struct RingAxiomsField;
+#[derive(Debug)]
+pub struct RingAxiomsIntegral;
+#[derive(Debug)]
+pub struct RingAxiomsGeneral;
+
+impl RingAxioms for RingAxiomsIntegral {
+    fn is_integral() -> bool { true }
+    fn is_euclidean() -> bool { false }
+    fn is_field() -> bool { false }
+    fn is_divisibility_computable() -> bool { false }
+    fn is_ufd() -> bool { false }
+}
 
 impl RingAxioms for RingAxiomsEuclidean {
     fn is_integral() -> bool { true }
@@ -190,10 +203,19 @@ impl RingAxioms for RingAxiomsField {
     fn is_ufd() -> bool { true }
 }
 
+impl RingAxioms for RingAxiomsGeneral {
+    fn is_integral() -> bool { false }
+    fn is_euclidean() -> bool { false }
+    fn is_field() -> bool { false }
+    fn is_divisibility_computable() -> bool { false }
+    fn is_ufd() -> bool { false }
+}
+
 pub trait RingEl: 
     Clone + Sized + Add<Output = Self> + Mul<Output = Self> + 
     PartialEq + Zero + One + Neg<Output = Self> + 
-    Sub<Output = Self> + std::fmt::Debug
+    Sub<Output = Self> + std::fmt::Debug +
+    AddAssign + MulAssign + SubAssign
 {
     type Axioms: RingAxioms;
     type RingType: Ring<El = Self>;
@@ -216,7 +238,7 @@ pub trait RingEl:
 
 pub trait EuclideanEl: 
     RingEl<Axioms = RingAxiomsEuclidean> + Rem<Output = Self> + 
-    RemAssign + Div<Output = Self> + DivAssign 
+    Div<Output = Self> 
 {
     ///
     /// Computes (returned, self) := (self / rhs, self % rhs) and returns returned.
@@ -228,7 +250,7 @@ pub trait EuclideanEl:
 }
 
 pub trait FieldEl: 
-    RingEl<Axioms = RingAxiomsField> + Div<Output = Self> 
+    RingEl<Axioms = RingAxiomsField> + Div<Output = Self>  + DivAssign
 {}
 
 impl RingEl for i8 {
@@ -276,6 +298,7 @@ impl EuclideanEl for i8 {
 }
 
 impl EuclideanEl for i16 {
+
     fn div_rem(&mut self, rhs: Self) -> Self { 
         let result = *self / rhs;
         *self %= rhs;
@@ -288,6 +311,7 @@ impl EuclideanEl for i16 {
 }
 
 impl EuclideanEl for i32 {
+
     fn div_rem(&mut self, rhs: Self) -> Self { 
         let result = *self / rhs;
         *self %= rhs;
@@ -300,6 +324,7 @@ impl EuclideanEl for i32 {
 }
 
 impl EuclideanEl for i64 {
+
     fn div_rem(&mut self, rhs: Self) -> Self { 
         let result = *self / rhs;
         *self %= rhs;
@@ -312,6 +337,7 @@ impl EuclideanEl for i64 {
 }
 
 impl EuclideanEl for i128 {
+
     fn div_rem(&mut self, rhs: Self) -> Self { 
         let result = *self / rhs;
         *self %= rhs;
@@ -480,6 +506,28 @@ impl<T> EuclideanInfoRing for StaticRingImpl<RingAxiomsEuclidean, T>
     }
 }
 
+impl<T> DivisibilityInfoRing for StaticRingImpl<RingAxiomsEuclidean, T> 
+    where T: EuclideanEl
+{
+    fn is_divisibility_computable(&self) -> bool {
+        true
+    }
+
+    fn is_divisible_by(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+        self.quotient(lhs, rhs).is_some()
+    }
+
+    fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
+        let (quo, rem) = self.euclidean_div_rem(lhs.clone(), rhs);
+        if self.is_zero(&rem) {
+            Some(quo)
+        } else {
+            None
+        }
+    }
+}
+
+
 impl<T> EuclideanInfoRing for StaticRingImpl<RingAxiomsField, T> 
     where T: FieldEl
 {
@@ -519,6 +567,30 @@ impl<T> Ring for StaticRingImpl<RingAxiomsField, T>
 
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { 
         lhs / rhs.clone()
+    }
+}
+
+impl<T> DivisibilityInfoRing for StaticRingImpl<RingAxiomsField, T> 
+    where T: FieldEl
+{
+    fn is_divisibility_computable(&self) -> bool {
+        true
+    }
+
+    fn is_divisible_by(&self, _lhs: &Self::El, rhs: &Self::El) -> bool {
+        !self.is_zero(rhs)
+    }
+
+    fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
+        if self.is_zero(rhs) {
+            None
+        } else {
+            Some(lhs.clone() / rhs.clone())
+        }
+    }
+
+    fn is_unit(&self, el: &Self::El) -> bool {
+        !self.is_zero(el)
     }
 }
 

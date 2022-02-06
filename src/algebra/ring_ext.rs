@@ -1,4 +1,4 @@
-use super::super::alg::*;
+use super::super::ring::*;
 use super::poly::*;
 use super::super::la::mat::*;
 use super::super::la::algorithms::*;
@@ -160,30 +160,23 @@ impl<R, V> Ring for SimpleRingExtension<R, V>
         )
     }
 
-    default fn is_integral(&self) -> bool {
-        // Cannot check whether a simple ring extension is integral if the corresponding polynomial ring does not support primality information
-        return false;
+    default fn is_integral(&self) -> RingPropValue {
+        return RingPropValue::Unknown;
     }
 
-    default fn is_euclidean(&self) -> bool {
-        // Cannot check whether a simple ring extension is euclidean if the corresponding polynomial ring does not support primality information
-        return false;
+    fn is_noetherian(&self) -> bool {
+        self.base_ring.is_noetherian()
     }
 
-    default fn is_field(&self) -> bool {
-        // Cannot check whether a simple ring extension is a field if the corresponding polynomial ring does not support primality information
-        return false
-    }
-
-    default fn euclidean_div_rem(&self, _lhs: Self::El, _rhs: &Self::El) -> (Self::El, Self::El) {
-        panic!("Not a euclidean domain")
+    default fn is_field(&self) -> RingPropValue {
+        return RingPropValue::Unknown;
     }
 
     fn div(&self, mut lhs: Self::El, rhs: &Self::El) -> Self::El {
         self.assert_valid_element(&lhs);
         self.assert_valid_element(rhs);
         assert!(!self.is_zero(rhs));
-        if self.base_ring.is_field() {
+        if self.base_ring.is_field().can_use() {
             let multiplication_matrix = self.create_multiplication_matrix(rhs.clone());
             <R as MatrixSolve>::solve_linear_equation(&self.base_ring, multiplication_matrix, &mut Matrix::col_vec(lhs.as_mut())).unwrap();
             return lhs;
@@ -197,6 +190,9 @@ impl<R, V> Ring for SimpleRingExtension<R, V>
         poly_ring.format(&self.polynomial_repr(&poly_ring, el.clone()), f, in_prod)
     }
 }
+
+#[cfg(test)]
+use super::super::primitive::*;
 
 #[test]
 fn test_format() {

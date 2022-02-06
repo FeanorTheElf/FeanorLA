@@ -1,6 +1,5 @@
 use super::matrix_view::*;
-use super::vector_view::*;
-use super::super::alg::*;
+use super::super::ring::*;
 
 pub trait MatrixScale<M>: Ring 
     where M: MatrixViewMut<Self::El>

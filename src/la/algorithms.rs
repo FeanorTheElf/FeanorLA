@@ -1,5 +1,5 @@
 use super::mat::*;
-use super::super::alg::*;
+use super::super::ring::*;
 
 pub trait MatrixSolve: Ring {
     ///
@@ -30,10 +30,12 @@ pub trait MatrixSolve: Ring {
 impl<R: Ring> MatrixSolve for R {
 
     default fn solve_linear_equation<M: MatrixView<Self::El>, N: MatrixViewMut<Self::El>>(&self, a: Matrix<M, Self::El>, b: &mut Matrix<N, Self::El>) -> Result<(), usize> {
+        assert!(self.is_field().can_use());
         a.into_owned().solve_modifying(b, self)
     }
     
     default fn calc_matrix_kernel_space<M: MatrixView<Self::El>>(&self, a: Matrix<M, Self::El>) -> Option<Matrix<MatrixOwned<Self::El>, Self::El>> {
+        assert!(self.is_field().can_use());
         a.into_owned().kernel_base_modifying(self)
     }
 }
@@ -50,6 +52,7 @@ impl<M, T> Matrix<M, T>
     fn solve_strict_triangular<N, R>(&self, rhs: &mut Matrix<N, T>, ring: &R)
         where N: MatrixViewMut<T>, R: Ring<El = T>
     {
+        assert!(ring.is_field().can_use());
         assert_eq!(self.row_count(), self.col_count());
         assert_eq!(self.row_count(), rhs.row_count());
 
@@ -111,7 +114,7 @@ impl<M, T> Matrix<M, T>
             H: FnMut(usize, T, usize, &mut S),
             R: Ring<El = T>
     {
-        assert!(ring.is_field());
+        assert!(ring.is_field().can_use());
 
         for i in 0..std::cmp::min(self.col_count(), self.row_count()) {
             // pivot
@@ -175,7 +178,7 @@ impl<M, T> Matrix<M, T>
     fn solve_modifying<R, N>(&mut self, rhs: &mut Matrix<N, T>, ring: &R) -> Result<(), usize>
         where N: MatrixViewMut<T>, R: Ring<El = T>
     {
-        assert!(ring.is_field());
+        assert!(ring.is_field().can_use());
         assert_eq!(self.row_count(), self.col_count());
         assert_eq!(self.row_count(), rhs.row_count());
         self.gaussion_elimination_half(
@@ -201,7 +204,7 @@ impl<M, T> Matrix<M, T>
     fn kernel_base_modifying<R>(&mut self, ring: &R) -> Option<Matrix<MatrixOwned<T>, T>> 
         where R: Ring<El = T>
     {
-        assert!(ring.is_field());
+        assert!(ring.is_field().can_use());
 
         // the approach is to transform the matrix in upper triangle form, 
         // so ( U | R ) with an upper triangle matrix U and a nonsquare 
@@ -282,6 +285,8 @@ impl<M, T> Matrix<M, T>
     }
 }
 
+#[cfg(test)]
+use super::super::primitive::RingEl;
 
 #[test]
 fn test_invert_matrix() {

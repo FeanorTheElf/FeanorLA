@@ -1,4 +1,4 @@
-use super::super::bigint::*;
+use super::super::super::bigint::*;
 
 ///
 /// Uses the Fermat method to find nontrivial factors of a given number.
@@ -23,7 +23,7 @@ pub fn fermat(n: &BigInt) -> BigInt
     loop {
         assert!(m < *n);
         let m_squared = m.pow(2);
-        let d = (&m_squared - n).root_floor(2);
+        let d = (m_squared.clone() - n.clone()).root_floor(2);
         if m_squared - d.pow(2) == *n {
             return m - d;
         }

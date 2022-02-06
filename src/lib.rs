@@ -18,13 +18,12 @@ pub mod bigint;
 pub mod ring;
 pub mod primitive;
 pub mod embedding;
-// #[macro_use]
-// pub mod alg_macros;
-// pub mod float;
-// pub mod alg_env;
+pub mod wrapper;
+pub mod float;
 
-// #[macro_use]
-// pub mod la;
-// pub mod numerics;
-// pub mod algebra;
-// pub mod combinatorics;
+#[macro_use]
+pub mod la;
+pub mod algebra;
+
+pub mod numerics;
+pub mod combinatorics;

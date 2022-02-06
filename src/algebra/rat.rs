@@ -1,5 +1,5 @@
 #![allow(non_camel_case_types)]
-use super::super::alg::*;
+use super::super::primitive::*;
 
 use std::cmp::{Ord, Ordering, PartialEq, PartialOrd};
 use std::convert::From;
@@ -57,7 +57,7 @@ impl r64 {
     }
 
     pub fn reduce(&mut self) {
-        let gcd: i64 = signed_gcd(self.denominator, self.numerator);
+        let gcd: i64 = signed_gcd(self.denominator, self.numerator, &i64::RING);
         self.denominator /= gcd;
         self.numerator /= gcd;
     }
@@ -178,7 +178,7 @@ impl AddAssign<r64> for r64 {
             self.denominator.checked_mul(rhs.numerator) => rhs.numerator; 
             self.reduce(); 
         {
-            let gcd = signed_gcd(rhs.denominator, rhs.numerator);
+            let gcd = signed_gcd(rhs.denominator, rhs.numerator, &i64::RING);
             rhs.denominator /= gcd;
             rhs.numerator /= gcd;
             self.numerator /= gcd;
@@ -186,12 +186,12 @@ impl AddAssign<r64> for r64 {
         assign_or_reduce_on_failure!(
             self.numerator.checked_add(rhs.numerator) => self.numerator; 
         {
-            let gcd = signed_gcd(self.denominator, self.numerator);
+            let gcd = signed_gcd(self.denominator, self.numerator, &i64::RING);
             self.denominator /= gcd;
             self.numerator /= gcd;
             rhs.numerator /= gcd;
         }; {
-            let gcd = signed_gcd(rhs.denominator, rhs.numerator);
+            let gcd = signed_gcd(rhs.denominator, rhs.numerator, &i64::RING);
             rhs.denominator /= gcd;
             rhs.numerator /= gcd;
             self.numerator /= gcd;
@@ -200,7 +200,7 @@ impl AddAssign<r64> for r64 {
             self.denominator.checked_mul(rhs.denominator) => self.denominator; 
             self.reduce(); 
         {
-            let gcd = signed_gcd(self.numerator, rhs.denominator);
+            let gcd = signed_gcd(self.numerator, rhs.denominator, &i64::RING);
             self.numerator /= gcd;
             rhs.denominator /= gcd;
         });
@@ -218,7 +218,7 @@ impl MulAssign<r64> for r64 {
             self.denominator.checked_mul(rhs.denominator) => self.denominator; 
             self.reduce(); 
         {
-            let gcd = signed_gcd(rhs.numerator, rhs.denominator);
+            let gcd = signed_gcd(rhs.numerator, rhs.denominator, &i64::RING);
             rhs.denominator /= gcd;
             self.numerator /= gcd;
         });
