@@ -1,6 +1,7 @@
 use super::super::ring::*;
 use super::super::la::mat::*;
 use super::super::algebra::fractions::*;
+use super::super::embedding::*;
 
 pub trait MatrixDeterminant<M>: Ring
     where M: MatrixView<Self::El>
@@ -44,7 +45,8 @@ impl<R, M> MatrixDeterminant<M> for R
             compute_det(self, matrix.into_owned())
         } else if self.is_integral().can_use() {
             assert!(self.is_divisibility_computable());
-            let (field, mut incl) = self.field_of_fractions();
+            let field = self.field_of_fractions();
+            let incl = (&field).embedding(&self);
             let work_matrix = Matrix::from_fn(matrix.row_count(), matrix.col_count(), |i, j| incl(matrix.at(i, j).clone()));
             let result = compute_det(&field, work_matrix);
             field.in_base_ring(&result).unwrap()

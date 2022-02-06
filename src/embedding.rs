@@ -11,6 +11,14 @@ pub trait CanonicalEmbeddingInfo<R>: Ring
     fn embedding(self, from: R) -> Self::Embedding;
 }
 
+pub trait CanonicalZEmbeddingInfo<R>: Ring
+    where R: Ring
+{
+    type Embedding: Fn(R::El) -> Self::El;
+
+    fn z_embedding(self, from: R) -> Self::Embedding;
+}
+
 pub struct BigIntEmbedding<R>
     where R: Ring
 {
@@ -52,16 +60,12 @@ impl<R> Fn<(BigInt, )> for BigIntEmbedding<R>
     }
 }
 
-impl<R> CanonicalEmbeddingInfo<BigIntRing> for R
+impl<R> CanonicalZEmbeddingInfo<BigIntRing> for R
     where R: Ring
 {
     type Embedding = BigIntEmbedding<R>;
 
-    fn has_embedding(&self, _from: &BigIntRing) -> RingPropValue {
-        RingPropValue::True
-    }
-
-    fn embedding(self, _from: BigIntRing) -> Self::Embedding {
+    fn z_embedding(self, _from: BigIntRing) -> Self::Embedding {
         BigIntEmbedding {
             target: self
         }
@@ -109,16 +113,12 @@ impl<R> Fn<(i64, )> for IntEmbedding<R>
     }
 }
 
-impl<R> CanonicalEmbeddingInfo<StaticRing<i64>> for R
+impl<R> CanonicalZEmbeddingInfo<StaticRing<i64>> for R
     where R: Ring
 {
     type Embedding = IntEmbedding<R>;
 
-    fn has_embedding(&self, _from: &StaticRing<i64>) -> RingPropValue {
-        RingPropValue::True
-    }
-
-    fn embedding(self, _from: StaticRing<i64>) -> Self::Embedding {
+    fn z_embedding(self, _from: StaticRing<i64>) -> Self::Embedding {
         IntEmbedding {
             target: self
         }

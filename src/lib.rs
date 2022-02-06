@@ -1,5 +1,6 @@
 #![feature(const_generics)]
 #![feature(specialization)]
+#![feature(generic_associated_types)]
 #![feature(fn_traits)]
 #![feature(test)]
 #![feature(const_panic)]

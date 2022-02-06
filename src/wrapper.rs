@@ -299,7 +299,7 @@ impl<R> Add<i64> for RingElWrapper<R>
 
     fn add(self, rhs: i64) -> Self::Output {
         RingElWrapper {
-            el: self.ring.add(self.el, (&self.ring).embedding(i64::RING)(rhs)),
+            el: self.ring.add(self.el, (&self.ring).z_embedding(i64::RING)(rhs)),
             ring: self.ring
         }
     }
@@ -312,7 +312,7 @@ impl<'b, R> Add<i64> for &'b RingElWrapper<R>
 
     fn add(self, rhs: i64) -> Self::Output {
         RingElWrapper {
-            el: self.ring.add_ref((&self.ring).embedding(i64::RING)(rhs), &self.el),
+            el: self.ring.add_ref((&self.ring).z_embedding(i64::RING)(rhs), &self.el),
             ring: self.ring.clone()
         }
     }
@@ -325,7 +325,7 @@ impl<R> Sub<i64> for RingElWrapper<R>
 
     fn sub(self, rhs: i64) -> Self::Output {
         RingElWrapper {
-            el: self.ring.sub(self.el, (&self.ring).embedding(i64::RING)(rhs)),
+            el: self.ring.sub(self.el, (&self.ring).z_embedding(i64::RING)(rhs)),
             ring: self.ring
         }
     }
@@ -338,7 +338,7 @@ impl<'b, R> Sub<i64> for &'b RingElWrapper<R>
 
     fn sub(self, rhs: i64) -> Self::Output {
         RingElWrapper {
-            el: self.ring.sub_ref_fst(&self.el, (&self.ring).embedding(i64::RING)(rhs)),
+            el: self.ring.sub_ref_fst(&self.el, (&self.ring).z_embedding(i64::RING)(rhs)),
             ring: self.ring.clone()
         }
     }
@@ -351,7 +351,7 @@ impl<R> Mul<i64> for RingElWrapper<R>
 
     fn mul(self, rhs: i64) -> Self::Output {
         RingElWrapper {
-            el: self.ring.mul(self.el, (&self.ring).embedding(i64::RING)(rhs)),
+            el: self.ring.mul(self.el, (&self.ring).z_embedding(i64::RING)(rhs)),
             ring: self.ring
         }
     }

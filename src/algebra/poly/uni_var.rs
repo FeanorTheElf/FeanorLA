@@ -1,6 +1,7 @@
 use super::super::super::ring::*;
 use super::super::super::la::vec::*;
 use super::super::super::bigint::*;
+use super::super::super::embedding::*;
 use super::ops::*;
 
 #[derive(Debug, Clone)]
@@ -34,10 +35,6 @@ impl<R> PolyRing<R>
         let mut result = Vec::with_capacity(1);
         result.push(el);
         return Vector::new(result);
-    }
-
-    pub fn canonical_embedding<'a>(&'a self) -> impl 'a + FnMut(R::El) -> <Self as Ring>::El {
-        move |x| self.from(x)
     }
 
     pub fn evaluation_hom<'a>(&'a self, x: R::El) -> impl 'a + FnMut(<Self as Ring>::El) -> R::El {
@@ -88,6 +85,22 @@ impl<R> PolyRing<R>
 
     pub fn base_ring(&self) -> &R {
         &self.base_ring
+    }
+}
+
+impl<'a, 'b, R> CanonicalEmbeddingInfo<&'a R> for &'b PolyRing<R>
+    where R: Ring
+{
+    type Embedding = PolyRingEmbedding<'b, R>;
+
+    fn has_embedding(&self, _from: &&'a R) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embedding(self, _from: &'a R) -> Self::Embedding {
+        PolyRingEmbedding {
+            poly_ring: self
+        }
     }
 }
 
@@ -254,7 +267,47 @@ impl<R> EuclideanInfoRing for PolyRing<R>
         ).unwrap();
         return (q, lhs);
     }
+}
 
+pub struct PolyRingEmbedding<'a, R>
+    where R: Ring
+{
+    poly_ring: &'a PolyRing<R>
+}
+
+impl<'a, R> FnOnce<(R::El, )> for PolyRingEmbedding<'a, R> 
+    where R: Ring
+{
+    type Output = <PolyRing<R> as Ring>::El;
+
+    extern "rust-call" fn call_once(
+        mut self, 
+        (x, ): (R::El, )
+    ) -> Self::Output {
+        self.call_mut((x, ))
+    }
+}
+
+impl<'a, R> FnMut<(R::El, )> for PolyRingEmbedding<'a, R> 
+    where R: Ring
+{
+    extern "rust-call" fn call_mut(
+        &mut self, 
+        (x, ): (R::El, )
+    ) -> Self::Output {
+        self.call((x, ))
+    }
+}
+
+impl<'a, R> Fn<(R::El, )> for PolyRingEmbedding<'a, R> 
+    where R: Ring
+{
+    extern "rust-call" fn call(
+        &self, 
+        (x, ): (R::El, )
+    ) -> Self::Output {
+        self.poly_ring.from(x)
+    }
 }
 
 #[cfg(test)]

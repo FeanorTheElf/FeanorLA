@@ -1,33 +1,29 @@
 use super::super::ring::*;
+use super::super::embedding::*;
 use super::eea::*;
 
 pub trait FieldOfFractionsInfoRing: Ring {
-    type FieldOfFractions: Ring;
-    type CanonicalEmbedding: FnMut(Self::El) -> <Self::FieldOfFractions as Ring>::El;
 
-    fn field_of_fractions(&self) -> (Self::FieldOfFractions, Self::CanonicalEmbedding);
+    fn field_of_fractions(self) -> FieldOfFractions<Self>;
 }
 
 impl<R> FieldOfFractionsInfoRing for R
     where R: Ring
 {
-    type FieldOfFractions = FieldOfFractions<R>;
-    type CanonicalEmbedding = FieldOfFractionsEmbedding<R>;
-
-    fn field_of_fractions(&self) -> (Self::FieldOfFractions, Self::CanonicalEmbedding) {
-        assert!(self.is_integral().can_use());
-        let field = FieldOfFractions { base_ring: self.clone() };
-        (field.clone(), FieldOfFractionsEmbedding { field_of_fractions: field })
+    fn field_of_fractions(self) -> FieldOfFractions<Self> {
+        FieldOfFractions {
+            base_ring: self
+        }
     }
 }
 
-pub struct FieldOfFractionsEmbedding<R>
+pub struct FieldOfFractionsEmbedding<'a, R>
     where R: Ring
 {
-    field_of_fractions: FieldOfFractions<R>
+    field_of_fractions: &'a FieldOfFractions<R>
 }
 
-impl<R> FnOnce<(R::El, )> for FieldOfFractionsEmbedding<R> 
+impl<'a, R> FnOnce<(R::El, )> for FieldOfFractionsEmbedding<'a, R> 
     where R: Ring
 {
     type Output = <FieldOfFractions<R> as Ring>::El;
@@ -40,11 +36,22 @@ impl<R> FnOnce<(R::El, )> for FieldOfFractionsEmbedding<R>
     }
 }
 
-impl<R> FnMut<(R::El, )> for FieldOfFractionsEmbedding<R> 
+impl<'a, R> FnMut<(R::El, )> for FieldOfFractionsEmbedding<'a, R> 
     where R: Ring
 {
     extern "rust-call" fn call_mut(
         &mut self, 
+        (x, ): (R::El, )
+    ) -> Self::Output {
+        self.call((x, ))
+    }
+}
+
+impl<'a, R> Fn<(R::El, )> for FieldOfFractionsEmbedding<'a, R> 
+    where R: Ring
+{
+    extern "rust-call" fn call(
+        &self, 
         (x, ): (R::El, )
     ) -> Self::Output {
         self.field_of_fractions.from(x)
@@ -196,6 +203,22 @@ impl<R> Ring for FieldOfFractions<R>
     }
 }
 
+impl<'a, 'b, R> CanonicalEmbeddingInfo<&'a R> for &'b FieldOfFractions<R> 
+    where R: Ring
+{
+    type Embedding = FieldOfFractionsEmbedding<'b, R>;
+
+    fn has_embedding(&self, from: &&'a R) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embedding(self, from: &'a R) -> Self::Embedding {
+        FieldOfFractionsEmbedding {
+            field_of_fractions: self
+        }
+    }
+}
+
 impl<R> DivisibilityInfoRing for FieldOfFractions<R>
     where R: Ring
 {
@@ -219,7 +242,7 @@ use super::super::wrapper::*;
 
 #[test]
 fn test_add() {
-    let (rats, _) = BigInt::RING.field_of_fractions();
+    let rats = BigInt::RING.field_of_fractions();
     let two = rats.bind(rats.from(BigInt::from(2)));
     let three = rats.bind(rats.from(BigInt::from(3)));
     let two_thirds = two.clone() / three.clone();
@@ -230,7 +253,7 @@ fn test_add() {
 
 #[test]
 fn test_mul() {
-    let (rats, _) = BigInt::RING.field_of_fractions();
+    let rats = BigInt::RING.field_of_fractions();
     let two = rats.bind(rats.from(BigInt::from(2)));
     let three = rats.bind(rats.from(BigInt::from(3)));
     let two_thirds = two.clone() / three.clone();
