@@ -1,4 +1,4 @@
-use super::super::alg::*;
+use super::ring::*;
 
 use std::cmp::Ordering;
 use std::ops::*;
@@ -170,7 +170,7 @@ impl BigInt {
             )
         };
         if let Some(d) = rhs.highest_set_block() {
-            let mut val = BigInt::zero();
+            let mut val = BigInt::ZERO;
             for i in 0..=d {
                 val.assign(self);
                 val.abs_multiplication_small(rhs.data[i]);
@@ -310,7 +310,7 @@ impl BigInt {
         assert!(!rhs.is_zero());
 
         if let Some(mut d) = self.highest_set_block() {
-            let mut tmp = BigInt::zero();
+            let mut tmp = BigInt::ZERO;
             let k = rhs.highest_set_block().expect("Division by zero");
             if d < k {
                 return Self::ZERO.clone();
@@ -549,12 +549,12 @@ impl BigInt {
         if val.is_infinite() || val.is_nan() {
             return None;
         } else if val.abs() <= 0.5 {
-            return Some(BigInt::zero());
+            return Some(BigInt::ZERO);
         } else if val.abs() <= 1.5 {
             if val.is_sign_negative() { 
-                return Some(-BigInt::one());
+                return Some(BigInt::RING.neg(BigInt::RING.one()));
             } else { 
-                return Some(BigInt::one());
+                return Some(BigInt::RING.one());
             }
         } else {
             const MANTISSA: i32 = 52;
@@ -597,15 +597,15 @@ impl BigInt {
         where F: FnMut(&BigInt) -> BigInt
     {
         let mut begin = approx.clone();
-        let mut step = BigInt::one();
+        let mut step = BigInt::RING.one();
         while f(&begin).signum() > 0 {
-            begin -= &step;
+            begin = BigInt::RING.sub_ref_snd(begin, &step);
             step *= 2;
         }
         let mut end = approx;
-        step = BigInt::one();
+        step = BigInt::RING.one();
         while f(&end).signum() < 0 {
-            end += &step;
+            end = BigInt::RING.add_ref(end, &step);
             step *= 2;
         }
         return Self::bisect(f, begin, end);
@@ -627,7 +627,7 @@ impl BigInt {
         assert!(f(&start).signum() <= 0);
         assert!(f(&end).signum() >= 0);
         loop {
-            let mid = (&start + &end) / 2;
+            let mid = BigInt::RING.add_ref(start.clone(), &end) / 2;
             if mid == start {
                 return start;
             }
@@ -659,12 +659,12 @@ impl BigInt {
         let root_approx = self.to_float_approx().powf(1. / n as f64);
         if n % 2 == 0 {
             return BigInt::find_zero_floor(
-                |x| x.clone().abs() * x.clone().pow((n - 1) as u32) - &self, 
+                |x| BigInt::RING.sub_ref_snd(BigInt::RING.mul(x.clone().abs(), BigInt::RING.pow(x, (n - 1) as u32)), &self), 
                 BigInt::from_float_approx(root_approx).unwrap_or(BigInt::ZERO)
             );
         } else {
             return BigInt::find_zero_floor(
-                |x| x.clone().pow(n as u32) - &self, 
+                |x| BigInt::RING.sub_ref_snd(BigInt::RING.pow(x, n as u32), &self), 
                 BigInt::from_float_approx(root_approx).unwrap_or(BigInt::ZERO)
             );
         }
@@ -833,6 +833,12 @@ impl Ring for BigIntRing {
         return result;
     }
 
+    fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El {
+        let mut result = lhs.abs_multiplication(&rhs);
+        result.negative = lhs.negative ^ rhs.negative;
+        return result;
+    }
+
     fn neg(&self, mut val: Self::El) -> Self::El {
         val.negative = !val.negative;
         return val;
@@ -866,20 +872,15 @@ impl Ring for BigIntRing {
 
     fn is_zero(&self, val: &Self::El) -> bool { self.eq(val, &BigInt::ZERO) }
 
-    fn is_integral(&self) -> bool { true }
-    fn is_euclidean(&self) -> bool { true }
-    fn is_field(&self) -> bool { false }
-    
-    fn euclidean_div_rem(&self, mut lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) {
-        let quotient = lhs.euclidean_div_rem(rhs);
-        return (quotient, lhs);
-    }
+    fn is_noetherian(&self) -> bool { true }
+    fn is_integral(&self) -> RingPropValue { RingPropValue::True }
+    fn is_field(&self) -> RingPropValue { RingPropValue::False }
 
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
         if *rhs == 1 {
             return lhs;
         } else if *rhs == -1 {
-            return -lhs;
+            return self.neg(lhs);
         } else if self.is_zero(rhs) {
             panic!("division by zero")
         } else {
@@ -917,6 +918,22 @@ impl Ring for BigIntRing {
     }
 }
 
+impl EuclideanInfoRing for BigIntRing {
+
+    fn is_euclidean(&self) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn euclidean_div_rem(&self, mut lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) {
+        let quo = lhs.euclidean_div_rem(rhs);
+        (quo, lhs)
+    }
+
+    fn euclidean_deg(&self, el: Self::El) -> BigInt {
+        el.abs()
+    }
+}
+
 impl BigIntRing {
 
     pub fn z_embedding<'a, R>(&self, target: &'a R) -> impl 'a + FnMut(BigInt) -> R::El
@@ -935,6 +952,13 @@ impl PartialEq<i64> for BigInt {
         } else {
             *rhs == 0
         }
+    }
+}
+
+impl PartialEq<BigInt> for BigInt {
+
+    fn eq(&self, rhs: &BigInt) -> bool {
+        BigInt::RING.eq(self, rhs)
     }
 }
 
@@ -978,6 +1002,12 @@ impl Ord for BigInt {
     }
 }
 
+impl SingletonRing for BigIntRing {
+    fn singleton() -> BigIntRing {
+        BigInt::RING
+    }
+}
+
 impl Add<i64> for BigInt {
     type Output = BigInt;
 
@@ -997,8 +1027,17 @@ impl AddAssign<i64> for BigInt {
                 negative: rhs < 0,
                 data: vec![rhs.abs() as u64]
             };
-            *self += rhs_bigint;
+            take_mut::take_or_recover(self, || BigInt::ZERO, |x| BigInt::RING.add(x, rhs_bigint));
         }
+    }
+}
+
+impl Add<BigInt> for BigInt {
+
+    type Output = BigInt;
+
+    fn add(self, rhs: BigInt) -> Self::Output {
+        BigInt::RING.add(self, rhs)
     }
 }
 
@@ -1020,12 +1059,28 @@ impl SubAssign<i64> for BigInt {
     }
 }
 
+impl Sub<BigInt> for BigInt {
+    type Output = BigInt;
+
+    fn sub(self, rhs: BigInt) -> Self::Output {
+        BigInt::RING.sub(self, rhs)
+    }
+}
+
 impl Mul<i64> for BigInt {
     type Output = BigInt;
 
     fn mul(mut self, rhs: i64) -> Self::Output {
         self *= rhs;
         return self;
+    }
+}
+
+impl Mul<BigInt> for BigInt {
+    type Output = BigInt;
+
+    fn mul(self, rhs: BigInt) -> Self::Output {
+        BigInt::RING.mul(self, rhs)
     }
 }
 
@@ -1078,8 +1133,12 @@ impl Shr<usize> for BigInt {
     }
 }
 
-impl_ring_el!{ BigInt; BigInt::RING; BigIntRing; RingAxiomsEuclideanRing }
-impl_euclidean_ring_el!{ BigInt; BigInt::RING }
+impl std::fmt::Display for BigInt {
+
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        BigInt::RING.format(self, f, false)
+    }
+}
 
 impl Eq for BigInt {}
 
@@ -1094,8 +1153,6 @@ impl Hash for BigInt {
         }
     }
 }
-
-impl Integer for BigInt {}
 
 #[derive(Debug, Clone)]
 pub enum BigIntParseError {
@@ -1170,7 +1227,7 @@ fn test_sub_assign() {
     let mut x = "4294836225".parse::<BigInt>().unwrap();
     let y =     "4294967297".parse::<BigInt>().unwrap();
     let z =        "-131072".parse::<BigInt>().unwrap();
-    x -= &y;
+    x = x - y;
     assert_eq!(z, x);
 }
 
@@ -1280,15 +1337,15 @@ fn test_axioms() {
     for i in 0..l {
         assert_eq!(BigInt::ZERO, ns[i].clone() - ns[i].clone());
         if !ns[i].is_zero() {
-            assert_eq!(BigInt::one(), ns[i].clone() / ns[i].clone());
+            assert_eq!(BigInt::RING.one(), BigInt::RING.euclidean_div(ns[i].clone(), &ns[i]));
         }
-        assert_eq!(ns[i], ns[i].clone() + BigInt::zero());
-        assert_eq!(ns[i], ns[i].clone() * BigInt::one());
+        assert_eq!(ns[i], ns[i].clone() + BigInt::ZERO);
+        assert_eq!(ns[i], ns[i].clone() * BigInt::RING.one());
     }
     for i in 0..l {
         for j in 0..l {
             if !ns[j].is_zero() {
-                assert_eq!(ns[i], (ns[i].clone() / ns[j].clone()) * ns[j].clone() + (ns[i].clone() % ns[j].clone()));
+                assert_eq!(ns[i], BigInt::RING.euclidean_div(ns[i].clone(), &ns[j]) * ns[j].clone() + BigInt::RING.euclidean_rem(ns[i].clone(), &ns[j]));
             }
             assert_eq!(ns[i].clone() + ns[j].clone(), ns[j].clone() + ns[i].clone());
             assert_eq!(ns[i].clone() * ns[j].clone(), ns[j].clone() * ns[i].clone());
@@ -1330,7 +1387,7 @@ fn bench_div(bencher: &mut test::Bencher) {
     let y = BigInt::from_str_radix("48937502893645789234569182735646324895723409587234", 10).unwrap();
     let z = BigInt::from_str_radix("48682207850683149082203680872586784064678018", 10).unwrap();
     bencher.iter(|| {
-        let q = x.clone() / y.clone();
+        let q = BigInt::RING.euclidean_div(x.clone(), &y);
         assert_eq!(z, q);
     })
 }
@@ -1350,9 +1407,9 @@ fn test_eq() {
     assert!(a == b);
     assert!(b == a);
     assert!(calculate_hash(&a) == calculate_hash(&b));
-    assert!(a != BigInt::one());
+    assert!(a != BigInt::RING.one());
     // the next line could theoretically fail, but it is very improbable and we definitly should test hash inequality
-    assert!(calculate_hash(&a) != calculate_hash(&BigInt::one()));
+    assert!(calculate_hash(&a) != calculate_hash(&BigInt::RING.one()));
 }
 
 #[test]
@@ -1362,7 +1419,7 @@ fn test_cmp_small() {
 
 #[test]
 fn test_find_zero_floor() {
-    let f = |x: &BigInt| x * x - 234867;
+    let f = |x: &BigInt| BigInt::RING.mul_ref(x, x) - 234867;
     assert_eq!(BigInt::from(484), BigInt::find_zero_floor(f, BigInt::ZERO));
 
     let f = |x: &BigInt| x.clone();
