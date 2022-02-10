@@ -3,6 +3,7 @@ use super::super::super::la::mat::*;
 use super::super::super::bigint::*;
 use super::super::eea::*;
 use super::uni_var::*;
+use super::ops::*;
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -12,8 +13,11 @@ use oorandom;
 fn pow_mod_f<F>(poly_ring: &PolyRing<F>, g: &<PolyRing<F> as Ring>::El, f: &<PolyRing<F> as Ring>::El, pow: &BigInt) -> <PolyRing<F> as Ring>::El
     where F: DivisibilityInfoRing
 {
+    if *pow == 0 {
+        return poly_ring.one();
+    }
     let mut result = poly_ring.one();
-    for i in (0..(pow.log2_floor() + 1)).rev() {
+    for i in (0..(pow.abs_log2_floor() + 1)).rev() {
         if pow.is_bit_set(i) {
             result = poly_ring.mul(poly_ring.mul_ref(&result, g), result);
         } else {
@@ -26,28 +30,25 @@ fn pow_mod_f<F>(poly_ring: &PolyRing<F>, g: &<PolyRing<F> as Ring>::El, f: &<Pol
 
 // we cannot really check if the given field is really a prime field, so just assume that it is.
 // furthermore, the input polynomial must be square-free
-fn distinct_degree_factorization<F>(prime_field: F, p: BigInt, mut f: Vector<VectorOwned<F::El>, F::El>) -> Vec<Vector<VectorOwned<F::El>, F::El>>
+pub fn distinct_degree_factorization<F>(prime_field: F, p: &BigInt, mut f: Vector<VectorOwned<F::El>, F::El>) -> Vec<Vector<VectorOwned<F::El>, F::El>>
     where F: DivisibilityInfoRing
 {
-    let poly_ring = PolyRing::adjoint(prime_field, "X");
+    let poly_ring = PolyRing::adjoint(prime_field.clone(), "X");
+    assert!(!poly_ring.is_zero(&f));
     let mut result = Vec::new();
+    result.push(poly_ring.one());
     let mut x_power_q_mod_f = poly_ring.unknown();
-    if let Some(factor) = poly_ring.quotient(&f, &poly_ring.unknown()) {
-        f = factor;
-        result.push(poly_ring.unknown());
-    } else {
-        result.push(poly_ring.one());
-    }
-    while poly_ring.deg(&f) != None && poly_ring.deg(&f) != Some(0)  {
+    while poly_ring.deg(&f) != Some(0) {
         // technically, we could just compute gcd(f, X^(p^i) - X), however p^i might be
         // really large and eea will be very slow. Hence, we do the first modulo operation
         // X^(p^i) mod f using square-and-multiply in the ring F[X]/(f)
-        x_power_q_mod_f = pow_mod_f(&poly_ring, &x_power_q_mod_f, &f, &p);
+        x_power_q_mod_f = pow_mod_f(&poly_ring, &x_power_q_mod_f, &f, p);
         let fq_defining_poly_mod_f = poly_ring.sub_ref_fst(&x_power_q_mod_f, poly_ring.unknown());
-        let deg_i_factor = eea(&poly_ring, f.clone(), fq_defining_poly_mod_f).2;
+        let deg_i_factor = gcd(&poly_ring, f.clone(), fq_defining_poly_mod_f.clone());
         f = poly_ring.euclidean_div(f, &deg_i_factor);
         result.push(deg_i_factor);
     }
+    result[0] = poly_ring.mul_ref(&result[0], &f);
     return result;
 }
 
@@ -80,10 +81,12 @@ fn distinct_degree_factorization<F>(prime_field: F, p: BigInt, mut f: Vector<Vec
 /// the other is not is approximately 1/2.
 ///
 #[allow(non_snake_case)]
-fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<<F as Ring>::El>, <F as Ring>::El>, d: u32) -> Vector<VectorOwned<<F as Ring>::El>, <F as Ring>::El>
+pub fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<<F as Ring>::El>, <F as Ring>::El>, d: usize) -> Vector<VectorOwned<<F as Ring>::El>, <F as Ring>::El>
     where F: DivisibilityInfoRing
 {
     assert!(*p != 2);
+    assert!(poly_degree(&prime_field, f.as_ref()).unwrap() % d == 0);
+    assert!(poly_degree(&prime_field, f.as_ref()).unwrap() > d);
     let poly_ring = PolyRing::adjoint(prime_field, "X");
 
     let mut hasher = DefaultHasher::new();
@@ -91,13 +94,17 @@ fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<<F as 
     let mut rng = oorandom::Rand32::new(hasher.finish());
 
     loop {
-        let T0 = poly_ring.from_z_big(BigInt::get_uniformly_random_oorandom(&mut rng, p, 5));
-        let T1 = poly_ring.mul(
-            poly_ring.from_z_big(BigInt::get_uniformly_random_oorandom(&mut rng, p, 5)), 
-            poly_ring.unknown()
-        );
-        let T = poly_ring.add(T0, T1);
-        let exp = (p.clone().pow(d) - 1) / 2;
+        let mut T = poly_ring.zero();
+        let mut power_x = poly_ring.one();
+        for _ in 0..(2 * d - 1) {
+            T = poly_ring.add(T, poly_ring.mul(
+                poly_ring.from_z_big(BigInt::get_uniformly_random_oorandom(&mut rng, p, 5)),
+                power_x.clone()
+            ));
+            power_x = poly_ring.mul(power_x, poly_ring.unknown());
+        }
+        T = poly_ring.add(T, power_x);
+        let exp = (p.clone().pow(d as u32) - 1) / 2;
         let G = poly_ring.sub(pow_mod_f(&poly_ring, &T, &f, &exp), poly_ring.one());
         let g = eea(&poly_ring, f.clone(), G.clone()).2;
         if !poly_ring.is_unit(&g) && poly_ring.quotient(&g, &f).is_none() {
@@ -106,24 +113,14 @@ fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<<F as 
     }
 }
 
-impl<R> PolyRing<R>
+pub fn poly_squarefree_part<R>(ring: &R, poly: Vector<VectorOwned<R::El>, R::El>) -> Vector<VectorOwned<R::El>, R::El>
     where R: Ring
 {
-    ///
-    /// For a polynomial f, returns the square-free part of f, i.e. the
-    /// product of all distinct factors of f. This is only defined up
-    /// to multiplication by units.
-    /// 
-    /// Requires that the underlying ring is a field.
-    /// 
-    pub fn poly_squarefree_part(&self, poly: Vector<VectorOwned<R::El>, R::El>) -> Vector<VectorOwned<R::El>, R::El>
-        where R: Ring
-    {
-        assert!(self.base_ring().is_field().can_use());
-        let derivate = self.derive(poly.clone());
-        let square_part = eea(self, poly.clone(), derivate).2;
-        return self.div(poly, &square_part);
-    }
+    let poly_ring = PolyRing::adjoint(ring, "X");
+    assert!(poly_ring.base_ring().is_field().can_use());
+    let derivate = poly_ring.derive(poly.clone());
+    let square_part = eea(&poly_ring, poly.clone(), derivate).2;
+    return poly_ring.div(poly, &square_part);
 }
 
 #[cfg(test)]
@@ -134,6 +131,8 @@ use super::super::zn::*;
 use super::super::super::wrapper::*;
 #[cfg(test)]
 use super::super::super::primitive::*;
+#[cfg(test)]
+use super::super::super::embedding::*;
 
 #[test]
 fn test_poly_squarefree_part() {
@@ -141,7 +140,7 @@ fn test_poly_squarefree_part() {
     let x = ring.bind(ring.unknown());
     let a = (&x + 4) * (&x + 6).pow(2) * (&x - 2).pow(2) * (&x + 8).pow(3);
     let b = (&x + 4) * (&x + 6) * (&x - 2) * (&x + 8);
-    let mut squarefree_part = ring.bind(ring.poly_squarefree_part(a.val().clone()));
+    let mut squarefree_part = ring.bind(poly_squarefree_part(ring.base_ring(), a.val().clone()));
     squarefree_part = squarefree_part.ring().quotient(&squarefree_part, &ring.bind(ring.from(*ring.lc(squarefree_part.val()).unwrap()))).unwrap();
     assert_eq!(b, squarefree_part);
 }
@@ -152,13 +151,13 @@ fn test_distinct_degree_factorization() {
     let ring = PolyRing::adjoint(field, "X");
     let x = ring.bind(ring.unknown());
 
-    let a = &x * (&x + 1) * (&x + 2) * (&x * &x + &x + 1) * (&x * &x * &x + &x + 1) * (&x * &x * &x + &x * &x + 1);
-    let a0 = x.clone();
-    let a1 = (&x + 1) * (&x + 2);
+    let a = &x * (&x + 1) * (&x * &x + &x + 1) * (&x * &x * &x + &x + 1) * (&x * &x * &x + &x * &x + 1);
+    let a0 = ring.bind(ring.from_z(1));
+    let a1 = &x * (&x + 1);
     let a2 = &x * &x + &x + 1;
     let a3 = (&x * &x * &x + &x + 1) * (&x * &x * &x + &x * &x + 1);
     let expected = vec![a0, a1, a2, a3];
-    let distinct_degree_factorization = distinct_degree_factorization(field, BigInt::from(2), a.val().clone());
+    let distinct_degree_factorization = distinct_degree_factorization(field, &BigInt::from(2), a.val().clone());
     assert_eq!(expected.len(), distinct_degree_factorization.len());
     for (f, e) in distinct_degree_factorization.into_iter().zip(expected.into_iter()) {
         let mut f = ring.bind(f);
@@ -167,17 +166,17 @@ fn test_distinct_degree_factorization() {
     }
 }
 
-//#[ignore]
 #[test]
 fn test_cantor_zassenhaus() {
     type Z7 = ZnEl<7>;
     let ring = PolyRing::adjoint(Z7::RING, "X");
     let x = ring.bind(ring.unknown());
+    let incl = ring.bind_ring().embedding(ring.base_ring().bind_ring());
 
     let f = &x * &x + 1;
     let g = &x * &x + &x + 3;
     let p = &f * &g;
-    let factor = cantor_zassenhaus(Z7::RING, &BigInt::from(7), p.val().clone(), 2);
-    println!("{}", ring.display(&factor));
-    assert!(false);
+    let mut factor = ring.bind(cantor_zassenhaus(Z7::RING, &BigInt::from(7), p.val().clone(), 2));
+    factor = factor.clone() / incl(ring.base_ring().bind(ring.lc(factor.val()).unwrap().clone()));
+    assert!(factor == f || factor == g);
 }

@@ -43,6 +43,10 @@ impl<R> RingElWrapper<R>
             el: self.ring.pow(&self.el, exp)
         }
     }
+
+    pub fn base_ring(&self) -> &R {
+        &self.ring
+    }
 }
 
 impl<R> Clone for RingElWrapper<R>
@@ -260,10 +264,22 @@ impl<R> Div<RingElWrapper<R>> for RingElWrapper<R>
 {
     type Output = RingElWrapper<R>;
 
-    fn div(self, rhs: RingElWrapper<R>) -> Self::Output {
+    default fn div(self, rhs: RingElWrapper<R>) -> Self::Output {
         assert!(self.ring.is_field().can_use());
         RingElWrapper {
             el: self.ring.div(self.el, &rhs.el),
+            ring: self.ring
+        }
+    }
+}
+
+impl<R> Div<RingElWrapper<R>> for RingElWrapper<R>
+    where R: DivisibilityInfoRing
+{
+    fn div(self, rhs: RingElWrapper<R>) -> Self::Output {
+        assert!(self.ring.is_divisibility_computable());
+        RingElWrapper {
+            el: self.ring.quotient(&self.el, &rhs.el).unwrap(),
             ring: self.ring
         }
     }
@@ -357,6 +373,45 @@ impl<R> Mul<i64> for RingElWrapper<R>
     }
 }
 
+impl<'b, R> Mul<i64> for &'b RingElWrapper<R>
+    where R: Ring
+{
+    type Output = RingElWrapper<R>;
+
+    fn mul(self, rhs: i64) -> Self::Output {
+        RingElWrapper {
+            el: self.ring.mul_ref(&self.el, &(&self.ring).z_embedding(i64::RING)(rhs)),
+            ring: self.ring.clone()
+        }
+    }
+}
+
+impl<R> Div<i64> for RingElWrapper<R>
+    where R: Ring
+{
+    type Output = RingElWrapper<R>;
+
+    default fn div(self, rhs: i64) -> Self::Output {
+        assert!(self.ring.is_field().can_use());
+        RingElWrapper {
+            el: self.ring.div(self.el, &(&self.ring).z_embedding(i64::RING)(rhs)),
+            ring: self.ring
+        }
+    }
+}
+
+impl<R> Div<i64> for RingElWrapper<R>
+    where R: DivisibilityInfoRing
+{
+    fn div(self, rhs: i64) -> Self::Output {
+        assert!(self.ring.is_divisibility_computable());
+        RingElWrapper {
+            el: self.ring.quotient(&self.el, &(&self.ring).z_embedding(i64::RING)(rhs)).unwrap(),
+            ring: self.ring
+        }
+    }
+}
+
 impl<R> std::fmt::Display for RingElWrapper<R>
     where R: Ring
 {
@@ -368,6 +423,7 @@ impl<R> std::fmt::Display for RingElWrapper<R>
 pub trait BindableElementRing: Ring {
 
     fn bind<'a>(&'a self, el: Self::El) -> RingElWrapper<&'a Self>;
+    fn bind_ring<'a>(&'a self) -> WrappingRing<&'a Self>;
 }
 
 impl<R: Ring> BindableElementRing for R {
@@ -376,6 +432,12 @@ impl<R: Ring> BindableElementRing for R {
         RingElWrapper {
             ring: self,
             el: el
+        }
+    }
+    
+    fn bind_ring<'a>(&'a self) -> WrappingRing<&'a Self> {
+        WrappingRing {
+            ring: self
         }
     }
 }
@@ -603,5 +665,67 @@ impl<R> DivisibilityInfoRing for WrappingRing<R>
 
     fn is_unit(&self, x: &Self::El) -> bool {
         self.ring.is_unit(&x.el)
+    }
+}
+
+pub struct WrappingEmbedding<R, S>
+    where R: CanonicalEmbeddingInfo<S>, S: Ring
+{
+    base_embedding: R::Embedding,
+    target_ring: R
+}
+
+impl<R, S> FnOnce<(<WrappingRing<S> as Ring>::El, )> for WrappingEmbedding<R, S> 
+    where R: CanonicalEmbeddingInfo<S>, S: Ring
+{
+    type Output = <WrappingRing<R> as Ring>::El;
+
+    extern "rust-call" fn call_once(
+        mut self, 
+        (x, ): (<WrappingRing<S> as Ring>::El, )
+    ) -> Self::Output {
+        self.call_mut((x, ))
+    }
+}
+
+impl<R, S> FnMut<(<WrappingRing<S> as Ring>::El, )> for WrappingEmbedding<R, S> 
+    where R: CanonicalEmbeddingInfo<S>, S: Ring
+{
+    extern "rust-call" fn call_mut(
+        &mut self, 
+        (x, ): (<WrappingRing<S> as Ring>::El, )
+    ) -> Self::Output {
+        self.call((x, ))
+    }
+}
+
+impl<R, S> Fn<(<WrappingRing<S> as Ring>::El, )> for WrappingEmbedding<R, S> 
+    where R: CanonicalEmbeddingInfo<S>, S: Ring
+{
+    extern "rust-call" fn call(
+        &self, 
+        (x, ): (<WrappingRing<S> as Ring>::El, )
+    ) -> Self::Output {
+        RingElWrapper {
+            el: (self.base_embedding)(x.el), 
+            ring: self.target_ring.clone()
+        }
+    }
+}
+
+impl<R, S> CanonicalEmbeddingInfo<WrappingRing<S>> for WrappingRing<R>
+    where R: CanonicalEmbeddingInfo<S>, S: Ring
+{
+    type Embedding = WrappingEmbedding<R, S>;
+
+    fn has_embedding(&self, from: &WrappingRing<S>) -> RingPropValue {
+        self.ring.has_embedding(&from.ring)
+    }
+
+    fn embedding(self, from: WrappingRing<S>) -> Self::Embedding {
+        WrappingEmbedding {
+            target_ring: self.ring.clone(),
+            base_embedding: self.ring.embedding(from.ring)
+        }
     }
 }

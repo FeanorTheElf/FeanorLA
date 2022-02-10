@@ -3,6 +3,10 @@ use super::super::super::la::vec::*;
 use super::super::super::bigint::*;
 use super::super::super::embedding::*;
 use super::ops::*;
+use super::factoring;
+use super::super::super::wrapper::*;
+
+use vector_map::VecMap;
 
 #[derive(Debug, Clone)]
 pub struct PolyRing<R>
@@ -85,6 +89,13 @@ impl<R> PolyRing<R>
 
     pub fn base_ring(&self) -> &R {
         &self.base_ring
+    }
+
+    pub fn normalize(&self, f: <Self as Ring>::El) -> (<Self as Ring>::El, R::El) {
+        assert!(self.base_ring().is_field().can_use());
+        let lc = self.lc(&f).unwrap().clone();
+        let lc_inv = self.base_ring().div(self.base_ring().one(), &lc);
+        return (self.mul(f, self.from(lc_inv)), lc);
     }
 }
 
@@ -225,6 +236,7 @@ impl<R> DivisibilityInfoRing for PolyRing<R>
     }
 
     fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
+        assert!(self.is_divisibility_computable());
         assert!(!self.is_zero(rhs));
         let lc = self.lc(rhs).unwrap();
         let mut p = lhs.clone();
@@ -241,6 +253,7 @@ impl<R> DivisibilityInfoRing for PolyRing<R>
     }
 
     fn is_unit(&self, el: &Self::El) -> bool {
+        assert!(self.is_divisibility_computable());
         self.deg(el).map(|d| d == 0).unwrap_or(false) && self.base_ring.is_unit(&el[0])
     }
 }
@@ -249,14 +262,21 @@ impl<R> EuclideanInfoRing for PolyRing<R>
     where R: Ring
 {
     fn is_euclidean(&self) -> RingPropValue {
-        self.base_ring.is_field()
+        if self.base_ring.is_field().can_use() {
+            return RingPropValue::True;
+        } else {
+            return RingPropValue::Unknown;
+        }
     }
 
     fn euclidean_deg(&self, el: Self::El) -> BigInt {
+        assert!(self.is_euclidean().can_use());
         self.deg(&el).map(|x| (x + 1) as i64).map(BigInt::from).unwrap_or(BigInt::ZERO)
     }
 
     fn euclidean_div_rem(&self, mut lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) {
+        assert!(self.is_euclidean().can_use());
+        assert!(self.base_ring().is_field().can_use());
         assert!(!self.is_zero(&rhs));
         let rhs_lc = self.lc(&rhs).unwrap();
         let rhs_lc_inv = self.base_ring.div(self.base_ring.one(), rhs_lc);
@@ -266,6 +286,14 @@ impl<R> EuclideanInfoRing for PolyRing<R>
             |x| Ok(self.base_ring.mul_ref(x, &rhs_lc_inv))
         ).unwrap();
         return (q, lhs);
+    }
+}
+
+impl<R> RingElWrapper<PolyRing<R>>
+    where R: Ring
+{
+    pub fn lc(&self) -> <WrappingRing<&R> as Ring>::El {
+        self.base_ring().base_ring().bind(self.base_ring().lc(self.val()).unwrap().clone())
     }
 }
 
@@ -310,8 +338,115 @@ impl<'a, R> Fn<(R::El, )> for PolyRingEmbedding<'a, R>
     }
 }
 
-#[cfg(test)]
-use super::super::super::wrapper::*;
+use super::super::zn::*;
+
+impl FactoringInfoRing for PolyRing<FactorRingZ> {
+
+    fn is_ufd(&self) -> RingPropValue {
+        if self.base_ring.is_field().can_use() && *self.base_ring().characteristic() != 2 {
+            return RingPropValue::True;
+        } else {
+            return RingPropValue::Unknown;
+        }
+    }
+
+    fn is_prime(&self, el: &Self::El) -> bool {
+        if self.is_zero(el) {
+            return false;
+        }
+        let d = self.deg(el).unwrap();
+        let sqrfree_part = factoring::poly_squarefree_part(self.base_ring(), el.as_ref().into_owned());
+        if self.deg(&sqrfree_part) != Some(d) {
+            return false;
+        }
+        let distinct_degree_factorization = factoring::distinct_degree_factorization(
+            self.base_ring(), 
+            self.base_ring().characteristic(), 
+            sqrfree_part
+        );
+        if d <= distinct_degree_factorization.len() || self.is_one(&distinct_degree_factorization[d]) {
+            return false;
+        }
+        return true;
+    }
+
+    fn calc_factor(&self, el: &Self::El) -> Option<Self::El> {
+        assert!(!self.is_zero(el));
+        let sqrfree_part = factoring::poly_squarefree_part(self.base_ring(), el.clone());
+        if self.deg(&sqrfree_part) != self.deg(el) {
+            return Some(sqrfree_part);
+        }
+        let distinct_degree_factorization = factoring::distinct_degree_factorization(
+            self.base_ring(), 
+            self.base_ring().characteristic(), 
+            sqrfree_part
+        );
+        for (d, factor) in distinct_degree_factorization.into_iter().enumerate() {
+            if self.deg(&factor) == Some(d) {
+                return None;
+            } else if self.deg(&factor) == self.deg(el) {
+                return Some(factoring::cantor_zassenhaus(
+                    self.base_ring(), 
+                    self.base_ring().characteristic(), 
+                    factor, 
+                    d as usize
+                ));
+            } else if !self.is_one(&factor) {
+                return Some(factor);
+            }
+        }
+        unreachable!()
+    }
+
+    fn factor<'a>(&'a self, mut el: Self::El) -> VecMap<RingElWrapper<&'a Self>, usize> {
+        assert!(!self.is_zero(&el));
+        let mut result = VecMap::new();
+        let mut unit = self.base_ring().one();
+        while !self.is_unit(&el) {
+            let sqrfree_part = factoring::poly_squarefree_part(self.base_ring(), el.clone());
+            for (d, el) in factoring::distinct_degree_factorization(
+                self.base_ring(), 
+                self.base_ring().characteristic(), 
+                sqrfree_part.clone()
+            ).into_iter().enumerate() {
+                let mut stack = Vec::new();
+                stack.push(el);
+                while let Some(el) = stack.pop() {
+                    let (el, scaling) = self.normalize(el);
+                    unit = self.base_ring().mul(unit, scaling);
+                    if self.is_one(&el) {
+                        continue;
+                    } else if self.deg(&el) == Some(d) {
+                        let wrapped_el = self.bind(el);
+                        if let Some(power) = result.get_mut(&wrapped_el) {
+                            *power += 1;
+                        } else {
+                            debug_assert!(!self.is_unit(wrapped_el.val()));
+                            result.insert(wrapped_el, 1);
+                        }
+                    } else {
+                        let factor = factoring::cantor_zassenhaus(
+                            self.base_ring(), 
+                            self.base_ring().characteristic(), 
+                            el.clone(), 
+                            d
+                        );
+                        stack.push(self.quotient(&el, &factor).unwrap());
+                        stack.push(factor);
+                    }
+                }
+            }
+            el = self.quotient(&el, &sqrfree_part).unwrap();
+        }
+        unit = self.base_ring().mul_ref(&unit, el.at(0));
+        debug_assert!(self.base_ring().is_unit(&unit));
+        if !self.base_ring().is_one(&unit) {
+            result.insert(self.bind(self.from(unit)), 1);
+        }
+        return result;
+    }
+}
+
 #[cfg(test)]
 use super::super::super::primitive::*;
 
@@ -367,4 +502,25 @@ fn test_poly_degree() {
 
     let p = &x * &x * &x + 4;
     assert_eq!(Some(3), ring.deg(p.val()));
+}
+
+#[test]
+fn test_factor() {
+    let coeff_ring = FactorRingZ::new(BigInt::from(3));
+    let ring = PolyRing::adjoint(coeff_ring, "X");
+    let x = ring.bind(ring.unknown());
+
+    let p = x.clone().pow(9) - &x;
+    let mut expected = VecMap::new();
+    expected.insert(x.clone(), 1);
+    expected.insert(&x + 1, 1);
+    expected.insert(&x + 2, 1);
+    expected.insert(&x * &x + &x + 2, 1);
+    expected.insert(&x * &x + &x * 2 + 2, 1);
+    expected.insert(&x * &x + 1, 1);
+    let factorization = ring.factor(p.into_val());
+    for (el, _) in &factorization {
+        println!("{}", el);
+    }
+    assert_eq!(expected, factorization);
 }

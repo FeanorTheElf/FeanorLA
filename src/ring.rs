@@ -1,4 +1,7 @@
 use super::bigint::*;
+use super::wrapper::*;
+
+use vector_map::VecMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RingPropValue {
@@ -137,7 +140,7 @@ pub trait Ring : std::fmt::Debug + std::clone::Clone {
         }
 
         let mut result = self.one();
-        for i in (0..(exp.log2_floor() + 1)).rev() {
+        for i in (0..(exp.abs_log2_floor() + 1)).rev() {
             if exp.is_bit_set(i) {
                 result = self.mul(self.mul_ref(&result, &basis), result);
             } else {
@@ -176,7 +179,7 @@ pub trait Ring : std::fmt::Debug + std::clone::Clone {
             return self.zero();
         }
         let mut result = self.zero();
-        for i in (0..(x.log2_floor() + 1)).rev() {
+        for i in (0..(x.abs_log2_floor() + 1)).rev() {
             if x.is_bit_set(i) {
                 result = self.add(self.add_ref(self.one(), &result), result);
             } else {
@@ -368,12 +371,32 @@ pub trait FactoringInfoRing : DivisibilityInfoRing {
     /// Checks whether an element in this ring is prime.
     /// This may panic if `is_ufd().can_use()` returns false.
     /// 
-    fn is_prime(&self, el: &Self::El) -> bool;
+    fn is_prime(&self, el: &Self::El) -> bool {
+        !self.is_unit(el) && self.calc_factor(el).is_none()
+    }
     ///
-    /// Returns a nontrivial factor of the given element, or None if the element is a unit.
+    /// Returns a nontrivial factor of the given element, or None if the element is prime or a unit.
     /// This may panic if `is_ufd().can_use()` returns false.
     /// 
-    fn calc_factor(&self, el: &mut Self::El) -> Option<Self::El>;
+    fn calc_factor(&self, el: &Self::El) -> Option<Self::El>;
+
+    fn factor<'a>(&'a self, el: Self::El) -> VecMap<RingElWrapper<&'a Self>, usize> {
+        let mut result = VecMap::new();
+        let mut stack = Vec::new();
+        stack.push(el);
+        while let Some(el) = stack.pop() {
+            let wrapped_el = self.bind(el);
+            if let Some(factor) = self.calc_factor(wrapped_el.val()) {
+                stack.push(self.quotient(wrapped_el.val(), &factor).unwrap());
+                stack.push(factor);
+            } else if let Some(power) = result.get_mut(&wrapped_el) {
+                *power += 1;
+            } else {
+                result.insert(wrapped_el, 1);
+            }
+        }
+        return result;
+    }
 }
 
 impl<'a, R> FactoringInfoRing for &'a R
@@ -381,7 +404,12 @@ impl<'a, R> FactoringInfoRing for &'a R
 {
     fn is_ufd(&self) -> RingPropValue { (**self).is_ufd() }
     fn is_prime(&self, el: &Self::El) -> bool { (**self).is_prime(el) }
-    fn calc_factor(&self, el: &mut Self::El) -> Option<Self::El> { (**self).calc_factor(el) }
+    fn calc_factor(&self, el: &Self::El) -> Option<Self::El> { (**self).calc_factor(el) }
+
+    fn factor<'b>(&'b self, el: Self::El) -> VecMap<RingElWrapper<&'b Self>, usize> { 
+        let result = (**self).factor(el);
+        return result.into_iter().map(|(el, power)| (self.bind(el.into_val()), power)).collect();
+    }
 }
 
 pub trait SingletonRing: Ring {

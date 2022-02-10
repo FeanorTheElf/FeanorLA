@@ -21,7 +21,7 @@ impl FactorRingZ {
         // have k such that 2^k > modulus^2
         // then (2^k / modulus) * x >> k differs at most 1 from floor(x / modulus)
         // if x < n^2, which is the case after multiplication
-        let k = modulus.log2_floor() * 2 + 2;
+        let k = modulus.abs_log2_floor() * 2 + 2;
         let inverse_modulus = BigInt::RING.euclidean_div(BigInt::power_of_two(k), &modulus);
         return FactorRingZ {
             modulus: modulus,
@@ -44,16 +44,20 @@ impl FactorRingZ {
     }
 
     pub fn project(&self, n: BigInt) -> <Self as Ring>::El {
-        let mut red_n = if n < self.modulus {
-            n
-        } else if n.log2_floor() + 1 < 2 * self.modulus.log2_floor() {
-            self.project_leq_n_square(n)
-        } else {
-            n.clone() - BigInt::RING.euclidean_div(n, &self.modulus) * self.modulus.clone()
-        };
-        if red_n < BigInt::ZERO {
+        let mut red_n = n;
+        let negated = red_n < 0;
+        if negated {
             red_n = -red_n;
-            red_n = red_n + self.modulus.clone();
+        }
+        if red_n < self.modulus {
+            // already in the interval [0, self.modulus[
+        } else if red_n.abs_log2_floor() + 1 < 2 * self.modulus.abs_log2_floor() {
+            red_n = self.project_leq_n_square(red_n);
+        } else {
+            red_n = red_n.clone() - BigInt::RING.euclidean_div(red_n, &self.modulus) * self.modulus.clone();
+        };
+        if negated {
+            red_n = self.modulus.clone() - red_n;
         }
         debug_assert!(red_n < self.modulus);
         return FactorRingZEl(red_n);
@@ -64,12 +68,16 @@ impl FactorRingZ {
     /// factor of the modulus (as Err())
     /// 
     pub fn invert(&self, x: BigInt) -> Result<BigInt, BigInt> {
-        let (s, _t, d) = eea(&BigInt::RING, x, self.modulus.clone());
+        let (s, t, d) = eea(&BigInt::RING, x.clone(), self.modulus.clone());
         if d != 1 && d != -1i64 {
             Err(d)
         } else {
             Ok(s)
         }
+    }
+
+    pub fn characteristic(&self) -> &BigInt {
+        &self.modulus
     }
 }
 
@@ -150,15 +158,37 @@ impl Ring for FactorRingZ {
         self.is_integral()
     }
 
-    fn div(&self, FactorRingZEl(lhs): Self::El, FactorRingZEl(rhs): &Self::El) -> Self::El { 
-        match self.invert(rhs.clone()) {
-            Err(factor) => panic!("Tried to divide in Z/{}Z, however this is not a field and the divisor is not invertible (the modulus has the nontrivial factor {})", self.modulus, factor),
-            Ok(inverse) => self.mul(FactorRingZEl(lhs), FactorRingZEl(inverse))
-        }
+    fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { 
+        assert!(self.is_field().can_use());
+        assert!(!self.is_zero(rhs));
+        let FactorRingZEl(rhs_repr) = rhs;
+        let inverse = self.project(self.invert(rhs_repr.clone()).unwrap());
+        debug_assert!(self.is_one(&self.mul_ref(&inverse, rhs)));
+        return self.mul(lhs, inverse);
     }
 
     fn format(&self, FactorRingZEl(el): &Self::El, f: &mut std::fmt::Formatter, _in_prod: bool) -> std::fmt::Result {
-        write!(f, "{} mod {}", el, self.modulus)
+        write!(f, "[{}]_{}", el, self.modulus)
+    }
+}
+
+impl DivisibilityInfoRing for FactorRingZ {
+    
+    fn is_divisibility_computable(&self) -> bool {
+        true
+    }
+    
+    fn quotient(&self, FactorRingZEl(lhs): &Self::El, FactorRingZEl(rhs): &Self::El) -> Option<Self::El> {
+        let d = gcd(&BigInt::RING, lhs.clone(), rhs.clone());
+        if let Ok(inv) = self.invert(BigInt::RING.quotient(rhs, &d).unwrap()) {
+            return Some(self.project(inv * BigInt::RING.quotient(lhs, &d).unwrap()));
+        } else {
+            return None;
+        }
+    }
+
+    fn is_unit(&self, FactorRingZEl(el): &Self::El) -> bool {
+        BigInt::RING.is_one(&signed_gcd(el.clone(), self.modulus.clone(), &BigInt::RING))
     }
 }
 
@@ -327,7 +357,7 @@ impl<const N: u64, const IS_FIELD: bool> Neg for ZnElImpl<N, IS_FIELD> {
 impl<const N: u64, const IS_FIELD: bool> std::fmt::Display for ZnElImpl<N, IS_FIELD> {
 
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "[{}]", self.repr)
+        write!(f, "[{}]_{}", self.repr, N)
     }
 }
 

@@ -13,7 +13,7 @@
 extern crate test;
 extern crate take_mut;
 extern crate oorandom;
-extern crate array_init;
+extern crate vector_map;
 
 pub mod bigint;
 pub mod ring;

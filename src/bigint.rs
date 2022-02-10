@@ -513,7 +513,7 @@ impl BigInt {
         }
     }
 
-    pub fn log2_floor(&self) -> usize {
+    pub fn abs_log2_floor(&self) -> usize {
         if let Some(d) = self.highest_set_block() {
             return Self::BLOCK_BITS - self.data[d].leading_zeros() as usize - 1 + 
                 d * Self::BLOCK_BITS;
@@ -716,7 +716,7 @@ impl BigInt {
         where G: FnMut() -> u64
     {
         assert!(*end_exclusive > 0);
-        let k = statistical_distance_bound + end_exclusive.log2_floor();
+        let k = statistical_distance_bound + end_exclusive.abs_log2_floor();
         let random_blocks = k / Self::BLOCK_BITS + 1;
         // generate a uniform random number in the range from 0 to 2^k 
         // and take it modulo end_exclusive the number of bigints 
@@ -1004,8 +1004,8 @@ impl Ord for BigInt {
         } else {
             match (self.negative, rhs.negative) {
                 (true, true) => rhs.abs_compare(self),
-                (true, false) => Ordering::Greater,
-                (false, true) => Ordering::Less,
+                (true, false) => Ordering::Less,
+                (false, true) => Ordering::Greater,
                 (false, false) => self.abs_compare(rhs)
             }
         }
@@ -1220,13 +1220,17 @@ impl FactoringInfoRing for BigIntRing {
         primes::miller_rabin(el, 10)
     }
 
-    fn calc_factor(&self, el: &mut Self::El) -> Option<Self::El> {
+    fn calc_factor(&self, el: &Self::El) -> Option<Self::El> {
         primes::calc_factor(el)
     }
 }
 
 #[cfg(test)]
 use std::str::FromStr;
+#[cfg(test)]
+use super::wrapper::*;
+#[cfg(test)]
+use vector_map::VecMap;
 
 #[test]
 fn test_print_power_2() {
@@ -1475,4 +1479,21 @@ fn test_find_zero_floor() {
 fn test_root_floor() {
     let n = BigInt::from(7681).pow(32);
     assert_eq!(BigInt::from(7681), n.root_floor(32));
+}
+
+#[test]
+fn test_factor() {
+    let mut expected = VecMap::new();
+    expected.insert(BigInt::RING.bind(BigInt::from(7)), 2);
+    expected.insert(BigInt::RING.bind(BigInt::from(2)), 1);
+    assert_eq!(expected, BigInt::RING.factor(BigInt::from(98)));
+}
+
+#[test]
+fn test_cmp() {
+    assert_eq!(true, BigInt::from(-1) < BigInt::from(2));
+    assert_eq!(true, BigInt::from(1) < BigInt::from(2));
+    assert_eq!(false, BigInt::from(2) < BigInt::from(2));
+    assert_eq!(false, BigInt::from(3) < BigInt::from(2));
+    assert_eq!(true, BigInt::from(-1) > BigInt::from(-2));
 }

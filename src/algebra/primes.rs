@@ -64,7 +64,7 @@ pub fn miller_rabin(n: &BigInt, k: usize) -> bool {
     return true;
 }
 
-pub fn calc_factor(el: &mut BigInt) -> Option<BigInt> {
+pub fn calc_factor(el: &BigInt) -> Option<BigInt> {
     // honestly, this is much too small, especially given my very slow implementation of the QS
     // however, now that it exists, I also want to use it :)
     // and all in all, the whole function is really slow
@@ -86,7 +86,7 @@ pub fn calc_factor(el: &mut BigInt) -> Option<BigInt> {
         if miller_rabin(&n, IS_PRIME_ERROR_BOUND) {
             return None;
         } else {
-            for i in 2..n.log2_floor() {
+            for i in 2..n.abs_log2_floor() {
                 if n.clone().root_floor(i).pow(i as u32) == n {
                     let root = n.root_floor(i);
                     return Some(root);

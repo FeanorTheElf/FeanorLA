@@ -2,6 +2,8 @@ use super::ring::*;
 use super::bigint::*;
 use super::primitive::*;
 
+use std::marker::PhantomData;
+
 pub trait CanonicalEmbeddingInfo<R>: Ring
     where R: Ring
 {
@@ -122,5 +124,58 @@ impl<R> CanonicalZEmbeddingInfo<StaticRing<i64>> for R
         IntEmbedding {
             target: self
         }
+    }
+}
+
+pub struct ComposedEmbedding<F, G, R, S, T>
+    where R: Ring, S: Ring, T: Ring, F: Fn(R::El) -> S::El, G: Fn(S::El) -> T::El
+{
+    f: F,
+    g: G,
+    r: PhantomData<R>,
+    s: PhantomData<S>,
+    t: PhantomData<T>
+}
+
+impl<F, G, R, S, T> FnOnce<(R::El, )> for ComposedEmbedding<F, G, R, S, T>
+    where R: Ring, S: Ring, T: Ring, F: Fn(R::El) -> S::El, G: Fn(S::El) -> T::El
+{
+    type Output = T::El;
+
+    extern "rust-call" fn call_once(
+        mut self, 
+        (x, ): (R::El, )
+    ) -> Self::Output {
+        self.call_mut((x, ))
+    }
+}
+
+impl<F, G, R, S, T> FnMut<(R::El, )> for ComposedEmbedding<F, G, R, S, T>
+    where R: Ring, S: Ring, T: Ring, F: Fn(R::El) -> S::El, G: Fn(S::El) -> T::El
+{
+    extern "rust-call" fn call_mut(
+        &mut self, 
+        (x, ): (R::El, )
+    ) -> Self::Output {
+        self.call((x, ))
+    }
+}
+
+impl<F, G, R, S, T> Fn<(R::El, )> for ComposedEmbedding<F, G, R, S, T>
+    where R: Ring, S: Ring, T: Ring, F: Fn(R::El) -> S::El, G: Fn(S::El) -> T::El
+{
+    extern "rust-call" fn call(
+        &self, 
+        (x, ): (R::El, )
+    ) -> Self::Output {
+        (self.g)((self.f)(x))
+    }
+}
+
+pub fn compose<F, G, R, S, T>(g: G, f: F) -> ComposedEmbedding<F, G, R, S, T>
+    where R: Ring, S: Ring, T: Ring, F: Fn(R::El) -> S::El, G: Fn(S::El) -> T::El
+{
+    ComposedEmbedding {
+        f: f, g: g, r: PhantomData, s: PhantomData, t: PhantomData
     }
 }

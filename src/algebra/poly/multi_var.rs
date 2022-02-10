@@ -14,6 +14,7 @@ pub struct MultivariatePolyRing<R>
     var_names: Vec<&'static str>
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Var(usize);
 
 impl<R> MultivariatePolyRing<R>
@@ -27,6 +28,15 @@ impl<R> MultivariatePolyRing<R>
 
     pub fn get_var(&self, name: &'static str) -> Var {
         Var(self.var_names.iter().enumerate().filter(|(_, x)| **x == name).next().unwrap().0)
+    }
+
+    pub fn get_indeterminate(&self, Var(index): Var) -> <Self as Ring>::El {
+        let mut result = BTreeMap::new();
+        result.insert(
+            (0..index).map(|_| 0).chain(std::iter::once(1)).collect(), 
+            self.base_ring.one()
+        );
+        return result;
     }
 
     pub fn derive(&self, el: &<Self as Ring>::El, variable: Var) -> <Self as Ring>::El {
@@ -48,11 +58,23 @@ impl<R> MultivariatePolyRing<R>
         Vector::from_fn(self.var_names.len(), |i| self.derive(el, Var(i)))
     }
 
+    pub fn elevate_var<'a>(&'a self, var: Var) -> (
+        PolyRing<&'a MultivariatePolyRing<R>>, 
+        impl Fn(<Self as Ring>::El) -> <PolyRing<&'a MultivariatePolyRing<R>> as Ring>::El,
+        impl Fn(<PolyRing<&'a MultivariatePolyRing<R>> as Ring>::El) -> <Self as Ring>::El
+    ) {
+        (
+            self.elevate_var_ring(var),
+            move |x| self.elevate_var_element(var, x),
+            move |x| self.de_elevate_var(var, x)
+        )
+    }
+
     fn elevate_var_ring(&self, var: Var) -> PolyRing<&MultivariatePolyRing<R>> {
         PolyRing::adjoint(self, self.var_names[var.0])
     }
 
-    fn elevate_var(&self, variable: Var, x: <Self as Ring>::El) -> <PolyRing<&MultivariatePolyRing<R>> as Ring>::El {
+    fn elevate_var_element(&self, variable: Var, x: <Self as Ring>::El) -> <PolyRing<&MultivariatePolyRing<R>> as Ring>::El {
         self.assert_valid(&x);
 
         let var = variable.0;
@@ -369,8 +391,8 @@ impl<R> Ring for MultivariatePolyRing<R>
             ).min() 
         {
             let ring = self.elevate_var_ring(Var(division_var));
-            let lhs_new = self.elevate_var(Var(division_var), lhs);
-            let rhs_new = self.elevate_var(Var(division_var), rhs.clone());
+            let lhs_new = self.elevate_var_element(Var(division_var), lhs);
+            let rhs_new = self.elevate_var_element(Var(division_var), rhs.clone());
             let result = ring.div(lhs_new, &rhs_new);
             return self.de_elevate_var(Var(division_var), result);
         } else {
@@ -447,8 +469,8 @@ impl<R> DivisibilityInfoRing for MultivariatePolyRing<R>
             ).min() 
         {
             let ring = self.elevate_var_ring(Var(division_var));
-            let lhs_new = self.elevate_var(Var(division_var), lhs.clone());
-            let rhs_new = self.elevate_var(Var(division_var), rhs.clone());
+            let lhs_new = self.elevate_var_element(Var(division_var), lhs.clone());
+            let rhs_new = self.elevate_var_element(Var(division_var), rhs.clone());
             let result = ring.quotient(&lhs_new, &rhs_new)?;
             return Some(self.de_elevate_var(Var(division_var), result));
         } else {
@@ -569,7 +591,7 @@ fn test_elevate_var() {
 
     let expected = &uni_x * &uni_y + &uni_y * &uni_y * &uni_x * (&uni_one + &uni_one) + &uni_one + &uni_x;
 
-    let actual = uni_ring.bind(ring.elevate_var(Var(1), p.val().clone()));
+    let actual = uni_ring.bind(ring.elevate_var_element(Var(1), p.val().clone()));
     assert_eq!(expected, actual);
 
     let original = ring.bind(ring.de_elevate_var(Var(1), actual.val().clone()));
