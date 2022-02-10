@@ -364,7 +364,7 @@ impl FactoringInfoRing for PolyRing<FactorRingZ> {
             self.base_ring().characteristic(), 
             sqrfree_part
         );
-        if d <= distinct_degree_factorization.len() || self.is_one(&distinct_degree_factorization[d]) {
+        if d >= distinct_degree_factorization.len() || self.is_unit(&distinct_degree_factorization[d]) {
             return false;
         }
         return true;
@@ -372,30 +372,15 @@ impl FactoringInfoRing for PolyRing<FactorRingZ> {
 
     fn calc_factor(&self, el: &Self::El) -> Option<Self::El> {
         assert!(!self.is_zero(el));
-        let sqrfree_part = factoring::poly_squarefree_part(self.base_ring(), el.clone());
-        if self.deg(&sqrfree_part) != self.deg(el) {
-            return Some(sqrfree_part);
-        }
-        let distinct_degree_factorization = factoring::distinct_degree_factorization(
-            self.base_ring(), 
-            self.base_ring().characteristic(), 
-            sqrfree_part
-        );
-        for (d, factor) in distinct_degree_factorization.into_iter().enumerate() {
-            if self.deg(&factor) == Some(d) {
+        let factorization = self.factor(el.clone());
+        for (factor, _) in factorization.into_iter() {
+            if self.deg(el) == self.deg(factor.val()) {
                 return None;
-            } else if self.deg(&factor) == self.deg(el) {
-                return Some(factoring::cantor_zassenhaus(
-                    self.base_ring(), 
-                    self.base_ring().characteristic(), 
-                    factor, 
-                    d as usize
-                ));
-            } else if !self.is_one(&factor) {
-                return Some(factor);
+            } else if !self.is_unit(factor.val()) {
+                return Some(factor.into_val());
             }
         }
-        unreachable!()
+        return None;
     }
 
     fn factor<'a>(&'a self, mut el: Self::El) -> VecMap<RingElWrapper<&'a Self>, usize> {
@@ -519,8 +504,21 @@ fn test_factor() {
     expected.insert(&x * &x + &x * 2 + 2, 1);
     expected.insert(&x * &x + 1, 1);
     let factorization = ring.factor(p.into_val());
-    for (el, _) in &factorization {
-        println!("{}", el);
-    }
     assert_eq!(expected, factorization);
+}
+
+#[test]
+fn test_is_prime() {
+    let coeff_ring = FactorRingZ::new(BigInt::from(3));
+    let ring = PolyRing::adjoint(coeff_ring, "X");
+    let x = ring.bind(ring.unknown());
+
+    let p = &x + 1;
+    let q = &x * &x * &x + &x * 2 + 2;
+    let a = &x * &x + 2;
+    let b = &x * &x + &x * 2 + 1;
+    assert_eq!(true, ring.is_prime(p.val()));
+    assert_eq!(true, ring.is_prime(q.val()));
+    assert_eq!(false, ring.is_prime(a.val()));
+    assert_eq!(false, ring.is_prime(b.val()));
 }
