@@ -54,7 +54,7 @@ impl<K: Ring> EllipticCurve<K> {
     pub fn function_field(&self) -> (FunctionField<K>, <FunctionField<K> as Ring>::El, <FunctionField<K> as Ring>::El) {
         assert!(self.base_ring.is_field().can_use());
         let (ring, x, y) = self.coordinate_ring();
-        let field = ring.clone().field_of_fractions();
+        let field = FieldOfFractions::new(ring.clone());
         let (x, y) = {
             let incl = field.embedding(&ring);
             (incl(x), incl(y))

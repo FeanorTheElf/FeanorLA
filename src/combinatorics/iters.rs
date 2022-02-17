@@ -507,7 +507,63 @@ where J: Iterator, J::Item: Iterator + Clone, F: FnMut(&[<J::Item as Iterator>::
     };
 }
 
+pub struct CondenseIter<I, F, T>
+    where I: Iterator, F: FnMut(I::Item) -> Option<T>
+{
+    base_iter: I,
+    f: F
+}
 
+impl<I, F, T> Iterator for CondenseIter<I, F, T>
+    where I: Iterator, F: FnMut(I::Item) -> Option<T>
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        while let Some(el) = self.base_iter.next() {
+            if let Some(result) = (self.f)(el) {
+                return Some(result);
+            }
+        }
+        return None;
+    }
+}
+
+impl<I, F, T> std::iter::FusedIterator for CondenseIter<I, F, T>
+    where I: std::iter::FusedIterator, F: FnMut(I::Item) -> Option<T>
+{}
+
+///
+/// Creates an iterator that "condenses" the given iterator.
+/// Concretely, the new iterator processes a variable amount
+/// of input items to produce an output item.
+/// 
+/// This processing is done using the passed function. It is
+/// called repeatedly on input iterator items, until it returns
+/// some value, which is the next value yielded by the output
+/// iterator.
+/// 
+/// # Example
+/// 
+/// ```
+/// let mut accumulator = 0;
+/// assert_eq!(vec![6, 9, 6, 7], condense(vec![1, 2, 3, 4, 5, 6, 7], move |a| {
+///     accumulator += a;
+///     if accumulator >= 5 {
+///         let result = accumulator;
+///         accumulator = 0;
+///         return Some(result);
+///     } else {
+///         return None;
+///     }
+/// }));
+/// ```
+/// 
+pub fn condense<I, F, T>(iter: I, f: F) -> CondenseIter<I, F, T>
+    where I: Iterator, F: FnMut(I::Item) -> Option<T>
+{
+    CondenseIter { base_iter: iter, f: f }
+}
 
 #[test]
 fn test_bitset_combinations() {

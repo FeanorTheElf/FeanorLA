@@ -2,8 +2,9 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 use super::super::bigint::*;
-use super::zn::*;
+use super::fq::zn_big::*;
 use super::super::ring::*;
+use super::super::combinatorics::iters::*;
 pub use super::factoring_algorithms;
 
 use oorandom;
@@ -39,7 +40,7 @@ pub fn miller_rabin(n: &BigInt, k: usize) -> bool {
     let n_minus_one = n.clone() - 1;
     let s = n_minus_one.highest_dividing_power_of_two();
     let d = n_minus_one.clone() >> s;
-    let Z_nZ = FactorRingZ::new(n.clone());
+    let Z_nZ = Zn::new(n.clone());
 
     // Admitted, there is no calculation behind this choice
     const STATISTICAL_DISTANCE_ERROR_BOUND: usize = 5;
@@ -95,4 +96,21 @@ pub fn calc_factor(el: &BigInt) -> Option<BigInt> {
             return Some(factoring_algorithms::sieve::quadratic_sieve(&n));
         }
     }
+}
+
+pub fn gen_primes() -> impl Iterator<Item = i64> {
+    let mut found_primes = vec![2];
+    std::iter::once(2).chain(
+        condense((3..).step_by(2), move |x| {
+            for p in &found_primes {
+                if x % p == 0 {
+                    return None;
+                } else if p * p >= x {
+                    found_primes.push(x);
+                    return Some(x);
+                }
+            }
+            unreachable!()
+        })
+    )
 }

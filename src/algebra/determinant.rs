@@ -45,7 +45,7 @@ impl<R, M> MatrixDeterminant<M> for R
             compute_det(self, matrix.into_owned())
         } else if self.is_integral().can_use() {
             assert!(self.is_divisibility_computable());
-            let field = self.field_of_fractions();
+            let field = FieldOfFractions::new(self);
             let incl = (&field).embedding(&self);
             let work_matrix = Matrix::from_fn(matrix.row_count(), matrix.col_count(), |i, j| incl(matrix.at(i, j).clone()));
             let result = compute_det(&field, work_matrix);

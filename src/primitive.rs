@@ -577,13 +577,15 @@ impl<T> DivisibilityInfoRing for StaticRingImpl<RingAxiomsField, T>
         true
     }
 
-    fn is_divisible_by(&self, _lhs: &Self::El, rhs: &Self::El) -> bool {
-        !self.is_zero(rhs)
+    fn is_divisible_by(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+        self.is_zero(lhs) || !self.is_zero(rhs)
     }
 
     fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
-        if self.is_zero(rhs) {
+        if !self.is_zero(lhs) && self.is_zero(rhs) {
             None
+        } else if self.is_zero(lhs) && self.is_zero(rhs) {
+            Some(self.one())
         } else {
             Some(lhs.clone() / rhs.clone())
         }

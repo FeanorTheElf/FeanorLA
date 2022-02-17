@@ -33,6 +33,7 @@ fn pow_mod_f<F>(poly_ring: &PolyRing<F>, g: &<PolyRing<F> as Ring>::El, f: &<Pol
 pub fn distinct_degree_factorization<F>(prime_field: F, p: &BigInt, mut f: Vector<VectorOwned<F::El>, F::El>) -> Vec<Vector<VectorOwned<F::El>, F::El>>
     where F: DivisibilityInfoRing
 {
+    debug_assert!(prime_field.is_zero(&prime_field.from_z_big(p.clone())));
     let poly_ring = PolyRing::adjoint(prime_field.clone(), "X");
     assert!(!poly_ring.is_zero(&f));
     let mut result = Vec::new();
@@ -85,6 +86,7 @@ pub fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<<F
     where F: DivisibilityInfoRing
 {
     assert!(*p != 2);
+    debug_assert!(prime_field.is_zero(&prime_field.from_z_big(p.clone())));
     assert!(poly_degree(&prime_field, f.as_ref()).unwrap() % d == 0);
     assert!(poly_degree(&prime_field, f.as_ref()).unwrap() > d);
     let poly_ring = PolyRing::adjoint(prime_field, "X");
@@ -126,7 +128,7 @@ pub fn poly_squarefree_part<R>(ring: &R, poly: Vector<VectorOwned<R::El>, R::El>
 #[cfg(test)]
 use super::super::rat::*;
 #[cfg(test)]
-use super::super::zn::*;
+use super::super::fq::zn_small::*;
 #[cfg(test)]
 use super::super::super::wrapper::*;
 #[cfg(test)]

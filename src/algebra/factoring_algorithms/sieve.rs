@@ -3,7 +3,7 @@ use super::super::super::la::mat::*;
 use super::super::super::la::algorithms::*;
 use super::super::super::bigint::*;
 use super::super::super::primitive::*;
-use super::super::zn::*;
+use super::super::fq::zn_small::*;
 use super::super::eea::*;
 use super::gen_primes;
 

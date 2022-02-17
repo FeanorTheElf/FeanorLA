@@ -338,12 +338,13 @@ impl<'a, R> Fn<(R::El, )> for PolyRingEmbedding<'a, R>
     }
 }
 
-use super::super::zn::*;
+use super::super::fq::*;
 
-impl FactoringInfoRing for PolyRing<FactorRingZ> {
-
+impl<R> FactoringInfoRing for PolyRing<R>
+    where R: FiniteRing
+{
     fn is_ufd(&self) -> RingPropValue {
-        if self.base_ring.is_field().can_use() && *self.base_ring().characteristic() != 2 {
+        if self.base_ring.is_field().can_use() && self.base_ring().characteristic() != 2 && self.base_ring().size() == self.base_ring().characteristic() {
             return RingPropValue::True;
         } else {
             return RingPropValue::Unknown;
@@ -351,6 +352,7 @@ impl FactoringInfoRing for PolyRing<FactorRingZ> {
     }
 
     fn is_prime(&self, el: &Self::El) -> bool {
+        assert!(self.is_ufd().can_use());
         if self.is_zero(el) {
             return false;
         }
@@ -361,7 +363,7 @@ impl FactoringInfoRing for PolyRing<FactorRingZ> {
         }
         let distinct_degree_factorization = factoring::distinct_degree_factorization(
             self.base_ring(), 
-            self.base_ring().characteristic(), 
+            &self.base_ring().characteristic(), 
             sqrfree_part
         );
         if d >= distinct_degree_factorization.len() || self.is_unit(&distinct_degree_factorization[d]) {
@@ -371,6 +373,7 @@ impl FactoringInfoRing for PolyRing<FactorRingZ> {
     }
 
     fn calc_factor(&self, el: &Self::El) -> Option<Self::El> {
+        assert!(self.is_ufd().can_use());
         assert!(!self.is_zero(el));
         let factorization = self.factor(el.clone());
         for (factor, _) in factorization.into_iter() {
@@ -384,6 +387,7 @@ impl FactoringInfoRing for PolyRing<FactorRingZ> {
     }
 
     fn factor<'a>(&'a self, mut el: Self::El) -> VecMap<RingElWrapper<&'a Self>, usize> {
+        assert!(self.is_ufd().can_use());
         assert!(!self.is_zero(&el));
         let mut result = VecMap::new();
         let mut unit = self.base_ring().one();
@@ -391,7 +395,7 @@ impl FactoringInfoRing for PolyRing<FactorRingZ> {
             let sqrfree_part = factoring::poly_squarefree_part(self.base_ring(), el.clone());
             for (d, el) in factoring::distinct_degree_factorization(
                 self.base_ring(), 
-                self.base_ring().characteristic(), 
+                &self.base_ring().characteristic(), 
                 sqrfree_part.clone()
             ).into_iter().enumerate() {
                 let mut stack = Vec::new();
@@ -412,7 +416,7 @@ impl FactoringInfoRing for PolyRing<FactorRingZ> {
                     } else {
                         let factor = factoring::cantor_zassenhaus(
                             self.base_ring(), 
-                            self.base_ring().characteristic(), 
+                            &self.base_ring().characteristic(), 
                             el.clone(), 
                             d
                         );
@@ -434,6 +438,8 @@ impl FactoringInfoRing for PolyRing<FactorRingZ> {
 
 #[cfg(test)]
 use super::super::super::primitive::*;
+#[cfg(test)]
+use super::super::fq::zn_big::*;
 
 #[test]
 fn test_poly_arithmetic() {
@@ -491,7 +497,7 @@ fn test_poly_degree() {
 
 #[test]
 fn test_factor() {
-    let coeff_ring = FactorRingZ::new(BigInt::from(3));
+    let coeff_ring = Zn::new(BigInt::from(3));
     let ring = PolyRing::adjoint(coeff_ring, "X");
     let x = ring.bind(ring.unknown());
 
@@ -509,7 +515,7 @@ fn test_factor() {
 
 #[test]
 fn test_is_prime() {
-    let coeff_ring = FactorRingZ::new(BigInt::from(3));
+    let coeff_ring = Zn::new(BigInt::from(3));
     let ring = PolyRing::adjoint(coeff_ring, "X");
     let x = ring.bind(ring.unknown());
 

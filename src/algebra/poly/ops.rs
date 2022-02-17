@@ -1,7 +1,5 @@
 use super::super::super::ring::*;
-use super::super::super::la::vec::*;
 use super::super::super::la::mat::*;
-use super::super::super::la::vector_view::*;
 
 pub fn poly_degree<V, R>(coeff_ring: &R, poly_coeffs: Vector<V, R::El>) -> Option<usize>
     where R: Ring, V: VectorView<R::El>

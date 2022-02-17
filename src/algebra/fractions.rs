@@ -2,21 +2,6 @@ use super::super::ring::*;
 use super::super::embedding::*;
 use super::eea::*;
 
-pub trait FieldOfFractionsInfoRing: Ring {
-
-    fn field_of_fractions(self) -> FieldOfFractions<Self>;
-}
-
-impl<R> FieldOfFractionsInfoRing for R
-    where R: Ring
-{
-    fn field_of_fractions(self) -> FieldOfFractions<Self> {
-        FieldOfFractions {
-            base_ring: self
-        }
-    }
-}
-
 pub struct FieldOfFractionsEmbedding<'a, R>
     where R: Ring
 {
@@ -68,6 +53,11 @@ pub struct FieldOfFractions<R>
 impl<R> FieldOfFractions<R>
     where R: Ring
 {
+    pub fn new(base_ring: R) -> Self {
+        assert!(base_ring.is_integral().can_use());
+        FieldOfFractions { base_ring }
+    }
+
     pub fn from(&self, el: R::El) -> <Self as Ring>::El {
         (el, self.base_ring.one())
     }
@@ -208,11 +198,11 @@ impl<'a, 'b, R> CanonicalEmbeddingInfo<&'a R> for &'b FieldOfFractions<R>
 {
     type Embedding = FieldOfFractionsEmbedding<'b, R>;
 
-    fn has_embedding(&self, from: &&'a R) -> RingPropValue {
+    fn has_embedding(&self, _: &&'a R) -> RingPropValue {
         RingPropValue::True
     }
 
-    fn embedding(self, from: &'a R) -> Self::Embedding {
+    fn embedding(self, _: &'a R) -> Self::Embedding {
         FieldOfFractionsEmbedding {
             field_of_fractions: self
         }
@@ -242,7 +232,7 @@ use super::super::wrapper::*;
 
 #[test]
 fn test_add() {
-    let rats = BigInt::RING.field_of_fractions();
+    let rats = FieldOfFractions::new(BigInt::RING);
     let two = rats.bind(rats.from(BigInt::from(2)));
     let three = rats.bind(rats.from(BigInt::from(3)));
     let two_thirds = two.clone() / three.clone();
@@ -253,7 +243,7 @@ fn test_add() {
 
 #[test]
 fn test_mul() {
-    let rats = BigInt::RING.field_of_fractions();
+    let rats = FieldOfFractions::new(BigInt::RING);
     let two = rats.bind(rats.from(BigInt::from(2)));
     let three = rats.bind(rats.from(BigInt::from(3)));
     let two_thirds = two.clone() / three.clone();

@@ -1,12 +1,11 @@
 pub mod eea;
 pub mod rat;
-pub mod zn;
+pub mod fq;
 pub mod factoring_algorithms;
 pub mod p_adic;
 pub mod fractions;
 pub mod poly;
 pub mod ring_ext;
-pub mod finite_field;
 pub mod primes;
 pub mod diophantine;
 pub mod elliptic_curve;

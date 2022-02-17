@@ -4,7 +4,7 @@ use super::embedding::*;
 use super::bigint::*;
 
 use std::ops::{ 
-    Add, Mul, Sub, Neg, Div,
+    Add, Mul, Sub, Neg, Div, Rem,
     AddAssign, MulAssign, SubAssign, DivAssign
 };
 
@@ -407,6 +407,20 @@ impl<R> Div<i64> for RingElWrapper<R>
         assert!(self.ring.is_divisibility_computable());
         RingElWrapper {
             el: self.ring.quotient(&self.el, &(&self.ring).z_embedding(i64::RING)(rhs)).unwrap(),
+            ring: self.ring
+        }
+    }
+}
+
+impl<R> Rem<RingElWrapper<R>> for RingElWrapper<R>
+    where R: EuclideanInfoRing
+{
+    type Output = RingElWrapper<R>;
+
+    fn rem(self, rhs: RingElWrapper<R>) -> Self::Output {
+        assert!(self.ring.is_euclidean().can_use());
+        RingElWrapper {
+            el: self.ring.euclidean_rem(self.el, &rhs.el),
             ring: self.ring
         }
     }

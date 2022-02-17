@@ -28,3 +28,5 @@ pub mod algebra;
 
 pub mod numerics;
 pub mod combinatorics;
+
+pub mod exp;
