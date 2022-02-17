@@ -513,11 +513,12 @@ impl<T> DivisibilityInfoRing for StaticRingImpl<RingAxiomsEuclidean, T>
         true
     }
 
-    fn is_divisible_by(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
-        self.quotient(lhs, rhs).is_some()
-    }
-
     fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
+        if self.is_zero(rhs) && !self.is_zero(lhs) {
+            return None;
+        } else if self.is_zero(rhs) && self.is_zero(lhs) {
+            return Some(self.one());
+        }
         let (quo, rem) = self.euclidean_div_rem(lhs.clone(), rhs);
         if self.is_zero(&rem) {
             Some(quo)

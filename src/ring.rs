@@ -336,11 +336,15 @@ pub trait DivisibilityInfoRing : Ring {
 
     ///
     /// Computes a quotient of two elements, if one divides the other.
-    /// If rhs is not a zero divisor, this is unique. If this is not the
-    /// case and at least one x with x * rhs == lhs exists, any one of those
-    /// is returned.
     /// If this is not the case, None is returned.
     /// This may panic if `is_divisibility_computable()` returns false.
+    /// 
+    /// # Uniqueness
+    /// 
+    /// If rhs is not a zero divisor, this is unique. If this is not the
+    /// case and at least one x with x * rhs == lhs exists, any one of those
+    /// is returned. In particular, taking the quotient of 0/0 may return
+    /// any element of the ring.
     /// 
     fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El>;
 

@@ -1193,6 +1193,11 @@ impl std::str::FromStr for BigInt {
 impl DivisibilityInfoRing for BigIntRing {
 
     fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<BigInt> {
+        if self.is_zero(rhs) && !self.is_zero(lhs) {
+            return None;
+        } else if self.is_zero(rhs) && self.is_zero(lhs) {
+            return Some(self.one());
+        }
         let (quo, rem) = self.euclidean_div_rem(lhs.clone(), rhs);
         if rem == 0 {
             return Some(quo);
