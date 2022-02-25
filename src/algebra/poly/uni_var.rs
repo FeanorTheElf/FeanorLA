@@ -340,7 +340,7 @@ impl<'a, R> Fn<(R::El, )> for PolyRingEmbedding<'a, R>
 
 use super::super::fq::*;
 
-impl<R> FactoringInfoRing for PolyRing<R>
+impl<R> UfdInfoRing for PolyRing<R>
     where R: FiniteRing
 {
     fn is_ufd(&self) -> RingPropValue {

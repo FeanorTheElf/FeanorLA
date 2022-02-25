@@ -449,6 +449,14 @@ impl<T: std::fmt::Display + std::fmt::Debug> DisplayOrDebug for T {
     }
 }
 
+impl<T> PartialEq for StaticRingImpl<T::Axioms, T> 
+    where T: RingEl
+{
+    fn eq(&self, rhs: &Self) -> bool {
+        true
+    }
+}
+
 impl<T> Ring for StaticRingImpl<T::Axioms, T>
     where T: RingEl
 {

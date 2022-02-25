@@ -1215,7 +1215,7 @@ impl DivisibilityInfoRing for BigIntRing {
     }
 }
 
-impl FactoringInfoRing for BigIntRing {
+impl UfdInfoRing for BigIntRing {
 
     fn is_ufd(&self) -> RingPropValue {
         RingPropValue::True
@@ -1492,7 +1492,16 @@ fn test_factor() {
     expected.insert(BigInt::RING.bind(BigInt::from(7)), 2);
     expected.insert(BigInt::RING.bind(BigInt::from(2)), 1);
     assert_eq!(expected, BigInt::RING.factor(BigInt::from(98)));
+    expected = VecMap::new();
+    expected.insert(BigInt::RING.bind(BigInt::from(3)), 5);
+    assert_eq!(expected, BigInt::RING.factor(BigInt::from(243)));
 }
+
+#[test]
+fn test_is_prime() {
+    assert_eq!(false, BigInt::RING.is_prime(&BigInt::from(81)));
+}
+
 
 #[test]
 fn test_cmp() {

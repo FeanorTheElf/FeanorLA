@@ -114,3 +114,8 @@ pub fn gen_primes() -> impl Iterator<Item = i64> {
         })
     )
 }
+
+#[test]
+fn test_calc_factor() {
+    assert_eq!(Some(BigInt::from(3)), calc_factor(&BigInt::from(81)));
+}

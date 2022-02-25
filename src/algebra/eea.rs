@@ -145,6 +145,12 @@ pub fn signed_gcd<R>(a: R::El, b: R::El, ring: &R) -> R::El
     return d;
 }
 
+pub fn lcm<R>(ring: &R, fst: R::El, snd: R::El) -> R::El
+    where R: EuclideanInfoRing
+{
+    ring.euclidean_div(ring.mul_ref(&fst, &snd), &gcd(ring, fst, snd))
+}
+
 #[test]
 fn test_gcd() {
     assert_eq!(3, signed_gcd(15, 6, &i64::RING));

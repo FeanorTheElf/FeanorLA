@@ -2,6 +2,7 @@ use super::super::super::ring::*;
 use super::super::super::la::mat::*;
 use super::super::super::bigint::*;
 use super::super::eea::*;
+use super::super::fq::*;
 use super::uni_var::*;
 use super::ops::*;
 
@@ -31,9 +32,9 @@ fn pow_mod_f<F>(poly_ring: &PolyRing<F>, g: &<PolyRing<F> as Ring>::El, f: &<Pol
 // we cannot really check if the given field is really a prime field, so just assume that it is.
 // furthermore, the input polynomial must be square-free
 pub fn distinct_degree_factorization<F>(prime_field: F, p: &BigInt, mut f: Vector<VectorOwned<F::El>, F::El>) -> Vec<Vector<VectorOwned<F::El>, F::El>>
-    where F: DivisibilityInfoRing
+    where F: FiniteRing
 {
-    debug_assert!(prime_field.is_zero(&prime_field.from_z_big(p.clone())));
+    assert!(prime_field.size() == *p);
     let poly_ring = PolyRing::adjoint(prime_field.clone(), "X");
     assert!(!poly_ring.is_zero(&f));
     let mut result = Vec::new();
@@ -63,13 +64,13 @@ pub fn distinct_degree_factorization<F>(prime_field: F, p: &BigInt, mut f: Vecto
 /// # Algorithm
 /// 
 /// The algorithm relies on the fact that for some monic polynomial T over Fp have
-/// ```
+/// ```text
 /// T^q - T = T (T^((q - 1)/2) + 1) (T^((q - 1)/2) - 1)
 /// ```
 /// where `q = p^d`. Furthermore, the three factors are pairwise coprime.
 /// Since `X^q - X` divides `T^q - T`, and f is squarefree, we see that
 /// f divides `T^q - T` and so
-/// ```
+/// ```text
 /// f = gcd(T, F) gcd(T (T^((q - 1)/2) + 1, f) gcd(T^((q - 1)/2) - 1, f)
 /// ```
 /// The idea is now to choose a random T and check whether `gcd(T^((q - 1)/2) - 1, f)`
@@ -83,10 +84,10 @@ pub fn distinct_degree_factorization<F>(prime_field: F, p: &BigInt, mut f: Vecto
 ///
 #[allow(non_snake_case)]
 pub fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<<F as Ring>::El>, <F as Ring>::El>, d: usize) -> Vector<VectorOwned<<F as Ring>::El>, <F as Ring>::El>
-    where F: DivisibilityInfoRing
+    where F: FiniteRing
 {
     assert!(*p != 2);
-    debug_assert!(prime_field.is_zero(&prime_field.from_z_big(p.clone())));
+    assert!(prime_field.size() == *p);
     assert!(poly_degree(&prime_field, f.as_ref()).unwrap() % d == 0);
     assert!(poly_degree(&prime_field, f.as_ref()).unwrap() > d);
     let poly_ring = PolyRing::adjoint(prime_field, "X");
@@ -118,8 +119,8 @@ pub fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<<F
 pub fn poly_squarefree_part<R>(ring: &R, poly: Vector<VectorOwned<R::El>, R::El>) -> Vector<VectorOwned<R::El>, R::El>
     where R: Ring
 {
+    assert!(ring.is_field().can_use());
     let poly_ring = PolyRing::adjoint(ring, "X");
-    assert!(poly_ring.base_ring().is_field().can_use());
     let derivate = poly_ring.derive(poly.clone());
     let square_part = eea(&poly_ring, poly.clone(), derivate).2;
     return poly_ring.div(poly, &square_part);

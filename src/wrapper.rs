@@ -743,3 +743,31 @@ impl<R, S> CanonicalEmbeddingInfo<WrappingRing<S>> for WrappingRing<R>
         }
     }
 }
+
+impl<R> std::iter::Sum for RingElWrapper<R>
+    where R: Ring
+{
+    fn sum<I>(mut iter: I) -> Self
+        where I: Iterator<Item = Self>
+    {
+        let el = iter.next().unwrap();
+        return RingElWrapper {
+            el: el.ring.add(el.ring.sum(iter.map(|x| x.el)), el.el),
+            ring: el.ring
+        }
+    }
+}
+
+impl<R> std::iter::Product for RingElWrapper<R>
+    where R: Ring
+{
+    fn product<I>(mut iter: I) -> Self
+        where I: Iterator<Item = Self>
+    {
+        let el = iter.next().unwrap();
+        return RingElWrapper {
+            el: el.ring.mul(el.ring.product(iter.map(|x| x.el)), el.el),
+            ring: el.ring
+        }
+    }
+}

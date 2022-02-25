@@ -293,10 +293,12 @@ pub fn bitset_partitions<F, T>(set: Bitset64, f: F) -> BitsetPartitions<F, T>
         result.try_next(0);
         return result;
     } else {
+        let mut empty_iter = bitset_powerset(Bitset64::new());
+        empty_iter.next();
         BitsetPartitions {
             converter: f,
-            buffer: Vec::new(),
-            iterators: Vec::new()
+            buffer: vec![Bitset64::new()],
+            iterators: vec![(0, empty_iter)]
         }
     }
 }
@@ -479,8 +481,31 @@ where I: Iterator + Clone, F: FnMut(&[I::Item]) -> T
     }
 }
 
+///
+/// Creates an iterator that computes the cartesian product of the elements
+/// yielded by a number of iterators. These iterators are given by one iterator
+/// over them.
+/// Since the items yielded by the iterator are collections of dynamic length,
+/// creating them might be quite costly. In many applications, this is not really
+/// required, and so this function accepts a second argument - a converter function -
+/// that is called on each tuple in the cartesian product and its return value
+/// is yielded by the product iterator.
+/// 
+/// # Example
+/// 
+/// ```
+/// # use feanor_la::combinatorics::iters::multi_cartesian_product;
+/// assert_eq!(
+///     vec![(2, 0), (2, 1), (2, 2), (3, 0), (3, 1), (3, 2)],
+///     multi_cartesian_product(
+///         vec![(2..=3), (0..=2)].into_iter(),
+///         |x| (x[0], x[1])
+///     ).collect::<Vec<_>>()
+/// );
+/// ```
+/// 
 pub fn multi_cartesian_product<J, F, T>(iters: J, converter: F) -> MultiProduct<J::Item, F, T>
-where J: Iterator, J::Item: Iterator + Clone, F: FnMut(&[<J::Item as Iterator>::Item]) -> T
+    where J: Iterator, J::Item: Iterator + Clone, F: FnMut(&[<J::Item as Iterator>::Item]) -> T
 {
     let base_iters = iters.collect::<Vec<_>>();
     let mut current_iters = base_iters.clone();
@@ -546,8 +571,9 @@ impl<I, F, T> std::iter::FusedIterator for CondenseIter<I, F, T>
 /// # Example
 /// 
 /// ```
+/// # use feanor_la::combinatorics::iters::condense;
 /// let mut accumulator = 0;
-/// assert_eq!(vec![6, 9, 6, 7], condense(vec![1, 2, 3, 4, 5, 6, 7], move |a| {
+/// assert_eq!(vec![6, 9, 6, 7], condense(vec![1, 2, 3, 4, 5, 6, 7].into_iter(), move |a| {
 ///     accumulator += a;
 ///     if accumulator >= 5 {
 ///         let result = accumulator;
@@ -556,7 +582,7 @@ impl<I, F, T> std::iter::FusedIterator for CondenseIter<I, F, T>
 ///     } else {
 ///         return None;
 ///     }
-/// }));
+/// }).collect::<Vec<i64>>());
 /// ```
 /// 
 pub fn condense<I, F, T>(iter: I, f: F) -> CondenseIter<I, F, T>

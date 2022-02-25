@@ -34,7 +34,7 @@ impl<R, V> SimpleRingExtension<R, V>
 {
     ///
     /// Creates the ring R[X]/(f) where 
-    /// ```
+    /// ```text
     /// f = mipo_values[0] + mipo_values[1] * X + ... + mipo_values[n - 1] * X^(n - 1) - X^n
     /// ```
     /// 

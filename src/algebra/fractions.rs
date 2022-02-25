@@ -75,6 +75,20 @@ impl<R> FieldOfFractions<R>
         }
         return Ok(());
     }
+
+    pub fn base_ring(&self) -> &R {
+        &self.base_ring
+    }
+}
+
+impl<R> FieldOfFractions<R>
+    where R: EuclideanInfoRing
+{
+    pub fn reduce(&self, el: <Self as Ring>::El) -> <Self as Ring>::El {
+        assert!(self.base_ring().is_euclidean().can_use());
+        let d = gcd(&self.base_ring, el.0.clone(), el.1.clone());
+        return (self.base_ring.euclidean_div(el.0, &d), self.base_ring.euclidean_div(el.1, &d));
+    }
 }
 
 trait SoftReducable: Ring {
@@ -95,10 +109,9 @@ impl<R> SoftReducable for FieldOfFractions<R>
 {
     fn soft_reduce(&self, el: <Self as Ring>::El) -> <Self as Ring>::El {
         if self.base_ring.is_euclidean().can_use() {
-            let d = gcd(&self.base_ring, el.0.clone(), el.1.clone());
-            return (self.base_ring.euclidean_div(el.0, &d), self.base_ring.euclidean_div(el.1, &d));
+            self.reduce(el)
         } else {
-            return el;
+            el
         }
     }
 }
@@ -109,6 +122,14 @@ impl<R> FieldOfFractions<R>
     pub fn in_base_ring(&self, (num, den): &<Self as Ring>::El) -> Option<R::El> {
         assert!(self.base_ring.is_divisibility_computable());
         self.base_ring.quotient(num, den)
+    }
+}
+
+impl<R> SingletonRing for FieldOfFractions<R>
+    where R: SingletonRing
+{
+    fn singleton() -> Self {
+        FieldOfFractions::new(R::singleton())
     }
 }
 

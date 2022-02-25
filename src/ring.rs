@@ -5,7 +5,7 @@ use vector_map::VecMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RingPropValue {
-    True, False, NotComputable, Unknown
+    True, False, Unknown
 }
 
 impl RingPropValue {
@@ -21,8 +21,7 @@ impl std::fmt::Display for RingPropValue {
         match self {
             RingPropValue::True => write!(f, "true"),
             RingPropValue::False => write!(f, "false"),
-            RingPropValue::NotComputable => write!(f, "not computable"),
-            RingPropValue::Unknown => write!(f, "unknown")
+            RingPropValue::Unknown => write!(f, "???")
         }
     }
 }
@@ -113,12 +112,19 @@ pub trait Ring : std::fmt::Debug + std::clone::Clone {
     }
 
     fn add(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.add_ref(lhs, &rhs) }
-    fn sum(&self, data: &[Self::El]) -> Self::El {
-        data.iter().fold(self.zero(), |a, b| self.add_ref(a, b))
+
+    fn sum<I>(&self, data: I) -> Self::El
+        where I: Iterator<Item = Self::El>
+    {
+        data.fold(self.zero(), |a, b| self.add(a, b))
     }
+
     fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.mul_ref(&lhs, &rhs) }
-    fn prod(&self, data: &[Self::El]) -> Self::El {
-        data.iter().fold(self.one(), |a, b| self.mul_ref(&a, b))
+
+    fn product<I>(&self, data: I) -> Self::El 
+        where I: Iterator<Item = Self::El>
+    {
+        data.fold(self.one(), |a, b| self.mul(a, b))
     }
 
     fn sub(&self, lhs: Self::El, rhs: Self::El) -> Self::El {
@@ -366,7 +372,7 @@ impl<'a, R> DivisibilityInfoRing for &'a R
     fn is_unit(&self, el: &Self::El) -> bool { (**self).is_unit(el) }
 }
 
-pub trait FactoringInfoRing : DivisibilityInfoRing {
+pub trait UfdInfoRing : DivisibilityInfoRing {
 
     ///
     /// Determines whether elements in this ring have a unique prime factorization.
@@ -406,8 +412,8 @@ pub trait FactoringInfoRing : DivisibilityInfoRing {
     }
 }
 
-impl<'a, R> FactoringInfoRing for &'a R
-    where R: FactoringInfoRing
+impl<'a, R> UfdInfoRing for &'a R
+    where R: UfdInfoRing
 {
     fn is_ufd(&self) -> RingPropValue { (**self).is_ufd() }
     fn is_prime(&self, el: &Self::El) -> bool { (**self).is_prime(el) }

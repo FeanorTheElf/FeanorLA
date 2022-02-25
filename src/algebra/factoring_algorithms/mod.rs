@@ -9,7 +9,7 @@ pub fn gen_primes(bound: i64) -> Vec<i64> {
     // the prime density formulas used later to estimate the vector 
     // size do not work for very small values 
     if bound <= 13 {
-        return [2, 5, 7, 11].iter()
+        return [2, 3, 5, 7, 11].iter()
             .map(|p| *p)
             .filter(|p| *p < bound)
             .collect::<Vec<_>>();
