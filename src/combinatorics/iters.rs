@@ -372,6 +372,29 @@ impl<'a, F, T> Iterator for MultisetCombinations<'a, F, T>
 impl<'a, F, T> std::iter::FusedIterator for MultisetCombinations<'a, F, T>
     where F: FnMut(&[usize]) -> T {}
 
+///
+/// Returns an iterator over all multi-subsets of a given set with a specified size.
+/// 
+/// Since the items yielded by the iterator are collections of dynamic length,
+/// creating them might be quite costly. In many applications, this is not really
+/// required, and so this function accepts a second argument - a converter function -
+/// that is called on each tuple in the cartesian product and its return value
+/// is yielded by the product iterator.
+/// 
+/// # Example
+/// 
+/// ```
+/// # use feanor_la::combinatorics::iters::multiset_combinations;
+/// assert_eq!(
+///     vec![(1, 1, 0), (1, 0, 1), (0, 2, 0), (0, 1, 1), (0, 0, 2)],
+///     multiset_combinations(
+///         &[1, 2, 3], 
+///         2, 
+///         |a| (a[0], a[1], a[2])
+///     ).collect::<Vec<_>>()
+/// );
+/// ```
+/// 
 pub fn multiset_combinations<'a, F, T>(multiset: &'a [usize], size: usize, converter: F) -> MultisetCombinations<'a, F, T>
     where F: FnMut(&[usize]) -> T
 {
@@ -485,6 +508,7 @@ where I: Iterator + Clone, F: FnMut(&[I::Item]) -> T
 /// Creates an iterator that computes the cartesian product of the elements
 /// yielded by a number of iterators. These iterators are given by one iterator
 /// over them.
+/// 
 /// Since the items yielded by the iterator are collections of dynamic length,
 /// creating them might be quite costly. In many applications, this is not really
 /// required, and so this function accepts a second argument - a converter function -

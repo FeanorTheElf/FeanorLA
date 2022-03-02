@@ -96,7 +96,7 @@ impl BigInt {
     ///
     /// Computes abs(self) <=> abs(rhs)
     /// 
-    fn abs_compare(&self, rhs: &BigInt) -> Ordering {
+    pub fn abs_compare(&self, rhs: &BigInt) -> Ordering {
         match (self.highest_set_block(), rhs.highest_set_block()) {
            (None, None) => return Ordering::Equal,
            (Some(_), None) => return Ordering::Greater,
@@ -496,13 +496,38 @@ impl BigInt {
         return quotient;
     }
 
-    pub fn div_rem_small(mut self, rhs: i64) -> (BigInt, i64) {
+    ///
+    /// Performs euclidean division, i.e. computes q, r such that
+    /// `self = q * rhs + r` and `|r| < |rhs|`.
+    /// Returns `(q, r)`
+    /// 
+    pub fn euclidean_div_rem_small(mut self, rhs: i64) -> (BigInt, i64) {
         let mut remainder = self.abs_division_small(rhs.abs() as u64) as i64;
         if self.negative {
             remainder = -remainder;
         }
         self.negative = self.negative ^ (rhs < 0);
         return (self, remainder);
+    }
+
+    ///
+    /// Performs floor division, i.e. computes the result of
+    /// self/rhs rounded towards -inf.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// # use feanor_la::bigint::BigInt;
+    /// assert_eq!(BigInt::from(-1), BigInt::from(-1).floor_div_small(2));
+    /// ```
+    /// 
+    pub fn floor_div_small(self, rhs: i64) -> BigInt {
+        let (quo, rem) = self.euclidean_div_rem_small(rhs);
+        if rem < 0 {
+            quo + if rhs < 0 { 1 } else { -1 }
+        } else {
+            quo
+        }
     }
 
     pub fn normalize(&mut self) {
@@ -584,14 +609,21 @@ impl BigInt {
     }
 
     ///
-    /// Given an increasing function f that is negative for some x1 and positive for 
-    /// some x2, finds the floor of some root of f (if f is strictly increasing, this
-    /// is unique).
+    /// Given an increasing, continuous function f: R -> R that is negative for some x1 and 
+    /// positive for some x2, finds the floor of some root of f (if f is strictly increasing, 
+    /// this is unique).
+    /// 
+    /// # General case
+    /// 
+    /// This function also works in a slightly more general context. Assume that
+    /// f(x) is negative for all sufficiently small x and positive for all suffiently 
+    /// large x. Then this function will return the floor of some root of f. Note that
+    /// this might not be a root of f, even if f has integral roots.
     /// 
     /// # Complexity
     /// 
-    /// This function runs in O((T + log(d)) * log(d)) where d is the error
-    /// made in approx (i.e. the difference between x and approx) and T is the
+    /// This function runs in O((T + log(d)) * log(d)) where d is the error made in 
+    /// approx (i.e. the difference between the found root x and approx) and T is the
     /// time required for computing f on a value between x - d and x + d.
     /// 
     pub fn find_zero_floor<F>(mut f: F, approx: BigInt) -> BigInt
@@ -613,8 +645,10 @@ impl BigInt {
     }
 
     ///
-    /// Given an increasing function f that is negative on `begin` and positive on 
-    /// `end`, finds the floor of some root of f.
+    /// Given a continuous function f: R -> R that is negative on `begin` and 
+    /// positive on `end`, finds the floor of some root of f. Note that even
+    /// if f has integral roots, the returned value does not have to be a root
+    /// of f.
     /// 
     /// # Complexity
     /// 
@@ -627,8 +661,11 @@ impl BigInt {
     {
         assert!(f(&start).signum() <= 0);
         assert!(f(&end).signum() >= 0);
+        if f(&end) == 0 {
+            return end;
+        }
         loop {
-            let mid = BigInt::RING.add_ref(start.clone(), &end) / 2;
+            let mid = BigInt::RING.add_ref(start.clone(), &end).floor_div_small(2);
             if mid == start {
                 return start;
             }
@@ -804,7 +841,7 @@ impl From<i8> for BigInt {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct BigIntRing;
 
 impl BigInt {
@@ -1102,24 +1139,6 @@ impl MulAssign<i64> for BigInt {
     }
 }
 
-impl Div<i64> for BigInt {
-
-    type Output = BigInt;
-
-    fn div(self, rhs: i64) -> BigInt {
-        self.div_rem_small(rhs).0
-    }
-}
-
-impl Rem<i64> for BigInt {
-
-    type Output = i64;
-
-    fn rem(self, rhs: i64) -> Self::Output {
-        self.div_rem_small(rhs).1
-    }
-}
-
 impl Shr<usize> for BigInt {
 
     type Output = BigInt;
@@ -1156,7 +1175,7 @@ impl Hash for BigInt {
 
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         if let Some(d) = self.highest_set_block() {
-            hasher.write_u8(if self.negative { 1 } else { 0 });
+            self.negative.hash(hasher);
             for i in 0..=d {
                 hasher.write_u64(self.data[i])
             }
@@ -1501,7 +1520,6 @@ fn test_factor() {
 fn test_is_prime() {
     assert_eq!(false, BigInt::RING.is_prime(&BigInt::from(81)));
 }
-
 
 #[test]
 fn test_cmp() {

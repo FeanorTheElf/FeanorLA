@@ -111,10 +111,10 @@ fn transform_pivot_gcd_col<M, N, T>(
         return false;
     }
     while current != 0 {
-        let (a, b) = (A.at(pivot_row, pivot_col).clone(), A.at(pivot_row + current, pivot_col).clone());
+        let (mut a, mut b) = (A.at(pivot_row, pivot_col).clone(), A.at(pivot_row + current, pivot_col).clone());
         let (s, t, _) = signed_eea(a.clone(), b.clone(), &StaticRing::<T>::RING);
         let gcd = s.clone() * a.clone() + t.clone() * b.clone();
-        let transform = [s, t, -b / gcd.clone(), a / gcd];
+        let transform = [s, t, -b.div_rem(gcd.clone()), a.div_rem(gcd)];
         A.transform_two_dims_left(pivot_row, pivot_row + current, &transform, &T::RING);
         iL.transform_two_dims_left(pivot_row, pivot_row + current, &transform, &T::RING);
         current =
@@ -142,10 +142,10 @@ fn transform_pivot_gcd_row<M, N, T>(
         return false;
     }
     while current != 0 {
-        let (a, b) = (A.at(pivot_row, pivot_col).clone(), A.at(pivot_row, pivot_col + current).clone());
+        let (mut a, mut b) = (A.at(pivot_row, pivot_col).clone(), A.at(pivot_row, pivot_col + current).clone());
         let (s, t, _) = signed_eea(a.clone(), b.clone(), &StaticRing::<T>::RING);
         let gcd = s.clone() * a.clone() + t.clone() * b.clone();
-        let transform = [s, -b / gcd.clone(), t, a / gcd];
+        let transform = [s, -b.div_rem(gcd.clone()), t, a.div_rem(gcd)];
         A.transform_two_dims_right(pivot_col, pivot_col + current, &transform, &T::RING);
         iR.transform_two_dims_left(pivot_col, pivot_col + current, &transform, &T::RING);
         current =

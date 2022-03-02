@@ -438,20 +438,31 @@ pub trait BindableElementRing: Ring {
 
     fn bind<'a>(&'a self, el: Self::El) -> RingElWrapper<&'a Self>;
     fn bind_ring<'a>(&'a self) -> WrappingRing<&'a Self>;
+
+    fn bind_by_value(&self, el: Self::El) -> RingElWrapper<Self>;
+    fn bind_ring_by_value(&self) -> WrappingRing<Self>;
 }
 
 impl<R: Ring> BindableElementRing for R {
     
     fn bind<'a>(&'a self, el: Self::El) -> RingElWrapper<&'a Self> {
-        RingElWrapper {
-            ring: self,
-            el: el
-        }
+        (&self).bind_by_value(el)
     }
     
     fn bind_ring<'a>(&'a self) -> WrappingRing<&'a Self> {
+        (&self).bind_ring_by_value()
+    }
+
+    fn bind_by_value(&self, el: Self::El) -> RingElWrapper<Self> {
+        RingElWrapper {
+            ring: self.clone(),
+            el: el
+        }
+    }
+
+    fn bind_ring_by_value(&self) -> WrappingRing<Self> {
         WrappingRing {
-            ring: self
+            ring: self.clone()
         }
     }
 }

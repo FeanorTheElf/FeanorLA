@@ -4,10 +4,13 @@ use super::super::bigint::*;
 use super::super::embedding::*;
 use super::super::wrapper::*;
 use super::super::la::mat::*;
+use super::super::combinatorics::iters::*;
 use super::ring_ext::*;
 use super::poly::*;
 use super::fractions::*;
 use super::eea::*;
+
+use std::collections::HashSet;
 
 #[derive(Debug)]
 pub struct EllipticCurve<K: Ring> {
@@ -22,6 +25,8 @@ impl<K: Ring> PartialEq for EllipticCurve<K> {
         self.base_ring.eq(&self.A, &rhs.A) && self.base_ring.eq(&self.B, &rhs.B)
     }
 }
+
+impl<K: Ring> Eq for EllipticCurve<K> {}
 
 impl<K: Ring> std::fmt::Display for EllipticCurve<K> {
 
@@ -43,9 +48,11 @@ pub enum EllipticCurvePoint<K>
 impl<K: Ring> EllipticCurve<K> {
 
     pub fn new(base_ring: K, A: K::El, B: K::El) -> Self {
-        EllipticCurve {
+        let result = EllipticCurve {
             base_ring, A, B
-        }
+        };
+        assert!(!result.base_ring.is_zero(&result.discriminant()));
+        return result;
     }
 
     ///
@@ -81,15 +88,19 @@ impl<K: Ring> EllipticCurve<K> {
         return (field, x, y);
     }
 
+    pub fn discriminant(&self) -> K::El {
+        self.base_ring.add(
+            self.base_ring.mul(self.base_ring.from_z(27), self.base_ring.pow(&self.B, 2)),
+            self.base_ring.mul(self.base_ring.from_z(4), self.base_ring.pow(&self.A, 3))
+        )
+    }
+
     pub fn j_invariant(&self) -> K::El {
         assert!(self.base_ring.is_field().can_use());
         let A_cubed = self.base_ring.pow(&self.A, 3);
         return self.base_ring.div(
             self.base_ring.mul(self.base_ring.from_z(1728 * 4), A_cubed.clone()), 
-            &self.base_ring.add(
-                self.base_ring.mul(self.base_ring.from_z(27), self.base_ring.pow(&self.B, 2)),
-                self.base_ring.mul(self.base_ring.from_z(4), A_cubed)
-            )
+            &self.discriminant()
         );
     }
 
@@ -184,8 +195,99 @@ impl<K: Ring> EllipticCurve<K> {
 
 type QType = FieldOfFractions<BigIntRing>;
 
+impl std::hash::Hash for EllipticCurvePoint<QType> {
+
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let Q = QType::singleton();
+        match self {
+            EllipticCurvePoint::Infinity => {
+                true.hash(state);
+            },
+            EllipticCurvePoint::Affine(x, y) => {
+                false.hash(state);
+                let (x_num, x_den) = Q.reduce(x.clone());
+                let (y_num, y_den) = Q.reduce(y.clone());
+                x_num.hash(state);
+                x_den.hash(state);
+                y_num.hash(state);
+                y_den.hash(state);
+            }
+        }
+    }
+}
+
+struct IntegralCubic<'a> {
+    p: &'a BigInt,
+    q: &'a BigInt
+}
+
+impl<'a> IntegralCubic<'a> {
+
+    fn eval(&self, x: &BigInt) -> BigInt {
+        BigInt::RING.add_ref(BigInt::RING.add(BigInt::RING.pow(x, 3), BigInt::RING.mul_ref(x, &self.p)), &self.q)
+    }
+
+    fn eval_diff(&self, x: &BigInt) -> BigInt {
+        BigInt::RING.add_ref(BigInt::RING.mul_ref(x, x) * 3, &self.p)
+    }
+
+    fn calc_integral_roots<F>(&self, mut f: F)
+        where F: FnMut(BigInt)
+    {
+        let mut process_potential_root = |x: BigInt| if self.eval(&x) == 0 { f(x) };
+        let Z = BigInt::RING;
+        let diff_disc = Z.mul(Z.from_z(-12), self.p.clone());
+        if diff_disc <= 0 {
+            // zero or one maximum/minimum, so there can be at most one root
+            process_potential_root(BigInt::find_zero_floor(|x| self.eval(x), BigInt::ZERO));
+        } else {
+            let root_size_bound = if BigInt::abs_compare(&self.p, &self.q) == std::cmp::Ordering::Less {
+                self.q.clone().abs()
+            } else {
+                self.p.clone().abs()
+            };
+            let extremum_floor = BigInt::root_floor(diff_disc, 2).floor_div_small(6);
+            // on the intervals [a0, a1], [b0, b1], [c0, c1], the function is monotonous, 
+            // hence has at most one root
+            let a0 = -root_size_bound.clone();
+            let a1 = -extremum_floor.clone();
+            let b0 = a1.clone() - 1;
+            let b1 = extremum_floor;
+            let c0 = b1.clone() + 1;
+            let c1 = root_size_bound;
+            let a0_val = self.eval(&a0);
+            let a1_val = self.eval(&a1);
+            let b0_val = self.eval(&b0);
+            let b1_val = self.eval(&b1);
+            let c0_val = self.eval(&c0);
+            let c1_val = self.eval(&c1);
+            if a0_val <= 0 && a1_val >= 0 {
+                process_potential_root(BigInt::bisect(|x| self.eval(&x), a0, a1));
+            }
+            if b0_val >= 0 && b1_val <= 0 {
+                dbg!(&b0, &b1, &b0_val, &b1_val);
+                process_potential_root(BigInt::bisect(|x| -self.eval(&x), b0, b1));
+            }
+            if c0_val <= 0 && c1_val >= 0 {
+                process_potential_root(BigInt::bisect(|x| self.eval(&x), c0, c1));
+            }
+        }
+    }
+
+    fn find_integral_roots(&self) -> impl Iterator<Item = BigInt> {
+        let mut roots = [None, None, None];
+        let mut i = 0;
+        self.calc_integral_roots(|root| {
+            roots[i] = Some(root);
+            i += 1;
+        });
+        return std::array::IntoIter::new(roots).filter_map(|x| x);
+    }
+}
+
 impl EllipticCurve<QType> 
 {
+
     ///
     /// Returns an isomorphic elliptic curve E': y^2 = x^3 + Ax + B with A, B in Z
     /// with minimal discriminant and isomorphisms f: E -> E' and f^-1: E' -> E.
@@ -239,7 +341,34 @@ impl EllipticCurve<QType>
         )
     }
 
-    pub fn torsion_group(&self) {
+    pub fn torsion_group(&self) -> HashSet<EllipticCurvePoint<QType>> {
+        let Z = BigInt::RING;
+        let (E, _f, finv) = self.isomorphic_curve_over_z();
+        let (num, den) = E.discriminant();
+        let disc = Z.quotient(&num, &den).unwrap();
+        let y_multiple = Z.factor(disc).into_iter()
+            .map(|(factor, power)| (factor, power as u32 / 2));
+        // note that the divisors of y_multiple are bijective to the cartesian product
+        // { 0, ..., e1 } x ... x { 0, ..., en } via e -> product pi^ei
+        let possible_y = std::iter::once(BigInt::ZERO).chain(
+            multi_cartesian_product(
+                y_multiple.map(|(factor, power)| (0..=power).map(move |i| (factor.clone(), i))), 
+                |factorization| factorization.iter()
+                    .map(|(factor, power)| factor.pow(*power))
+                    .product::<RingElWrapper<_>>()
+                    .into_val().abs()
+            )
+        );
+        let A = Z.quotient(&E.A.0, &E.A.1).unwrap();
+        let B = Z.quotient(&E.B.0, &E.B.1).unwrap();
+        for y in possible_y {
+            let y2 = Z.mul_ref(&y, &y);
+            let potential_x1 = BigInt::find_zero_floor(
+                |x| Z.add_ref(Z.add(x.pow(3), Z.mul_ref(&x, &A)), &B), 
+                BigInt::ZERO,
+            );
+        }
+        unimplemented!() 
     }
 }
 
@@ -260,4 +389,34 @@ fn test_isomorphic_curve_over_z() {
     assert!(actual_curve.is_on_curve(&P));
     assert!(curve.is_on_curve(&finv(P.clone())));
     assert!(actual_curve.points_eq(&P, &f(finv(P.clone()))));
+}
+
+#[test]
+fn test_integral_cubic_eval() {
+    let i = BigInt::RING.z_embedding(i64::RING);
+    assert_eq!(
+        i(1),
+        IntegralCubic { p: &i(1), q: &i(1) }.eval(&BigInt::ZERO)
+    );
+    assert_eq!(
+        i(-3),
+        IntegralCubic { p: &i(-2), q: &i(1) }.eval(&i(-2))
+    )
+}
+
+#[test]
+fn test_find_integral_roots() {
+    let i = BigInt::RING.z_embedding(i64::RING);
+    assert_eq!(
+        Vec::<BigInt>::new(),
+        IntegralCubic { p: &i(1), q: &i(1) }.find_integral_roots().collect::<Vec<_>>()
+    );
+    assert_eq!(
+        vec![i(1)],
+        IntegralCubic { p: &i(-2), q: &i(1) }.find_integral_roots().collect::<Vec<_>>()
+    );
+    assert_eq!(
+        vec![i(-3), i(1), i(2)],
+        IntegralCubic { p: &i(-7), q: &i(6) }.find_integral_roots().collect::<Vec<_>>()
+    );
 }

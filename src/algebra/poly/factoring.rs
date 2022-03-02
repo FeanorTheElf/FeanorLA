@@ -107,7 +107,7 @@ pub fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<<F
             power_x = poly_ring.mul(power_x, poly_ring.unknown());
         }
         T = poly_ring.add(T, power_x);
-        let exp = (p.clone().pow(d as u32) - 1) / 2;
+        let exp = (p.clone().pow(d as u32) - 1).floor_div_small(2);
         let G = poly_ring.sub(pow_mod_f(&poly_ring, &T, &f, &exp), poly_ring.one());
         let g = eea(&poly_ring, f.clone(), G.clone()).2;
         if !poly_ring.is_unit(&g) && poly_ring.quotient(&g, &f).is_none() {

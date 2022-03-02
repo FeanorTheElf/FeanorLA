@@ -44,7 +44,7 @@ fn check_smooth(mut k: BigInt, factor_base: &Vec<i64>) -> Option<RelVec> {
         let mut dividing_power = 0;
         tmp.assign(&k);
         loop {
-            let (quo, rem) = tmp.div_rem_small(factor_base[i] as i64);
+            let (quo, rem) = tmp.euclidean_div_rem_small(factor_base[i] as i64);
             tmp = quo;
             if rem != 0 {
                 break;

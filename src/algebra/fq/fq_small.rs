@@ -59,3 +59,8 @@ fn test_division() {
     println!("Found c");
     assert!(F4.eq(&b, &c));
 }
+
+#[test]
+fn test_size_zero() {
+    assert_eq!(0, std::mem::size_of::<F49Type>())
+}

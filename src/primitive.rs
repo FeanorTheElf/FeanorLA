@@ -1,7 +1,7 @@
 use super::ring::*;
 use super::bigint::*;
 use std::ops::{ 
-    Add, Mul, Sub, Neg, Div, Rem,
+    Add, Mul, Sub, Neg, Div,
     AddAssign, MulAssign, SubAssign, DivAssign
 };
 
@@ -218,7 +218,7 @@ pub trait RingEl:
     AddAssign + MulAssign + SubAssign
 {
     type Axioms: RingAxioms;
-    type RingType: Ring<El = Self>;
+    type RingType: Ring<El = Self> + SingletonRing;
     const RING: Self::RingType;
 
     fn pow(self, exp: u32) -> Self {
@@ -237,8 +237,7 @@ pub trait RingEl:
 }
 
 pub trait EuclideanEl: 
-    RingEl<Axioms = RingAxiomsEuclidean> + Rem<Output = Self> + 
-    Div<Output = Self> 
+    RingEl<Axioms = RingAxiomsEuclidean>
 {
     ///
     /// Computes (returned, self) := (self / rhs, self % rhs) and returns returned.
@@ -452,7 +451,7 @@ impl<T: std::fmt::Display + std::fmt::Debug> DisplayOrDebug for T {
 impl<T> PartialEq for StaticRingImpl<T::Axioms, T> 
     where T: RingEl
 {
-    fn eq(&self, rhs: &Self) -> bool {
+    fn eq(&self, _rhs: &Self) -> bool {
         true
     }
 }
@@ -499,14 +498,6 @@ impl<T> EuclideanInfoRing for StaticRingImpl<RingAxiomsEuclidean, T>
     fn euclidean_div_rem(&self, mut lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) { 
         let quo = lhs.div_rem(rhs.clone());
         return (quo, lhs);
-    }
-
-    fn euclidean_div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { 
-        lhs / rhs.clone()
-    }
-    
-    fn euclidean_rem(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { 
-        lhs % rhs.clone()
     }
 
     fn euclidean_deg(&self, el: Self::El) -> BigInt {
@@ -602,6 +593,14 @@ impl<T> DivisibilityInfoRing for StaticRingImpl<RingAxiomsField, T>
 
     fn is_unit(&self, el: &Self::El) -> bool {
         !self.is_zero(el)
+    }
+}
+
+impl<T> SingletonRing for StaticRingImpl<T::Axioms, T>
+    where T: RingEl
+{
+    fn singleton() -> Self {
+        Self::RING
     }
 }
 

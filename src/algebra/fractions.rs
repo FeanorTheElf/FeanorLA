@@ -43,7 +43,7 @@ impl<'a, R> Fn<(R::El, )> for FieldOfFractionsEmbedding<'a, R>
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct FieldOfFractions<R>
     where R: Ring
 {
@@ -91,6 +91,14 @@ impl<R> FieldOfFractions<R>
     }
 }
 
+impl<R> SingletonRing for FieldOfFractions<R>
+    where R: SingletonRing
+{
+    fn singleton() -> Self {
+        FieldOfFractions::new(R::singleton())
+    }
+}
+
 trait SoftReducable: Ring {
 
     fn soft_reduce(&self, el: <Self as Ring>::El) -> <Self as Ring>::El;
@@ -122,14 +130,6 @@ impl<R> FieldOfFractions<R>
     pub fn in_base_ring(&self, (num, den): &<Self as Ring>::El) -> Option<R::El> {
         assert!(self.base_ring.is_divisibility_computable());
         self.base_ring.quotient(num, den)
-    }
-}
-
-impl<R> SingletonRing for FieldOfFractions<R>
-    where R: SingletonRing
-{
-    fn singleton() -> Self {
-        FieldOfFractions::new(R::singleton())
     }
 }
 
@@ -249,7 +249,7 @@ impl<R> DivisibilityInfoRing for FieldOfFractions<R>
 }
 
 #[cfg(test)]
-use super::super::bigint::BigInt;
+use super::super::bigint::*;
 #[cfg(test)]
 use super::super::wrapper::*;
 
@@ -272,4 +272,9 @@ fn test_mul() {
     let two_thirds = two.clone() / three.clone();
     let one_half = rats.bind(rats.one()) / two;
     assert_eq!(rats.bind(rats.from_z(1)) / rats.bind(rats.from_z(3)), two_thirds * one_half);
+}
+
+#[test]
+fn test_size_zero() {
+    assert_eq!(0, std::mem::size_of::<FieldOfFractions<BigIntRing>>())
 }
