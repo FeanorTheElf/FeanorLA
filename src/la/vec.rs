@@ -181,6 +181,7 @@ impl<V, W, T, U> PartialEq<Vector<W, U>> for Vector<V, T>
     where V: VectorView<T>, W: VectorView<U>, T: PartialEq<U>
 {
     fn eq(&self, rhs: &Vector<W, U>) -> bool {
+        assert_eq!(self.len(), rhs.len());
         for i in 0..self.len() {
             if self.at(i) != rhs.at(i) {
                 return false;

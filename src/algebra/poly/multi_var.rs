@@ -1,4 +1,5 @@
 use super::super::super::ring::*;
+use super::super::super::bigint::*;
 use super::super::super::la::mat::*;
 use super::uni_var::*;
 
@@ -365,6 +366,14 @@ impl<R> Ring for MultivariatePolyRing<R>
         };
 
         return cmp(lhs, rhs) && cmp(rhs, lhs);
+    }
+
+    fn from_z(&self, x: i64) -> Self::El {
+        self.from(self.base_ring.from_z(x))
+    }
+
+    fn from_z_big(&self, x: &BigInt) -> Self::El {
+        self.from(self.base_ring.from_z_big(x))
     }
 
     fn is_integral(&self) -> RingPropValue {

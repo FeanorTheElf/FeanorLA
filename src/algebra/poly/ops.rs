@@ -81,8 +81,21 @@ pub fn poly_add<R, V, W>(coeff_ring: &R, lhs: Vector<V, R::El>, rhs: Vector<W, R
 pub fn poly_mul<R, V, W>(coeff_ring: &R, lhs: Vector<V, R::El>, rhs: Vector<W, R::El>) -> Vector<VectorOwned<R::El>, R::El>
     where R: Ring, V: VectorView<R::El>, W: VectorView<R::El>
 {
-    let mut result = Vec::with_capacity(lhs.len() + rhs.len() + 1);
-    for i in 0..(lhs.len() + rhs.len()) {
+    // do not just use lhs.len() and rhs.len(), as in some situations with huge amount of
+    // multiplications, this can blow up the resulting vector terribly (e.g. when calculating powers) 
+    let lhs_deg = poly_degree(coeff_ring, lhs.as_ref());
+    let rhs_deg = poly_degree(coeff_ring, rhs.as_ref());
+    if lhs_deg.is_none() || rhs_deg.is_none() {
+        return Vector::from_array([]);
+    }
+    let lhs_deg = lhs_deg.unwrap();
+    let rhs_deg = rhs_deg.unwrap();
+    // this is only the degree of result if the product of the leading coeffs is nonzero
+    // e.g. if coeff_ring is integral
+    // the code works anyway
+    let result_deg = lhs_deg + rhs_deg + 1;
+    let mut result = Vec::with_capacity(result_deg);
+    for i in 0..result_deg {
         let mut val = coeff_ring.zero();
         for j in (rhs.len().max(i + 1) - rhs.len())..lhs.len().min(i + 1) {
             val = coeff_ring.add(val, coeff_ring.mul_ref(&lhs[j], &rhs[i - j]));
@@ -135,4 +148,15 @@ pub fn poly_evaluate<R, V>(coeff_ring: &R, value: R::El, poly: Vector<V, R::El>)
         current_power = coeff_ring.mul(current_power, value.clone());
     }
     return result;
+}
+
+#[cfg(test)]
+use super::super::super::primitive::*;
+
+#[test]
+fn test_poly_mul() {
+    assert_eq!(
+        Vector::from_array([1]),
+        poly_mul(&i64::RING, Vector::from_array([1]).as_ref(), Vector::from_array([1]).as_ref())
+    );
 }

@@ -2,47 +2,6 @@ use super::super::ring::*;
 use super::super::embedding::*;
 use super::eea::*;
 
-pub struct FieldOfFractionsEmbedding<'a, R>
-    where R: Ring
-{
-    field_of_fractions: &'a FieldOfFractions<R>
-}
-
-impl<'a, R> FnOnce<(R::El, )> for FieldOfFractionsEmbedding<'a, R> 
-    where R: Ring
-{
-    type Output = <FieldOfFractions<R> as Ring>::El;
-
-    extern "rust-call" fn call_once(
-        mut self, 
-        (x, ): (R::El, )
-    ) -> Self::Output {
-        self.call_mut((x, ))
-    }
-}
-
-impl<'a, R> FnMut<(R::El, )> for FieldOfFractionsEmbedding<'a, R> 
-    where R: Ring
-{
-    extern "rust-call" fn call_mut(
-        &mut self, 
-        (x, ): (R::El, )
-    ) -> Self::Output {
-        self.call((x, ))
-    }
-}
-
-impl<'a, R> Fn<(R::El, )> for FieldOfFractionsEmbedding<'a, R> 
-    where R: Ring
-{
-    extern "rust-call" fn call(
-        &self, 
-        (x, ): (R::El, )
-    ) -> Self::Output {
-        self.field_of_fractions.from(x)
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 pub struct FieldOfFractions<R>
     where R: Ring
@@ -197,11 +156,8 @@ impl<R> Ring for FieldOfFractions<R>
     }
 
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
-        if self.is_zero(rhs) {
-            panic!("division by zero!")
-        } else {
-            (self.base_ring.mul(lhs.0, rhs.1.clone()), self.base_ring.mul(lhs.1, rhs.0.clone()))
-        }
+        assert!(!self.is_zero(rhs));
+        (self.base_ring.mul(lhs.0, rhs.1.clone()), self.base_ring.mul(lhs.1, rhs.0.clone()))
     }
 
     fn from_z(&self, x: i64) -> Self::El {
@@ -214,19 +170,15 @@ impl<R> Ring for FieldOfFractions<R>
     }
 }
 
-impl<'a, 'b, R> CanonicalEmbeddingInfo<&'a R> for &'b FieldOfFractions<R> 
+impl<R> CanonicalEmbeddingInfo<R> for FieldOfFractions<R> 
     where R: Ring
 {
-    type Embedding = FieldOfFractionsEmbedding<'b, R>;
-
-    fn has_embedding(&self, _: &&'a R) -> RingPropValue {
+    fn has_embedding(&self, _from: &R) -> RingPropValue {
         RingPropValue::True
     }
 
-    fn embedding(self, _: &'a R) -> Self::Embedding {
-        FieldOfFractionsEmbedding {
-            field_of_fractions: self
-        }
+    fn embed(&self, _from: &R, el: R::El) -> Self::El {
+        self.from(el)
     }
 }
 

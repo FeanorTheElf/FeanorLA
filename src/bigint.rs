@@ -914,20 +914,16 @@ impl Ring for BigIntRing {
     fn is_integral(&self) -> RingPropValue { RingPropValue::True }
     fn is_field(&self) -> RingPropValue { RingPropValue::False }
 
-    fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
-        if *rhs == 1 {
-            return lhs;
-        } else if *rhs == -1 {
-            return self.neg(lhs);
-        } else if self.is_zero(rhs) {
-            panic!("division by zero")
-        } else {
-            panic!("Not a field!")
-        }
+    fn div(&self, _lhs: Self::El, _rhs: &Self::El) -> Self::El {
+        panic!("Not a field!")
     }
 
     fn from_z(&self, x: i64) -> BigInt {
         BigInt::from(x)
+    }
+
+    fn from_z_big(&self, x: &BigInt) -> BigInt {
+        x.clone()
     }
 
     fn format(&self, el: &BigInt, f: &mut std::fmt::Formatter, _in_prod: bool) -> std::fmt::Result {
@@ -977,7 +973,7 @@ impl BigIntRing {
     pub fn z_embedding<'a, R>(&self, target: &'a R) -> impl 'a + FnMut(BigInt) -> R::El
         where R: Ring
     {
-        move |x| target.from_z_big(x)
+        move |x| target.from_z_big(&x)
     }
 }
 

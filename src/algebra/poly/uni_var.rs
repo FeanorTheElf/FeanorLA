@@ -99,19 +99,15 @@ impl<R> PolyRing<R>
     }
 }
 
-impl<'a, 'b, R> CanonicalEmbeddingInfo<&'a R> for &'b PolyRing<R>
+impl<R> CanonicalEmbeddingInfo<R> for PolyRing<R>
     where R: Ring
 {
-    type Embedding = PolyRingEmbedding<'b, R>;
-
-    fn has_embedding(&self, _from: &&'a R) -> RingPropValue {
+    fn has_embedding(&self, _from: &R) -> RingPropValue {
         RingPropValue::True
     }
 
-    fn embedding(self, _from: &'a R) -> Self::Embedding {
-        PolyRingEmbedding {
-            poly_ring: self
-        }
+    fn embed(&self, _from: &R, el: R::El) -> Self::El {
+        self.from(el)
     }
 }
 
@@ -188,35 +184,12 @@ impl<R> Ring for PolyRing<R>
         self.from(self.base_ring().from_z(x))
     }
 
-    fn from_z_big(&self, x: BigInt) -> Self::El {
+    fn from_z_big(&self, x: &BigInt) -> Self::El {
         self.from(self.base_ring().from_z_big(x))
     }
     
-    ///
-    /// Calculates the polynomial division.
-    /// This function panics if the division function panics when called with the leading 
-    /// coefficient of rhs as second argument, or if lhs is not divisble by rhs.
-    /// 
-    /// Therefore, if the base ring division works for all divisible pairs of arguments,
-    /// this is also the case for this function.
-    /// 
-    fn div(&self, mut lhs: Self::El, rhs: &Self::El) -> Self::El {
-        assert!(!self.is_zero(&rhs));
-        let rhs_lc = self.lc(&rhs).unwrap();
-        if self.base_ring.is_field().can_use() {
-            let rhs_lc_inv = self.base_ring.div(self.base_ring.one(), rhs_lc);
-            self.poly_division(
-                &mut lhs, 
-                &rhs, 
-                |x| Ok(self.base_ring.mul_ref(x, &rhs_lc_inv))
-            ).unwrap()
-        } else {
-            self.poly_division(
-                &mut lhs, 
-                &rhs, 
-                |x| Ok(self.base_ring.div(x.clone(), rhs_lc))
-            ).unwrap()
-        }
+    fn div(&self, _lhs: Self::El, _rhs: &Self::El) -> Self::El {
+        panic!("Not a field")
     }
 
     fn format(&self, el: &<Self as Ring>::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
@@ -294,47 +267,6 @@ impl<R> RingElWrapper<PolyRing<R>>
 {
     pub fn lc(&self) -> <WrappingRing<&R> as Ring>::El {
         self.base_ring().base_ring().bind(self.base_ring().lc(self.val()).unwrap().clone())
-    }
-}
-
-pub struct PolyRingEmbedding<'a, R>
-    where R: Ring
-{
-    poly_ring: &'a PolyRing<R>
-}
-
-impl<'a, R> FnOnce<(R::El, )> for PolyRingEmbedding<'a, R> 
-    where R: Ring
-{
-    type Output = <PolyRing<R> as Ring>::El;
-
-    extern "rust-call" fn call_once(
-        mut self, 
-        (x, ): (R::El, )
-    ) -> Self::Output {
-        self.call_mut((x, ))
-    }
-}
-
-impl<'a, R> FnMut<(R::El, )> for PolyRingEmbedding<'a, R> 
-    where R: Ring
-{
-    extern "rust-call" fn call_mut(
-        &mut self, 
-        (x, ): (R::El, )
-    ) -> Self::Output {
-        self.call((x, ))
-    }
-}
-
-impl<'a, R> Fn<(R::El, )> for PolyRingEmbedding<'a, R> 
-    where R: Ring
-{
-    extern "rust-call" fn call(
-        &self, 
-        (x, ): (R::El, )
-    ) -> Self::Output {
-        self.poly_ring.from(x)
     }
 }
 

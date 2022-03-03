@@ -87,19 +87,15 @@ impl<R, V> SimpleRingExtension<R, V>
     }
 }
 
-impl<'a, 'b, R, V> CanonicalEmbeddingInfo<&'a R> for &'b SimpleRingExtension<R, V>
-    where R: Ring, V: 'b + VectorView<R::El> + Clone
+impl<R, V> CanonicalEmbeddingInfo<R> for SimpleRingExtension<R, V>
+    where R: Ring, V: VectorView<R::El> + Clone
 {
-    type Embedding = RingExtEmbedding<'b, R, V>;
-
-    fn has_embedding(&self, _from: &&'a R) -> RingPropValue {
+    fn has_embedding(&self, _from: &R) -> RingPropValue {
         RingPropValue::True
     }
 
-    fn embedding(self, _from: &'a R) -> Self::Embedding {
-        RingExtEmbedding {
-            ring_extension: self
-        }
+    fn embed(&self, _from: &R, el: R::El) -> Self::El {
+        self.from(el)
     }
 }
 
@@ -218,47 +214,6 @@ impl<R, V> std::fmt::Debug for SimpleRingExtension<R, V>
 impl<R, V> Copy for SimpleRingExtension<R, V>
     where R: Ring + Copy, V: VectorView<R::El> + Copy
 {}
-
-pub struct RingExtEmbedding<'a, R, V>
-    where R: Ring, V: VectorView<R::El> + Clone
-{
-    ring_extension: &'a SimpleRingExtension<R, V>
-}
-
-impl<'a, R, V> FnOnce<(R::El, )> for RingExtEmbedding<'a, R, V> 
-    where R: Ring, V: VectorView<R::El> + Clone
-{
-    type Output = <PolyRing<R> as Ring>::El;
-
-    extern "rust-call" fn call_once(
-        mut self, 
-        (x, ): (R::El, )
-    ) -> Self::Output {
-        self.call_mut((x, ))
-    }
-}
-
-impl<'a, R, V> FnMut<(R::El, )> for RingExtEmbedding<'a, R, V> 
-    where R: Ring, V: VectorView<R::El> + Clone
-{
-    extern "rust-call" fn call_mut(
-        &mut self, 
-        (x, ): (R::El, )
-    ) -> Self::Output {
-        self.call((x, ))
-    }
-}
-
-impl<'a, R, V> Fn<(R::El, )> for RingExtEmbedding<'a, R, V> 
-    where R: Ring, V: VectorView<R::El> + Clone
-{
-    extern "rust-call" fn call(
-        &self, 
-        (x, ): (R::El, )
-    ) -> Self::Output {
-        self.ring_extension.from(x)
-    }
-}
 
 #[cfg(test)]
 use super::super::primitive::*;

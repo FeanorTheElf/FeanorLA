@@ -19,7 +19,7 @@ fn sumation_poly<R>(ring: &PolyRing<R>, f: <PolyRing<R> as Ring>::El) -> <PolyRi
 {
     let mut current = f;
     let mut result = ring.zero();
-    let incl = ring.embedding(ring.base_ring());
+    let incl = embedding(ring.base_ring(), ring);
     while let Some(n) = ring.deg(&current) {
         let coeff = current.at(n).clone();
         current = ring.sub(current, ring.mul(rising_power_poly(ring, n), incl(coeff.clone())));

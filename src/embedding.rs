@@ -1,130 +1,37 @@
 use super::ring::*;
-use super::bigint::*;
-use super::primitive::*;
 
 use std::marker::PhantomData;
 
 pub trait CanonicalEmbeddingInfo<R>: Ring
     where R: Ring
 {
-    type Embedding: Fn(R::El) -> Self::El;
-
     fn has_embedding(&self, from: &R) -> RingPropValue;
-    fn embedding(self, from: R) -> Self::Embedding;
+    fn embed(&self, from: &R, el: R::El) -> Self::El;
 }
 
-pub trait CanonicalZEmbeddingInfo<R>: Ring
-    where R: Ring
+impl<'a, 'b, R, S> CanonicalEmbeddingInfo<&'a R> for &'b S
+    where R: Ring, S: CanonicalEmbeddingInfo<R>
 {
-    type Embedding: Fn(R::El) -> Self::El;
+    fn has_embedding(&self, from: &&'a R) -> RingPropValue {
+        (**self).has_embedding(&**from)
+    }
 
-    fn z_embedding(self, from: R) -> Self::Embedding;
-}
-
-pub struct BigIntEmbedding<R>
-    where R: Ring
-{
-    target: R
-}
-
-impl<R> FnOnce<(BigInt, )> for BigIntEmbedding<R> 
-    where R: Ring
-{
-    type Output = R::El;
-
-    extern "rust-call" fn call_once(
-        mut self, 
-        (x, ): (BigInt, )
-    ) -> Self::Output {
-        self.call_mut((x, ))
+    fn embed(&self, from: &&'a R, el: R::El) -> Self::El {
+        (**self).embed(&**from, el)
     }
 }
 
-impl<R> FnMut<(BigInt, )> for BigIntEmbedding<R> 
-    where R: Ring
+pub fn embedding<R, S>(from: R, to: S) -> impl Fn(R::El) -> S::El 
+    where R: Ring, S: CanonicalEmbeddingInfo<R>
 {
-    extern "rust-call" fn call_mut(
-        &mut self, 
-        (x, ): (BigInt, )
-    ) -> Self::Output {
-        self.call((x, ))
-    }
+    assert!(to.has_embedding(&from).can_use());
+    move |x| to.embed(&from, x)
 }
 
-impl<R> Fn<(BigInt, )> for BigIntEmbedding<R> 
+pub fn z_hom<'a, R>(to: &'a R) -> impl 'a + Fn(i64) -> R::El 
     where R: Ring
 {
-    extern "rust-call" fn call(
-        &self, 
-        (x, ): (BigInt, )
-    ) -> Self::Output {
-        self.target.from_z_big(x)
-    }
-}
-
-impl<R> CanonicalZEmbeddingInfo<BigIntRing> for R
-    where R: Ring
-{
-    type Embedding = BigIntEmbedding<R>;
-
-    fn z_embedding(self, _from: BigIntRing) -> Self::Embedding {
-        BigIntEmbedding {
-            target: self
-        }
-    }
-}
-
-pub struct IntEmbedding<R>
-    where R: Ring
-{
-    target: R
-}
-
-impl<R> FnOnce<(i64, )> for IntEmbedding<R> 
-    where R: Ring
-{
-    type Output = R::El;
-
-    extern "rust-call" fn call_once(
-        mut self, 
-        (x, ): (i64, )
-    ) -> Self::Output {
-        self.call_mut((x, ))
-    }
-}
-
-impl<R> FnMut<(i64, )> for IntEmbedding<R> 
-    where R: Ring
-{
-    extern "rust-call" fn call_mut(
-        &mut self, 
-        (x, ): (i64, )
-    ) -> Self::Output {
-        self.call((x, ))
-    }
-}
-
-impl<R> Fn<(i64, )> for IntEmbedding<R> 
-    where R: Ring
-{
-    extern "rust-call" fn call(
-        &self, 
-        (x, ): (i64, )
-    ) -> Self::Output {
-        self.target.from_z(x)
-    }
-}
-
-impl<R> CanonicalZEmbeddingInfo<StaticRing<i64>> for R
-    where R: Ring
-{
-    type Embedding = IntEmbedding<R>;
-
-    fn z_embedding(self, _from: StaticRing<i64>) -> Self::Embedding {
-        IntEmbedding {
-            target: self
-        }
-    }
+    move |x| to.from_z(x)
 }
 
 pub struct ComposedEmbedding<F, G, R, S, T>

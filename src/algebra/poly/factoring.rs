@@ -101,7 +101,7 @@ pub fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<<F
         let mut power_x = poly_ring.one();
         for _ in 0..(2 * d - 1) {
             T = poly_ring.add(T, poly_ring.mul(
-                poly_ring.from_z_big(BigInt::get_uniformly_random_oorandom(&mut rng, p, 5)),
+                poly_ring.from_z_big(&BigInt::get_uniformly_random_oorandom(&mut rng, p, 5)),
                 power_x.clone()
             ));
             power_x = poly_ring.mul(power_x, poly_ring.unknown());
@@ -117,13 +117,13 @@ pub fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<<F
 }
 
 pub fn poly_squarefree_part<R>(ring: &R, poly: Vector<VectorOwned<R::El>, R::El>) -> Vector<VectorOwned<R::El>, R::El>
-    where R: Ring
+    where R: DivisibilityInfoRing
 {
     assert!(ring.is_field().can_use());
     let poly_ring = PolyRing::adjoint(ring, "X");
     let derivate = poly_ring.derive(poly.clone());
     let square_part = eea(&poly_ring, poly.clone(), derivate).2;
-    return poly_ring.div(poly, &square_part);
+    return poly_ring.quotient(&poly, &square_part).unwrap();
 }
 
 #[cfg(test)]
@@ -174,7 +174,7 @@ fn test_cantor_zassenhaus() {
     type Z7 = ZnEl<7>;
     let ring = PolyRing::adjoint(Z7::RING, "X");
     let x = ring.bind(ring.unknown());
-    let incl = ring.bind_ring().embedding(ring.base_ring().bind_ring());
+    let incl = embedding::<WrappingRing<&StaticRing<Z7>>, WrappingRing<&PolyRing<StaticRing<Z7>>>>(ring.base_ring().bind_ring(), ring.bind_ring());
 
     let f = &x * &x + 1;
     let g = &x * &x + &x + 3;

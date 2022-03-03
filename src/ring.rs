@@ -134,7 +134,18 @@ pub trait Ring : std::fmt::Debug + std::clone::Clone {
     fn pow(&self, basis: &Self::El, exp: u32) -> Self::El 
         where Self::El: Clone
     {
-        self.pow_big(basis, &BigInt::from(exp as i64))
+        if exp == 0 {
+            return self.one();
+        }
+        let mut result = self.one();
+        for i in (0..=31).rev() {
+            if (exp >> i) & 1 == 1 {
+                result = self.mul(self.mul_ref(basis, &result), result);
+            } else {
+                result = self.mul_ref(&result, &result);
+            }
+        }
+        return result;
     }
 
     fn pow_big(&self, basis: &Self::El, exp: &BigInt) -> Self::El 
@@ -180,8 +191,8 @@ pub trait Ring : std::fmt::Debug + std::clone::Clone {
     /// 
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El;
 
-    fn from_z_big(&self, x: BigInt) -> Self::El {
-        if x == 0 {
+    fn from_z_big(&self, x: &BigInt) -> Self::El {
+        if *x == 0 {
             return self.zero();
         }
         let mut result = self.zero();
@@ -192,7 +203,7 @@ pub trait Ring : std::fmt::Debug + std::clone::Clone {
                 result = self.add_ref(result.clone(), &result);
             }
         }
-        if x < 0 {
+        if *x < 0 {
             return self.neg(result);
         } else {
             return result;
@@ -204,7 +215,7 @@ pub trait Ring : std::fmt::Debug + std::clone::Clone {
             return self.zero();
         }
         let mut result = self.zero();
-        for i in (0..63).rev() {
+        for i in (0..=63).rev() {
             if (x.abs() >> i) & 1 == 1 {
                 result = self.add(self.add_ref(self.one(), &result), result);
             } else {
@@ -274,6 +285,8 @@ impl<'a, R: Ring> Ring for &'a R {
     {
         (**self).pow_big(basis, exp)
     }
+    fn from_z(&self, x: i64) -> Self::El { (**self).from_z(x) }
+    fn from_z_big(&self, x: &BigInt) -> Self::El { (**self).from_z_big(x) }
     fn is_zero(&self, val: &Self::El) -> bool { (**self).is_zero(val) }
     fn is_one(&self, val: &Self::El) -> bool { (**self).is_one(val) }
     fn is_neg_one(&self, val: &Self::El) -> bool { (**self).is_neg_one(val) }
@@ -426,6 +439,24 @@ impl<'a, R> UfdInfoRing for &'a R
 }
 
 pub trait SingletonRing: Ring {
-
     fn singleton() -> Self;
+}
+
+#[cfg(test)]
+use super::primitive::*;
+
+#[test]
+fn test_pow() {
+    let ring = i64::RING;
+    assert_eq!(3 * 3, ring.pow(&3, 2));
+    assert_eq!(3 * 3, ring.pow_big(&3, &BigInt::from(2)));
+    assert_eq!(3 * 3 * 3 * 3 * 3, ring.pow(&3, 5));
+    assert_eq!(3 * 3 * 3 * 3 * 3, ring.pow_big(&3, &BigInt::from(5)));
+}
+
+#[test]
+fn test_from_z() {
+    let ring = i64::RING;
+    assert_eq!(5, ring.from_z(5));
+    assert_eq!(5, ring.from_z_big(&BigInt::from(5)));
 }

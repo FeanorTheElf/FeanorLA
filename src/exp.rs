@@ -1,4 +1,4 @@
-#[allow(unused)]
+#![allow(unused)]
 use super::ring::*;
 use super::primitive::*;
 use super::wrapper::*;
