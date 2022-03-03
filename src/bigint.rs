@@ -894,6 +894,11 @@ impl Ring for BigIntRing {
     }
 
     fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+        if self.is_zero(lhs) && self.is_zero(rhs) {
+            return true;
+        } else if lhs.negative != rhs.negative {
+            return false;
+        }
         let highest_block = lhs.highest_set_block();
         if highest_block != rhs.highest_set_block() {
             return false;
@@ -908,7 +913,9 @@ impl Ring for BigIntRing {
         return true;
     }
 
-    fn is_zero(&self, val: &Self::El) -> bool { self.eq(val, &BigInt::ZERO) }
+    fn is_zero(&self, val: &Self::El) -> bool {
+        val.highest_set_block() == None
+    }
 
     fn is_noetherian(&self) -> bool { true }
     fn is_integral(&self) -> RingPropValue { RingPropValue::True }
@@ -1475,10 +1482,21 @@ fn test_eq() {
     assert!(a == 98711);
     assert!(a == b);
     assert!(b == a);
+    assert!(a != -a.clone());
     assert!(calculate_hash(&a) == calculate_hash(&b));
     assert!(a != BigInt::RING.one());
     // the next line could theoretically fail, but it is very improbable and we definitly should test hash inequality
     assert!(calculate_hash(&a) != calculate_hash(&BigInt::RING.one()));
+}
+
+#[test]
+fn test_is_zero() {
+    let zero = BigInt::from(0);
+    let nonzero = BigInt::power_of_two(83124);
+    assert!(BigInt::RING.is_zero(&zero));
+    assert!(BigInt::RING.is_zero(&(-zero)));
+    assert!(!BigInt::RING.is_zero(&nonzero));
+    assert!(!BigInt::RING.is_zero(&(-nonzero)));
 }
 
 #[test]

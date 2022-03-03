@@ -10,7 +10,7 @@ use super::poly::*;
 use super::fractions::*;
 use super::eea::*;
 
-use vector_map::VecMap;
+use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct EllipticCurve<K: Ring> {
@@ -54,6 +54,25 @@ impl<K> PartialEq for EllipticCurvePoint<WrappingRing<K>>
             (EllipticCurvePoint::Affine(x1, y1), EllipticCurvePoint::Affine(x2, y2)) => x1 == x2 && y1 == y2,
             _ => false
         }
+    }
+}
+
+impl<K> std::fmt::Debug for EllipticCurvePoint<WrappingRing<K>>
+    where K: Ring
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            EllipticCurvePoint::Infinity => write!(f, "o̲"),
+            EllipticCurvePoint::Affine(x, y) => write!(f, "({}, {})", x, y)
+        }
+    }
+}
+
+impl<K> std::fmt::Display for EllipticCurvePoint<WrappingRing<K>>
+    where K: Ring
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        <Self as std::fmt::Debug>::fmt(self, f)
     }
 }
 
@@ -144,6 +163,10 @@ impl<K: Ring> EllipticCurve<K> {
         }
     }
 
+    ///
+    /// Checks whether this curve is isomorphic to rhs over an algebraic extension of the
+    /// base field. Note that this does not imply that they are isomorphic over the base field.
+    /// 
     pub fn is_isomorphic(&self, rhs: &EllipticCurve<K>) -> bool {
         self.base_ring.eq(&self.j_invariant(), &rhs.j_invariant())
     }
@@ -154,7 +177,10 @@ impl<K: Ring> EllipticCurve<K> {
             (EllipticCurvePoint::Infinity, EllipticCurvePoint::Infinity) => EllipticCurvePoint::Infinity,
             (EllipticCurvePoint::Affine(x, y), EllipticCurvePoint::Infinity) => EllipticCurvePoint::Affine(x, y),
             (EllipticCurvePoint::Infinity, EllipticCurvePoint::Affine(x, y)) => EllipticCurvePoint::Affine(x, y),
-            (EllipticCurvePoint::Affine(x1, y1), EllipticCurvePoint::Affine(x2, y2)) if self.base_ring.eq(&x1, &x2) && self.base_ring.eq(&y1, &y2) => {
+            (EllipticCurvePoint::Affine(x1, y1), EllipticCurvePoint::Affine(x2, y2)) if self.base_ring.eq(&x1, &x2) && self.base_ring.eq(&y1, &self.base_ring.neg(y2.clone())) => {
+                EllipticCurvePoint::Infinity
+            },
+            (EllipticCurvePoint::Affine(x1, y1), EllipticCurvePoint::Affine(x2, y2)) if self.base_ring.eq(&x1, &x2) => {
                 let lambda = self.base_ring.div(
                     self.base_ring.add_ref(
                         self.base_ring.mul(self.base_ring.from_z(3), self.base_ring.mul_ref(&x1, &x1)),
@@ -210,6 +236,13 @@ impl<K: Ring> EllipticCurve<K> {
             }
         }
         return result;
+    }
+
+    pub fn inv_point(&self, point: EllipticCurvePoint<K>) -> EllipticCurvePoint<K> {
+        match point {
+            EllipticCurvePoint::Infinity => EllipticCurvePoint::Infinity,
+            EllipticCurvePoint::Affine(x, y) => EllipticCurvePoint::Affine(x, self.base_ring.neg(y))
+        }
     }
 
     pub fn extend_ring<'a, S, F>(self, new_ring: S, incl: F) -> (EllipticCurve<S>, impl Fn(EllipticCurvePoint<K>) -> EllipticCurvePoint<S>)
@@ -276,6 +309,12 @@ impl<'a> IntegralCubic<'a> {
         BigInt::RING.add_ref(BigInt::RING.add(BigInt::RING.pow(x, 3), BigInt::RING.mul_ref(x, &self.p)), &self.q)
     }
 
+    ///
+    /// Calls the given closure on all integral roots of the cubic.
+    /// The closure is only called once, even if the root is a multiple roots.
+    /// 
+    /// The algorithm relies on bisection, and works reliably with very large numbers.
+    /// 
     fn calc_integral_roots<F>(&self, mut f: F)
         where F: FnMut(BigInt)
     {
@@ -381,7 +420,7 @@ impl EllipticCurve<QType>
         )
     }
 
-    pub fn torsion_group(&self) -> VecMap<EllipticCurvePoint<QType>, ()> {
+    pub fn torsion_group(&self) -> HashSet<EllipticCurvePoint<QType>> {
         let Z = BigInt::RING;
         let Q = QType::singleton();
         let (E, _f, finv) = self.isomorphic_curve_over_z();
@@ -404,8 +443,8 @@ impl EllipticCurve<QType>
         let A = Z.quotient(&E.A.val().0, &E.A.val().1).unwrap();
         let B = Z.quotient(&E.B.val().0, &E.B.val().1).unwrap();
 
-        let mut result: VecMap<EllipticCurvePoint<QType>, ()> = VecMap::new();
-        result.insert(EllipticCurvePoint::Infinity, ());
+        let mut result: HashSet<EllipticCurvePoint<QType>> = HashSet::new();
+        result.insert(EllipticCurvePoint::Infinity);
         for y in possible_y {
             let y2 = Z.mul_ref(&y, &y);
             let B_minus_y2 = Z.sub_ref_fst(&B, y2);
@@ -413,7 +452,8 @@ impl EllipticCurve<QType>
                 let point = EllipticCurvePoint::Affine(Q.from_z_big(&x), Q.from_z_big(&y));
                 // it is a theorem that the torsion group has order dividing 24
                 if E.points_eq(&E.mul_point(&point, &BigInt::from(24)), &EllipticCurvePoint::Infinity) {
-                    result.insert(finv(point), ());
+                    result.insert(finv(point.clone()));
+                    result.insert(finv(E.inv_point(point)));
                 }
             }
         }
@@ -466,4 +506,43 @@ fn test_find_integral_roots() {
         vec![i(-3), i(1), i(2)],
         IntegralCubic { p: &i(-7), q: &i(6) }.find_integral_roots().collect::<Vec<_>>()
     );
+}
+
+#[test]
+fn test_elliptic_curve_point_eq() {
+    let Q = QType::singleton();
+    let i = z_hom(&Q);
+    let E = EllipticCurve::new(Q.clone(), i(0), i(1));
+    let P = EllipticCurvePoint::Affine(i(0), i(1));
+    let Q = EllipticCurvePoint::Affine(i(0), i(-1));
+    assert!(E.is_on_curve(&P));
+    assert!(E.is_on_curve(&Q));
+    assert_eq!(P, P);
+    assert_ne!(P, Q);
+}
+
+#[test]
+fn test_compute_torsion_group() {
+    let Q = QType::singleton();
+    let i = z_hom(&Q);
+    let E = EllipticCurve::new(Q.clone(), i(0), i(3));
+    let mut torsion_group = HashSet::new();
+    torsion_group.insert(EllipticCurvePoint::Infinity);
+    assert_eq!(torsion_group, E.torsion_group());
+
+    let E = EllipticCurve::new(Q.clone(), i(1), i(0));
+    let mut torsion_group = HashSet::new();
+    torsion_group.insert(EllipticCurvePoint::Infinity);
+    torsion_group.insert(EllipticCurvePoint::Affine(i(0), i(0)));
+    assert_eq!(torsion_group, E.torsion_group());
+
+    let E = EllipticCurve::new(Q.clone(), i(0), i(1));
+    let mut torsion_group = HashSet::new();
+    torsion_group.insert(EllipticCurvePoint::Infinity);
+    torsion_group.insert(EllipticCurvePoint::Affine(i(-1), i(0)));
+    torsion_group.insert(EllipticCurvePoint::Affine(i(2), i(3)));
+    torsion_group.insert(EllipticCurvePoint::Affine(i(2), i(-3)));
+    torsion_group.insert(EllipticCurvePoint::Affine(i(0), i(1)));
+    torsion_group.insert(EllipticCurvePoint::Affine(i(0), i(-1)));
+    assert_eq!(torsion_group, E.torsion_group());
 }
