@@ -382,6 +382,9 @@ impl EllipticCurve<QType>
         let Z = BigInt::RING;
         let Q = QType::singleton();
 
+        // there seems to be no better way to find the correct u without factoring A resp. B
+        // as even for checking whether a number is square-free currently there is no better
+        // method known
         let u_num_A = Z.factor(A_den.clone()).into_iter()
             .map(|(factor, power)| factor.pow((power as u32 - 1) / 4 + 1))
             .product::<RingElWrapper<&BigIntRing>>().into_val();
