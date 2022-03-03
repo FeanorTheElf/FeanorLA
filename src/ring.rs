@@ -138,7 +138,7 @@ pub trait Ring : std::fmt::Debug + std::clone::Clone {
             return self.one();
         }
         let mut result = self.one();
-        for i in (0..=31).rev() {
+        for i in (0..=(31 - exp.leading_zeros())).rev() {
             if (exp >> i) & 1 == 1 {
                 result = self.mul(self.mul_ref(basis, &result), result);
             } else {
@@ -215,7 +215,7 @@ pub trait Ring : std::fmt::Debug + std::clone::Clone {
             return self.zero();
         }
         let mut result = self.zero();
-        for i in (0..=63).rev() {
+        for i in (0..=(63 - x.abs().leading_zeros())).rev() {
             if (x.abs() >> i) & 1 == 1 {
                 result = self.add(self.add_ref(self.one(), &result), result);
             } else {
@@ -459,4 +459,6 @@ fn test_from_z() {
     let ring = i64::RING;
     assert_eq!(5, ring.from_z(5));
     assert_eq!(5, ring.from_z_big(&BigInt::from(5)));
+    assert_eq!(23578, ring.from_z(23578));
+    assert_eq!(23578, ring.from_z_big(&BigInt::from(23578)));
 }
