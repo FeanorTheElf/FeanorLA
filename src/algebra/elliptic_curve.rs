@@ -364,7 +364,7 @@ impl<'a> IntegralCubic<'a> {
             roots[i] = Some(root);
             i += 1;
         });
-        return std::array::IntoIter::new(roots).filter_map(|x| x);
+        return <[Option<_>; 3] as std::iter::IntoIterator>::into_iter(roots).filter_map(|x| x);
     }
 }
 

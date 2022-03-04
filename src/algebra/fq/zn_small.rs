@@ -9,7 +9,7 @@ pub struct ZnElImpl<const N: u64, const IS_FIELD: bool> {
     repr: u64
 }
 
-const fn is_prime(n: u64) -> bool {
+pub const fn is_prime(n: u64) -> bool {
     assert!(n >= 2);
     const fn is_b_smooth(b: u64, n: u64) -> bool {
         if b <= 1 {

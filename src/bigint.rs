@@ -829,18 +829,6 @@ impl From<i64> for BigInt {
     }
 }
 
-impl From<i32> for BigInt {
-    fn from(val: i32) -> BigInt {
-        Self::from(val as i64)
-    }
-}
-
-impl From<i8> for BigInt {
-    fn from(val: i8) -> BigInt {
-        Self::from(val as i64)
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 pub struct BigIntRing;
 
