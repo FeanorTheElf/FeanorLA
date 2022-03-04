@@ -2,6 +2,7 @@ use super::bigint::*;
 use super::wrapper::*;
 
 use vector_map::VecMap;
+use std::ops::BitAnd;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RingPropValue {
@@ -12,6 +13,34 @@ impl RingPropValue {
 
     pub fn can_use(&self) -> bool {
         *self == RingPropValue::True
+    }
+}
+
+impl BitAnd for RingPropValue {
+
+    type Output = RingPropValue;
+
+    fn bitand(self, rhs: RingPropValue) -> RingPropValue {
+        match (self, rhs) {
+            (RingPropValue::False, _) => RingPropValue::False,
+            (_, RingPropValue::False) => RingPropValue::False,
+            (RingPropValue::Unknown, _) => RingPropValue::Unknown,
+            (_, RingPropValue::Unknown) => RingPropValue::Unknown,
+            (RingPropValue::True, RingPropValue::True) => RingPropValue::True
+        }
+    }
+}
+
+impl BitAnd<bool> for RingPropValue {
+
+    type Output = RingPropValue;
+
+    fn bitand(self, rhs: bool) -> RingPropValue {
+        if rhs {
+            self & RingPropValue::True
+        } else {
+            self & RingPropValue::False
+        }
     }
 }
 
