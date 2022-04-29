@@ -5,7 +5,7 @@ use super::super::bigint::*;
 use super::super::wrapper::*;
 use std::cmp::Ordering;
 
-pub trait IntegerRing: Ring + CanonicalIsomorphismInfo<StaticRing<i64>> {
+pub trait IntegerRing: Ring + CanonicalIsomorphismInfo<StaticRing<i64>> + CanonicalIsomorphismInfo<BigIntRing> {
 
     fn to_float_approx(&self, el: &Self::El) -> f64;
     fn from_float_approx(&self, el: f64) -> Option<Self::El>;

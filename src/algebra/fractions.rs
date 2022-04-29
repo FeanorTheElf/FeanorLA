@@ -175,16 +175,15 @@ impl<R> Ring for FieldOfFractions<R>
 }
 
 ///
-/// The problem with hashing fractions is that we have to find
-/// a "normal form" of the denominator, which is only unique up
-/// to multiplication by units. In the case that the underlying
-/// ring is ordered and a PID, there are only the units +/-1, so
-/// it works out fine.
+/// Finding a normal form for the fraction is not so easy, since the (reduced) 
+/// denominator is only unique up to multiplication by a unit. In other words,
+/// we have to assign a canonical element to each principal ideal of the ring.
 /// 
-/// TODO: this is wrong, isn't it?
+/// That is why for now, we only support it for integers (the only units are +/-1,
+/// so it is easy).
 /// 
 impl<R> HashableElRing for FieldOfFractions<R>
-    where R: HashableElRing + OrderedRing + EuclideanInfoRing
+    where R: IntegerRing + HashableElRing + OrderedRing + EuclideanInfoRing
 {
     fn hash<H: std::hash::Hasher>(&self, h: &mut H, el: &Self::El) {
         let (mut num, mut den) = self.reduce(el.clone());

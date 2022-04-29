@@ -71,38 +71,33 @@ where R: Ring
 }
 
 ///
-/// Trait to represent a commutative ring with one as a collection of operations 
+/// Trait to represent a unital, commutative ring as a collection of operations 
 /// on the elements. More abstract functionality (global properties, like ideals) 
 /// is not provided, this is mainly an interface that can be used for algorithms 
 /// that deal with ring elements.
 /// 
+/// # Value vs Reference design rationale
+/// 
+/// Types that are cheap to copy can be used with the dd/sub()-functions, 
+/// for types that are expensive to copy, one can use the
+/// add_ref/sub_ref()-functions. However, as each add/sub() / add_ref/sub_ref() 
+/// function returns the result by value, for big types, is is usually 
+/// most efficient to clone at least one parameter and potentially reuse 
+/// the memory.
+///
+/// If an operation can improve efficience by consuming both parameters, one should
+/// explicitly implement the default-implemented add/sub()-functions.
+///
+/// For multiplication, the situation is usually different: Mostly, multiplication
+/// is given by some kind of operation on a cartesian product of the
+/// components of lhs and rhs, with a following reduce. In this case, one usually
+/// cannot profit from getting the parameters by value. If this is not true, then
+/// one should implement the default-implemented mul()-function
+/// 
 pub trait Ring : std::fmt::Debug + std::clone::Clone {
     type El: Sized + Clone + std::fmt::Debug;
 
-    //
-    // Design rationale: Types that are cheap to copy can be used with the 
-    // add/sub()-functions, for types that are expensive to copy, one can use the 
-    // add_ref/sub_ref()-functions. However, as each add/sub() / add_ref/sub_ref() 
-    // function returns the result by value, for big types, is is usually 
-    // most efficient to clone at least one parameter and potentially reuse 
-    // the memory.
-    //
-    // If an operation can improve efficience by consuming both parameters, one should
-    // explicitly implement the default-implemented add/sub()-functions.
-    //
-    // For multiplication, the situation is usually different: Mostly, multiplication
-    // is given by some kind of operation on a cartesian product of the
-    // components of lhs and rhs, with a following reduce. In this case, one usually
-    // cannot profit from getting the parameters by value. If this is not true, then
-    // one should implement the default-implemented mul()-function
-    //
-
     fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El;
-
-    ///
-    /// Calculates the product of lhs and rhs. Note that multiplication is assumed to
-    /// be commutative.
-    /// 
     fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El;
     fn neg(&self, val: Self::El) -> Self::El;
     fn zero(&self) -> Self::El;
@@ -332,6 +327,9 @@ impl<'a, R: Ring> Ring for &'a R {
     fn format_in_brackets(&self, el: &Self::El, f: &mut std::fmt::Formatter) -> std::fmt::Result { (**self).format_in_brackets(el, f) }
 }
 
+///
+/// Trait for rings that might have a euclidean division.
+/// 
 pub trait EuclideanInfoRing: Ring {
     
     ///
@@ -372,6 +370,10 @@ impl<'a, R: EuclideanInfoRing> EuclideanInfoRing for &'a R {
     fn euclidean_deg(&self, el: Self::El) -> BigInt { (**self).euclidean_deg(el) }
 }
 
+///
+/// Trait for rings in which we can provide further information about
+/// a quotient a/b of ring elements.
+/// 
 pub trait DivisibilityInfoRing : Ring {
 
     ///
@@ -419,6 +421,11 @@ impl<'a, R> DivisibilityInfoRing for &'a R
     fn is_unit(&self, el: &Self::El) -> bool { (**self).is_unit(el) }
 }
 
+///
+/// Trait for rings that can provide additional information about prime
+/// factorizations. These are assumed to be unique for implementors of this
+/// trait (provided that `is_ufd().can_use()` is true).
+/// 
 pub trait UfdInfoRing : DivisibilityInfoRing {
 
     ///
@@ -440,6 +447,16 @@ pub trait UfdInfoRing : DivisibilityInfoRing {
     /// 
     fn calc_factor(&self, el: &Self::El) -> Option<Self::El>;
 
+    ///
+    /// Factors the given element into all prime factors. The returned list contains pairwise
+    /// non-associated primes (p, q are associated if there is a unit e with ep = q) together
+    /// with the corresponding power dividing the number, and possibly one furtyher unit.
+    /// 
+    /// Note that the prime factorization is only unique up to association, i.e. multiplication
+    /// by units.
+    /// 
+    /// This may panic if `is_ufd().can_use()` returns false.
+    /// 
     fn factor<'a>(&'a self, el: Self::El) -> VecMap<RingElWrapper<&'a Self>, usize> {
         let mut result = VecMap::new();
         let mut stack = Vec::new();
@@ -472,10 +489,19 @@ impl<'a, R> UfdInfoRing for &'a R
     }
 }
 
+///
+/// Trait for rings that are already completely determined by their type, i.e.
+/// contain no further runtime data.
+/// 
 pub trait SingletonRing: Ring {
     fn singleton() -> Self;
 }
 
+///
+/// Trait for rings whose elements are hashable. Note that the hashing contract
+/// of this function is as usual, but relative to the equality notion given by
+/// `ring.eq(el1, el2)`.
+/// 
 pub trait HashableElRing: Ring {
     fn hash<H: std::hash::Hasher>(&self, h: &mut H, el: &Self::El);
 }
@@ -486,6 +512,14 @@ impl<'a, R> HashableElRing for &'a R
     fn hash<H: std::hash::Hasher>(&self, h: &mut H, el: &Self::El) { (**self).hash(h, el) }
 }
 
+///
+/// Trait for ordered rings, i.e. rings whose elements have a total order that is
+/// compatible with + and * in the following sense:
+/// 
+/// If a >= b and c >= d, then a + c >= b + d.
+/// 
+/// If a >= 0 and b >= 0, then ab >= 0.
+/// 
 pub trait OrderedRing: Ring {
     fn cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering;
 }

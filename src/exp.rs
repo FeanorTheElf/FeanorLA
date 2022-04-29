@@ -14,8 +14,3 @@ use super::algebra::primes::*;
 use super::algebra::fq::*;
 use super::algebra::elliptic_curve::*;
 use super::combinatorics::iters::*;
-
-type QType = WrappingRing<FieldOfFractions<BigIntRing>>;
-type ZType = WrappingRing<BigIntRing>;
-type ZEl = <ZType as Ring>::El;
-type FType = <zn_small::ZnEl<7> as RingEl>::RingType;

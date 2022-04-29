@@ -1,5 +1,6 @@
 use super::ring::*;
 use super::primitive::*;
+use super::bigint::*;
 
 use std::marker::PhantomData;
 
@@ -14,12 +15,30 @@ use std::marker::PhantomData;
 /// 
 /// To get the embedding, use the global function `embedding()`.
 /// 
-/// # Issue
+/// # Note on blanket implementations
 /// 
-/// Sadly, Rust has very strong restrictions on blanket implementations, so it
-/// is not possible to provide the blanket implementation R: CanonicalEmbeddingInfo<R>.
-/// Each implementation of a concrete ring R is encouraged to implement 
-/// R: CanonicalEmbeddingInfo<R> (and R: CanonicalIsomorphismInfo<R>) itself.
+/// Sadly, we cannot provide all blanket implementations for references,
+/// as the implementations
+/// ```
+///     impl CanonicalEmbeddingInfo<&R> for S
+///     impl CanonicalEmbeddingInfo<R> for &S
+/// ```
+/// leave two possibilities for &S: CanonicalEmbeddingInfo<&R> and we do
+/// not yet have lattice traits.
+///
+/// So we use the following rationale:
+///  - we definitely want to have `impl CanonicalEmbeddingInfo<&R> for &S`, so
+///    we are already quite limited options for further blanket implementations.
+///  - we can still make blanket implementations for somewhat concrete types (that
+///    do not contain references for sure); up to now, these are `StaticRing` and
+///    `BigIntRing`, as they are required for the definition of the Integers.
+/// 
+/// New ring implentations are strongly encouraged to implement
+/// ```
+///     impl CanonicalEmbeddingInfo<R> for R
+/// ```
+///
+/// The same holds for `CanonicalIsomorphismInfo`.
 /// 
 pub trait CanonicalEmbeddingInfo<R>: Ring
     where R: Ring
@@ -34,6 +53,11 @@ pub trait CanonicalEmbeddingInfo<R>: Ring
 /// The definition of this trait is asymmetric, i.e. we can
 /// have R: CanonicalIsomorphismInfo<S> without S: CanonicalIsomorphismInfo<R>,
 /// to allow implementing this trait for new types.
+/// 
+/// # Note on blanket implementations
+/// 
+/// Sadly, we cannot provide blanket implementations for all reference-to-ring
+/// combinations. For more details, see the notes on `CanonicalEmbeddingInfo`.
 /// 
 pub trait CanonicalIsomorphismInfo<R>: CanonicalEmbeddingInfo<R>
     where R: Ring
@@ -50,6 +74,18 @@ impl<'b, R, T: RingEl> CanonicalEmbeddingInfo<StaticRing<T>> for &'b R
     }
 
     fn embed(&self, from: &StaticRing<T>, el: T) -> Self::El {
+        (**self).embed(from, el)
+    }
+}
+
+impl<'b, R> CanonicalEmbeddingInfo<BigIntRing> for &'b R
+    where R: CanonicalEmbeddingInfo<BigIntRing>
+{
+    fn has_embedding(&self, from: &BigIntRing) -> RingPropValue {
+        (**self).has_embedding(from)
+    }
+
+    fn embed(&self, from: &BigIntRing, el: BigInt) -> Self::El {
         (**self).embed(from, el)
     }
 }
@@ -86,6 +122,18 @@ impl<'b, R, T: RingEl> CanonicalIsomorphismInfo<StaticRing<T>> for &'b R
     }
 
     fn preimage(&self, from: &StaticRing<T>, el: Self::El) -> T {
+        (**self).preimage(from, el)
+    }
+}
+
+impl<'b, R> CanonicalIsomorphismInfo<BigIntRing> for &'b R
+    where R: CanonicalIsomorphismInfo<BigIntRing>
+{
+    fn has_isomorphism(&self, from: &BigIntRing) -> RingPropValue {
+        (**self).has_isomorphism(from)
+    }
+
+    fn preimage(&self, from: &BigIntRing, el: Self::El) -> BigInt {
         (**self).preimage(from, el)
     }
 }

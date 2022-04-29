@@ -627,3 +627,25 @@ impl<T: RingEl> CanonicalIsomorphismInfo<StaticRing<T>> for StaticRing<T> {
         el
     }
 }
+
+impl CanonicalEmbeddingInfo<BigIntRing> for StaticRing<i64> {
+
+    fn has_embedding(&self, _from: &BigIntRing) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embed(&self, _from: &BigIntRing, el: BigInt) -> Self::El {
+        el.to_int().expect("Overflow when embedding BigInt into i64")
+    }
+}
+
+impl CanonicalIsomorphismInfo<BigIntRing> for StaticRing<i64> {
+
+    fn has_isomorphism(&self, _from: &BigIntRing) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn preimage(&self, _from: &BigIntRing, el: i64) -> BigInt {
+        BigInt::from(el)
+    }
+}

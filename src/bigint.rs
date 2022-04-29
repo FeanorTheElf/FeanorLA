@@ -877,6 +877,28 @@ impl HashableElRing for BigIntRing {
     }
 }
 
+impl CanonicalEmbeddingInfo<BigIntRing> for BigIntRing {
+
+    fn has_embedding(&self, _from: &BigIntRing) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embed(&self, _from: &BigIntRing, el: BigInt) -> Self::El {
+        el
+    }
+}
+
+impl CanonicalIsomorphismInfo<BigIntRing> for BigIntRing {
+
+    fn has_isomorphism(&self, _from: &BigIntRing) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn preimage(&self, _from: &BigIntRing, el: BigInt) -> Self::El {
+        el
+    }
+}
+
 impl EuclideanInfoRing for BigIntRing {
 
     fn is_euclidean(&self) -> RingPropValue {

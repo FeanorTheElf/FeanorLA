@@ -359,11 +359,11 @@ impl std::iter::Sum for r64 {
 
 impl CanonicalEmbeddingInfo<StaticRing<i64>> for StaticRing<r64> {
 
-    fn has_embedding(&self, from: &StaticRing<i64>) -> RingPropValue {
+    fn has_embedding(&self, _from: &StaticRing<i64>) -> RingPropValue {
         RingPropValue::True
     }
 
-    fn embed(&self, from: &StaticRing<i64>, el: i64) -> Self::El {
+    fn embed(&self, _from: &StaticRing<i64>, el: i64) -> Self::El {
         r64::new(el, 1)
     }
 }
