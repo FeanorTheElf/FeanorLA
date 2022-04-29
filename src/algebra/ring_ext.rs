@@ -85,6 +85,23 @@ impl<R, V> SimpleRingExtension<R, V>
         }
         return matrix;
     }
+
+    ///
+    /// Returns the (monic) polynomial f such that this ring is isomorphic to
+    /// `base_ring[X] / (f)`.
+    /// 
+    pub fn generating_polynomial(&self, poly_ring: &PolyRing<&R>) -> <PolyRing<&R> as Ring>::El {
+        self.mipo_values.iter()
+            .cloned()
+            .chain(std::iter::once(self.base_ring.neg(self.base_ring.one())))
+            .scan(poly_ring.one(), |state, coeff| {
+                let result = poly_ring.mul_ref(state, &poly_ring.from(coeff));
+                take_mut::take_or_recover(state, || poly_ring.unspecified_element(), 
+                    |x| poly_ring.mul(x, poly_ring.unknown())
+                );
+                return Some(result);
+            }).fold(poly_ring.zero(), |a, b| poly_ring.add(a, b))
+    }
 }
 
 impl<R, V> CanonicalEmbeddingInfo<R> for SimpleRingExtension<R, V>
@@ -198,6 +215,28 @@ impl<R, V> Ring for SimpleRingExtension<R, V>
     fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
         let poly_ring = PolyRing::adjoint(&self.base_ring, "α");
         poly_ring.format(&self.polynomial_repr(&poly_ring, el.clone()), f, in_prod)
+    }
+}
+
+impl<R, V> Ring for SimpleRingExtension<R, V>
+    where R: Ring, for<'a> PolyRing<&'a R>: UfdInfoRing, V: VectorView<R::El> + Clone
+{
+    fn is_integral(&self) -> RingPropValue {
+        let poly_ring = PolyRing::adjoint(&self.base_ring, "X");
+        let can_compute = self.base_ring.is_integral() & poly_ring.is_ufd();
+        if can_compute.can_use() {
+            RingPropValue::True & poly_ring.is_prime(&self.generating_polynomial(&poly_ring))
+        } else {
+            can_compute
+        }
+    }
+
+    fn is_field(&self) -> RingPropValue {
+        if self.base_ring.is_field().can_use() {
+            self.is_integral()
+        } else {
+            self.base_ring.is_field()
+        }
     }
 }
 

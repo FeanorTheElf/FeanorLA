@@ -125,8 +125,8 @@ impl<T> MatrixOwned<T> {
         array: [[T; C]; R]
     ) -> MatrixOwned<T> 
     {
-        let data = std::array::IntoIter::new(array).flat_map(|row| 
-            std::array::IntoIter::new(row)
+        let data = <[[T; C]; R] as std::iter::IntoIterator>::into_iter(array).flat_map(|row| 
+            <[T; C] as std::iter::IntoIterator>::into_iter(row)
         ).collect::<Vec<T>>().into_boxed_slice();
         Self::from_data(data, R, C)
     }

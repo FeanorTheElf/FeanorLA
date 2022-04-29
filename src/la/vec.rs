@@ -208,7 +208,7 @@ impl<T> Vector<VectorOwned<T>, T> {
     
     pub fn from_array<const L: usize>(data: [T; L]) -> Self {
         Vector::new(
-            std::array::IntoIter::new(data).collect::<Vec<_>>()
+            <[T; L] as std::iter::IntoIterator>::into_iter(data).collect::<Vec<_>>()
         )
     }
 

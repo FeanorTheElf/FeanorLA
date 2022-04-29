@@ -16,7 +16,7 @@ mod internal_definitions{
     pub const F4_MIPO: Vector<F4MipoType, F2El> = Vector::new(F4MipoType {});
 
     gen_const_vector!(ConstVector2F7; F7El; V0, V1);
-    pub type F49MipoType = ConstVector2F7<{F7El::project(1)}, {F7El::project(0)}>;
+    pub type F49MipoType = ConstVector2F7<{F7El::project(-1)}, {F7El::project(0)}>;
     pub const F49_MIPO: Vector<F49MipoType, F7El> = Vector::new(F49MipoType {});
 }
 
@@ -63,4 +63,15 @@ fn test_division() {
 #[test]
 fn test_size_zero() {
     assert_eq!(0, std::mem::size_of::<F49Type>())
+}
+
+#[test]
+fn test_finite_odd_field_is_field() {
+    assert!(F49.is_field().can_use());
+}
+
+#[test]
+#[ignore] // currently, we cannot factor polynomials over Z/2Z
+fn test_finite_even_field_is_field() {
+    assert_eq!(RingPropValue::True, F4.is_field());
 }
