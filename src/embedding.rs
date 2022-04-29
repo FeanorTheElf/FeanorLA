@@ -9,6 +9,13 @@ pub trait CanonicalEmbeddingInfo<R>: Ring
     fn embed(&self, from: &R, el: R::El) -> Self::El;
 }
 
+pub trait CanonicalIsomorphismInfo<R>: CanonicalEmbeddingInfo<R>
+    where R: Ring
+{
+    fn has_isomorphism(&self, from: &R) -> RingPropValue;
+    fn preimage(&self, from: &R, el: Self::El) -> R::El;
+}
+
 impl<'a, 'b, R, S> CanonicalEmbeddingInfo<&'a R> for &'b S
     where R: Ring, S: CanonicalEmbeddingInfo<R>
 {
@@ -18,6 +25,18 @@ impl<'a, 'b, R, S> CanonicalEmbeddingInfo<&'a R> for &'b S
 
     fn embed(&self, from: &&'a R, el: R::El) -> Self::El {
         (**self).embed(&**from, el)
+    }
+}
+
+impl<'a, 'b, R, S> CanonicalIsomorphismInfo<&'a R> for &'b S
+    where R: Ring, S: CanonicalIsomorphismInfo<R>
+{
+    fn has_isomorphism(&self, from: &&'a R) -> RingPropValue {
+        (**self).has_isomorphism(&**from)
+    }
+
+    fn preimage(&self, from: &&'a R, el: Self::El) -> R::El {
+        (**self).preimage(&**from, el)
     }
 }
 

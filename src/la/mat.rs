@@ -6,7 +6,7 @@ pub use super::matrix_view::*;
 pub use super::vector_view::*;
 pub use super::vec::*;
 pub use super::submatrix::*;
-pub use super::vector::*;
+pub use super::subvector::*;
 
 use super::matrix_transpose::*;
 use super::diagonal::*;

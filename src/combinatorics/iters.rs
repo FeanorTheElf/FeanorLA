@@ -476,6 +476,20 @@ pub struct MultiProduct<I, F, T>
     done: bool
 }
 
+impl<I, F, T> Clone for MultiProduct<I, F, T>
+    where I: Iterator + Clone, F: Clone + FnMut(&[I::Item]) -> T, I::Item: Clone
+{
+    fn clone(&self) -> Self {
+        MultiProduct {
+            base_iters: self.base_iters.clone(),
+            current_iters: self.current_iters.clone(),
+            current: self.current.clone(),
+            converter: self.converter.clone(),
+            done: self.done
+        }
+    }
+}
+
 impl<I, F, T> Iterator for MultiProduct<I, F, T>
 where I: Iterator + Clone, F: FnMut(&[I::Item]) -> T
 {

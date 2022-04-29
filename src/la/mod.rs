@@ -1,5 +1,5 @@
 pub mod vector_view;
-pub mod vector;
+pub mod subvector;
 pub mod matrix_view;
 pub mod matrix_row_col;
 pub mod matrix_transpose;

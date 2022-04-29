@@ -1,11 +1,12 @@
 use super::super::ring::*;
 use super::super::primitive::*;
-use super::vector_view::*;
 use super::matrix_vector::*;
 use super::diagonal::*;
 use super::constant::*;
 use super::ops::*;
-use super::vector::*;
+use super::subvector::*;
+
+pub use super::vector_view::*;
 
 use std::marker::PhantomData;
 use std::ops::{AddAssign, Add, SubAssign, Sub, MulAssign, RangeBounds, Bound, Index};

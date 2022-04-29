@@ -136,6 +136,11 @@ pub trait Ring : std::fmt::Debug + std::clone::Clone {
     {
         if exp == 0 {
             return self.one();
+        // cases 1 and 2 are not necessary for correctness, but will speed up the whole thing
+        } else if exp == 1 {
+            return basis.clone();
+        } else if exp == 2 {
+            return self.mul_ref(basis, basis);
         }
         let mut result = self.one();
         for i in (0..=(31 - exp.leading_zeros())).rev() {

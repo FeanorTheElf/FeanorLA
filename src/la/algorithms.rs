@@ -25,6 +25,14 @@ pub trait MatrixSolve: Ring {
     /// The default implementation has complexity O(n m min(n, m)) where self is nxm.
     /// 
     fn calc_matrix_kernel_space<M: MatrixView<Self::El>>(&self, a: Matrix<M, Self::El>) -> Option<Matrix<MatrixOwned<Self::El>, Self::El>>;
+
+    ///
+    /// Finds a solution to the inhomogeneous linear equation AX = B and returns it,
+    /// or None if no solution exists.
+    /// The returned solution is not unique, but you can find all solutions to the system
+    /// by considering the returned solution plus the kernel of A (use `calc_matrix_kernel_space`).
+    /// 
+    fn find_any_solution<M: MatrixView<Self::El>, N: MatrixView<Self::El>>(&self, b: Matrix<N, Self::El>) -> Option<Matrix<MatrixOwned<Self::El>, Self::El>>;
 }
 
 impl<R: Ring> MatrixSolve for R {
@@ -37,6 +45,10 @@ impl<R: Ring> MatrixSolve for R {
     default fn calc_matrix_kernel_space<M: MatrixView<Self::El>>(&self, a: Matrix<M, Self::El>) -> Option<Matrix<MatrixOwned<Self::El>, Self::El>> {
         assert!(self.is_field().can_use());
         a.into_owned().kernel_base_modifying(self)
+    }
+
+    default fn find_any_solution<M: MatrixView<Self::El>, N: MatrixView<Self::El>>(&self, b: Matrix<N, Self::El>) -> Option<Matrix<MatrixOwned<Self::El>, Self::El>> {
+        unimplemented!()
     }
 }
 
@@ -282,6 +294,12 @@ impl<M, T> Matrix<M, T>
         }
 
         return Some(result);
+    }
+
+    fn find_any_solution_modifying<R, N>(&mut self, rhs: &mut Matrix<N, T>, ring: &R)
+        where N: MatrixViewMut<T>, R: Ring<El = T>
+    {
+        unimplemented!()
     }
 }
 

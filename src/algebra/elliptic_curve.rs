@@ -4,6 +4,7 @@ use super::super::bigint::*;
 use super::super::embedding::*;
 use super::super::wrapper::*;
 use super::super::la::mat::*;
+use super::fq::*;
 use super::super::combinatorics::iters::*;
 use super::ring_ext::*;
 use super::poly::*;
@@ -57,8 +58,19 @@ impl<K> PartialEq for EllipticCurvePoint<WrappingRing<K>>
     }
 }
 
-impl<K> std::fmt::Debug for EllipticCurvePoint<WrappingRing<K>>
-    where K: Ring
+impl<K> std::fmt::Debug for EllipticCurvePoint<K>
+    where K: Ring, K::El: std::fmt::Debug
+{
+    default fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            EllipticCurvePoint::Infinity => write!(f, "o̲"),
+            EllipticCurvePoint::Affine(x, y) => write!(f, "({:?}, {:?})", x, y)
+        }
+    }
+}
+
+impl<K> std::fmt::Debug for EllipticCurvePoint<K>
+    where K: Ring, K::El: std::fmt::Display + std::fmt::Debug
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -69,7 +81,7 @@ impl<K> std::fmt::Debug for EllipticCurvePoint<WrappingRing<K>>
 }
 
 impl<K> std::fmt::Display for EllipticCurvePoint<WrappingRing<K>>
-    where K: Ring
+    where K: Ring, K::El: std::fmt::Display + std::fmt::Debug
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         <Self as std::fmt::Debug>::fmt(self, f)
@@ -268,6 +280,16 @@ impl<K: Ring> EllipticCurve<K> {
     }
 }
 
+impl<K: FiniteRing> EllipticCurve<K> {
+
+    pub fn points<'a>(&'a self) -> impl 'a + Iterator<Item = EllipticCurvePoint<K>> {
+        cartesian_product(elements(&self.base_ring), elements(&self.base_ring))
+            .map(|(x, y)| EllipticCurvePoint::Affine(x, y))
+            .filter(move |p| self.is_on_curve(p))
+            .chain(std::iter::once(EllipticCurvePoint::Infinity))
+    }
+}
+
 type QType = WrappingRing<FieldOfFractions<BigIntRing>>;
 type QEl = <QType as Ring>::El;
 
@@ -373,7 +395,8 @@ impl EllipticCurve<QType>
 
     ///
     /// Returns an isomorphic elliptic curve E': y^2 = x^3 + Ax + B with A, B in Z
-    /// with minimal discriminant and isomorphisms f: E -> E' and f^-1: E' -> E.
+    /// with minimal discriminant (in absolute value) and isomorphisms f: E -> E' 
+    /// and f^-1: E' -> E.
     /// 
     pub fn isomorphic_curve_over_z(&self) -> (Self, impl Fn(EllipticCurvePoint<QType>) -> EllipticCurvePoint<QType>, impl Fn(EllipticCurvePoint<QType>) -> EllipticCurvePoint<QType>) {
         let (A_num, A_den) = self.base_ring.wrapped_ring().reduce(self.A.val().clone());

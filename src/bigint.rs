@@ -4,6 +4,7 @@ use super::algebra::primes;
 use std::cmp::Ordering;
 use std::ops::*;
 use std::hash::{Hash, Hasher};
+use std::ops::Range;
 
 #[derive(Debug, Clone)]
 pub struct BigInt {
@@ -811,6 +812,18 @@ impl BigInt {
             Ok(0)
         }
     }
+
+    pub fn range_iter(range: Range<BigInt>) -> impl Iterator<Item = BigInt> {
+        let end_minus_2 = range.end - 2;
+        std::iter::repeat(()).scan(range.start - 1, move |state, ()| {
+            if *state <= end_minus_2 {
+                *state += 1;
+                return Some(state.clone());
+            } else {
+                return None;
+            }
+        })
+    }
 }
 
 impl From<i64> for BigInt {
@@ -1158,7 +1171,7 @@ impl Shr<usize> for BigInt {
             for i in 1..self.data.len() {
                 let rotated = self.data[i].rotate_right(shift_amount as u32);
                 self.data[i] = rotated & (u64::MAX >> shift_amount);
-                self.data[i - 1] |= rotated & (u64::MAX << keep_bits);
+                self.data[i - 1] |= rotated & u64::MAX.wrapping_shl(keep_bits as u32);
             }
         }
         return self;
@@ -1542,4 +1555,17 @@ fn test_cmp() {
     assert_eq!(false, BigInt::from(2) < BigInt::from(2));
     assert_eq!(false, BigInt::from(3) < BigInt::from(2));
     assert_eq!(true, BigInt::from(-1) > BigInt::from(-2));
+}
+
+#[test]
+fn test_range_iter() {
+    let i = |x| BigInt::from(x);
+    assert_eq!(
+        vec![i(1), i(2)],
+        BigInt::range_iter(i(1)..i(3)).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        Vec::<BigInt>::new(),
+        BigInt::range_iter(i(1)..i(-3)).collect::<Vec<_>>()
+    );
 }

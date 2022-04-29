@@ -1,4 +1,5 @@
 use super::super::super::ring::*;
+use super::super::super::la::constant::*;
 use super::super::eea::*;
 use super::*;
 
@@ -29,16 +30,17 @@ impl Zn {
         };
     }
 
-    fn project_leq_n_square(&self, mut n: BigInt) -> BigInt {
+    fn project_leq_n_square(&self, n: BigInt) -> BigInt {
         let mut subtract = n.clone();
         subtract = subtract * self.inverse_modulus.clone();
         subtract = subtract >> self.inverse_modulus_bitshift;
         subtract = subtract *  self.modulus.clone();
-        n = n - subtract;
-        if n >= self.modulus {
-            n = n - self.modulus.clone();
+        let mut m = n - subtract;
+        if m >= self.modulus {
+            m = m - self.modulus.clone();
         }
-        return n;
+        assert!(m < self.modulus, "The input is not smaller than {}^2", self.modulus);
+        return m;
     }
 
     pub fn project(&self, n: BigInt) -> <Self as Ring>::El {
@@ -75,7 +77,27 @@ impl Zn {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct ZnIterFn {
+    current: BigInt
+}
+
+impl FiniteRingIterFn<Zn> for ZnIterFn {
+
+    fn next(&mut self, ring: &Zn) -> Option<FactorRingZEl> {
+        self.current += 1;
+        if self.current < ring.modulus {
+            Some(ring.project(self.current.clone()))
+        } else {
+            None
+        }
+    }
+}
+
 impl FiniteRing for Zn {
+
+    type VectorBasisType = VectorConstant<Self::El>;
+    type IterFn = ZnIterFn;
     
     fn characteristic(&self) -> BigInt {
         self.modulus.clone()
@@ -83,6 +105,12 @@ impl FiniteRing for Zn {
 
     fn size(&self) -> BigInt {
         self.characteristic()
+    }
+
+    fn iter_fn(&self) -> Self::IterFn {
+        ZnIterFn {
+            current: BigInt::from(-1)
+        }
     }
 }
 

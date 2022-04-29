@@ -1,6 +1,7 @@
 use super::super::eea::*;
 use super::*;
 use super::super::super::primitive::*;
+use super::super::super::la::constant::*;
 
 use std::ops::{AddAssign, MulAssign, SubAssign, DivAssign, Add, Mul, Sub, Div, Neg};
 
@@ -194,7 +195,39 @@ impl<const N: u64> RingEl for ZnElImpl<N, false> {
     const RING: Self::RingType = StaticRing::<Self>::RING;
 }
 
+#[derive(Clone, Debug)]
+pub struct StaticZnIterFn {
+    current: i64
+}
+
+impl<const N: u64> FiniteRingIterFn<StaticRing<ZnElImpl<N, true>>> for StaticZnIterFn {
+
+    fn next(&mut self, _: &StaticRing<ZnElImpl<N, true>>) -> Option<ZnElImpl<N, true>> {
+        self.current += 1;
+        if self.current as u64 <= N {
+            Some(ZnElImpl::project(self.current as i64))
+        } else {
+            None
+        }
+    }
+}
+
+impl<const N: u64> FiniteRingIterFn<StaticRing<ZnElImpl<N, false>>> for StaticZnIterFn {
+
+    fn next(&mut self, _: &StaticRing<ZnElImpl<N, false>>) -> Option<ZnElImpl<N, false>> {
+        self.current += 1;
+        if self.current as u64 <= N {
+            Some(ZnElImpl::project(self.current as i64))
+        } else {
+            None
+        }
+    }
+}
+
 impl<const N: u64> FiniteRing for StaticRing<ZnElImpl<N, true>> {
+
+    type VectorBasisType = VectorConstant<Self::El>;
+    type IterFn = StaticZnIterFn;
 
     fn characteristic(&self) -> BigInt {
         BigInt::from(N as i64)
@@ -202,6 +235,52 @@ impl<const N: u64> FiniteRing for StaticRing<ZnElImpl<N, true>> {
 
     fn size(&self) -> BigInt {
         BigInt::from(N as i64)
+    }
+    
+    fn iter_fn(&self) -> Self::IterFn {
+        StaticZnIterFn {
+            current: -1
+        }
+    }
+}
+
+impl<const N: u64> DivisibilityInfoRing for StaticRing<ZnElImpl<N, false>> {
+    
+    fn is_divisibility_computable(&self) -> bool {
+        true
+    }
+
+    fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
+        let (s, _, d) = signed_eea(rhs.repr as i64, N as i64, &i64::RING);
+        if lhs.repr as i64 % d == 0 {
+            Some(ZnElImpl::project(lhs.repr as i64 / d * s))
+        } else {
+            None
+        }
+    }
+
+    fn is_unit(&self, el: &Self::El) -> bool {
+        signed_gcd(N as i64, el.repr as i64, &i64::RING) == 1
+    }
+}
+
+impl<const N: u64> FiniteRing for StaticRing<ZnElImpl<N, false>> {
+
+    type VectorBasisType = VectorConstant<Self::El>;
+    type IterFn = StaticZnIterFn;
+
+    fn characteristic(&self) -> BigInt {
+        BigInt::from(N as i64)
+    }
+
+    fn size(&self) -> BigInt {
+        BigInt::from(N as i64)
+    }
+    
+    fn iter_fn(&self) -> Self::IterFn {
+        StaticZnIterFn {
+            current: -1
+        }
     }
 }
 

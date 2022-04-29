@@ -243,5 +243,5 @@ fn test_quadratic_sieve() {
     let factor = quadratic_sieve(&f5);
     assert!(factor != f5);
     assert!(factor != 1);
-    assert_eq!(BigInt::RING.euclidean_rem(f5, &factor), 0);
+    assert!(BigInt::RING.is_divisible_by(&f5, &factor));
 }

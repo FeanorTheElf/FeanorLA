@@ -346,6 +346,16 @@ impl<R> Neg for RingElWrapper<R>
     }
 }
 
+impl<'a, R> Neg for &'a RingElWrapper<R>
+    where R: Ring
+{
+    type Output = RingElWrapper<R>;
+
+    fn neg(self) -> Self::Output {
+        -self.clone()
+    }
+}
+
 impl<R> Add<i64> for RingElWrapper<R>
     where R: Ring
 {

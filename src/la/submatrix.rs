@@ -1,5 +1,5 @@
 use super::matrix_view::*;
-use super::vector::*;
+use super::subvector::*;
 use std::marker::PhantomData;
 
 #[derive(Debug)]
