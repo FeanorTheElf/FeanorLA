@@ -1,5 +1,7 @@
 #![allow(non_camel_case_types)]
 use super::super::primitive::*;
+use super::super::embedding::*;
+use super::super::ring::*;
 
 use std::cmp::{Ord, Ordering, PartialEq, PartialOrd};
 use std::convert::From;
@@ -352,6 +354,17 @@ impl std::iter::Sum for r64 {
 
     fn sum<I: Iterator<Item = r64>>(iter: I) -> Self {
         iter.fold(r64::ZERO, |a: r64, b: r64| a + b)
+    }
+}
+
+impl CanonicalEmbeddingInfo<StaticRing<i64>> for StaticRing<r64> {
+
+    fn has_embedding(&self, from: &StaticRing<i64>) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embed(&self, from: &StaticRing<i64>, el: i64) -> Self::El {
+        r64::new(el, 1)
     }
 }
 

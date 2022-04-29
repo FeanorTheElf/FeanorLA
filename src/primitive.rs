@@ -1,5 +1,6 @@
 use super::ring::*;
 use super::bigint::*;
+use super::embedding::*;
 use std::ops::{ 
     Add, Mul, Sub, Neg, Div,
     AddAssign, MulAssign, SubAssign, DivAssign
@@ -527,7 +528,6 @@ impl<T> DivisibilityInfoRing for StaticRingImpl<RingAxiomsEuclidean, T>
     }
 }
 
-
 impl<T> EuclideanInfoRing for StaticRingImpl<RingAxiomsField, T> 
     where T: FieldEl
 {
@@ -605,3 +605,25 @@ impl<T> SingletonRing for StaticRingImpl<T::Axioms, T>
 }
 
 pub type StaticRing<R> = StaticRingImpl<<R as RingEl>::Axioms, R>;
+
+impl<T: RingEl> CanonicalEmbeddingInfo<StaticRing<T>> for StaticRing<T> {
+
+    fn has_embedding(&self, _from: &StaticRing<T>) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embed(&self, _from: &StaticRing<T>, el: T) -> T {
+        el
+    }
+}
+
+impl<T: RingEl> CanonicalIsomorphismInfo<StaticRing<T>> for StaticRing<T> {
+
+    fn has_isomorphism(&self, _from: &StaticRing<T>) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn preimage(&self, _from: &StaticRing<T>, el: T) -> T {
+        el
+    }
+}

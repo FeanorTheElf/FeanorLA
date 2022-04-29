@@ -1,6 +1,8 @@
 pub mod eea;
 pub mod rat;
 pub mod fq;
+pub mod integer;
+pub mod rationals;
 pub mod factoring_algorithms;
 pub mod p_adic;
 pub mod fractions;

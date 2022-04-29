@@ -1,5 +1,6 @@
 use super::super::super::ring::*;
 use super::super::super::la::constant::*;
+use super::super::super::embedding::*;
 use super::super::eea::*;
 use super::*;
 
@@ -222,6 +223,28 @@ impl DivisibilityInfoRing for Zn {
 
     fn is_unit(&self, FactorRingZEl(el): &Self::El) -> bool {
         BigInt::RING.is_one(&signed_gcd(el.clone(), self.modulus.clone(), &BigInt::RING))
+    }
+}
+
+impl CanonicalEmbeddingInfo<Zn> for Zn {
+
+    fn has_embedding(&self, _from: &Zn) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embed(&self, _from: &Zn, el: Self::El) -> Self::El {
+        el
+    }
+}
+
+impl CanonicalIsomorphismInfo<Zn> for Zn {
+
+    fn has_isomorphism(&self, _from: &Zn) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn preimage(&self, _from: &Zn, el: Self::El) -> Self::El {
+        el
     }
 }
 

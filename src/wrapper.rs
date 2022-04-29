@@ -1,7 +1,9 @@
 use super::ring::*;
 use super::embedding::*;
 use super::bigint::*;
+use super::primitive::*;
 
+use vector_map::VecMap;
 use std::ops::{ 
     Add, Mul, Sub, Neg, Div, Rem,
     AddAssign, MulAssign, SubAssign, DivAssign
@@ -741,6 +743,22 @@ impl<R> EuclideanInfoRing for WrappingRing<R>
     }
 }
 
+impl<R> HashableElRing for WrappingRing<R>
+    where R: HashableElRing
+{
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H, el: &Self::El) {
+        el.base_ring().hash(h, &el.el)
+    }
+}
+
+impl<R> OrderedRing for WrappingRing<R>
+    where R: OrderedRing
+{
+    fn cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering {
+        self.wrapped_ring().cmp(lhs.val(), rhs.val())
+    }
+}
+
 impl<R> DivisibilityInfoRing for WrappingRing<R>
     where R: DivisibilityInfoRing
 {
@@ -764,6 +782,28 @@ impl<R> DivisibilityInfoRing for WrappingRing<R>
     }
 }
 
+impl<R> UfdInfoRing for WrappingRing<R>
+    where R: UfdInfoRing
+{
+    fn is_ufd(&self) -> RingPropValue {
+        self.wrapped_ring().is_ufd()
+    }
+
+    fn is_prime(&self, el: &Self::El) -> bool {
+        self.wrapped_ring().is_prime(el.val())
+    }
+
+    fn calc_factor(&self, el: &Self::El) -> Option<Self::El> {
+        self.wrapped_ring().calc_factor(el.val()).map(|x| self.wrapped_ring().bind_by_value(x))
+    }
+
+    fn factor<'a>(&'a self, el: Self::El) -> VecMap<RingElWrapper<&'a Self>, usize> {
+        self.wrapped_ring().factor(el.into_val()).into_iter().map(|(key, val)| 
+            (self.bind(self.wrapped_ring().bind_by_value(key.into_val())), val)
+        ).collect()
+    }
+}
+
 impl<R, S> CanonicalEmbeddingInfo<WrappingRing<S>> for WrappingRing<R>
     where R: CanonicalEmbeddingInfo<S>, S: Ring
 {
@@ -774,8 +814,50 @@ impl<R, S> CanonicalEmbeddingInfo<WrappingRing<S>> for WrappingRing<R>
     fn embed(&self, from: &WrappingRing<S>, el: <WrappingRing<S> as Ring>::El) -> Self::El {
         RingElWrapper {
             el: self.wrapped_ring().embed(&from.wrapped_ring(), el.el),
-            ring: self.ring.clone()
+            ring: self.wrapped_ring().clone()
         }
+    }
+}
+
+impl<R, S> CanonicalIsomorphismInfo<WrappingRing<S>> for WrappingRing<R>
+    where R: CanonicalIsomorphismInfo<S>, S: Ring
+{
+    fn has_isomorphism(&self, from: &WrappingRing<S>) -> RingPropValue {
+        self.ring.has_isomorphism(&from.ring)
+    }
+
+    fn preimage(&self, from: &WrappingRing<S>, el: Self::El) -> <WrappingRing<S> as Ring>::El {
+        RingElWrapper {
+            el: self.wrapped_ring().preimage(&from.wrapped_ring(), el.el),
+            ring: from.wrapped_ring().clone()
+        }
+    }
+}
+
+impl<R, T: RingEl> CanonicalEmbeddingInfo<StaticRing<T>> for WrappingRing<R>
+    where R: CanonicalEmbeddingInfo<StaticRing<T>>
+{
+    fn has_embedding(&self, from: &StaticRing<T>) -> RingPropValue {
+        self.ring.has_embedding(&from)
+    }
+
+    fn embed(&self, from: &StaticRing<T>, el: T) -> Self::El {
+        RingElWrapper {
+            el: self.wrapped_ring().embed(&from, el),
+            ring: self.wrapped_ring().clone()
+        }
+    }
+}
+
+impl<R, T: RingEl> CanonicalIsomorphismInfo<StaticRing<T>> for WrappingRing<R>
+    where R: CanonicalIsomorphismInfo<StaticRing<T>>
+{
+    fn has_isomorphism(&self, from: &StaticRing<T>) -> RingPropValue {
+        self.ring.has_isomorphism(&from)
+    }
+
+    fn preimage(&self, from: &StaticRing<T>, el: Self::El) -> T {
+        self.wrapped_ring().preimage(from, el.into_val())
     }
 }
 
@@ -804,5 +886,13 @@ impl<R> std::iter::Product for RingElWrapper<R>
             el: el.ring.mul(el.ring.product(iter.map(|x| x.el)), el.el),
             ring: el.ring
         }
+    }
+}
+
+impl<R> std::hash::Hash for RingElWrapper<R>
+    where R: HashableElRing
+{
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.base_ring().hash(state, &self.el)
     }
 }

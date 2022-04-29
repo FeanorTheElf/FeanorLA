@@ -78,17 +78,6 @@ impl<R> FiniteRing for WrappingRing<R>
     }
 }
 
-fn up_to_exclusive(n: BigInt) -> impl Clone + Iterator<Item = BigInt> {
-    std::iter::repeat(()).scan(-BigInt::RING.one(), move |state, ()| {
-        *state += 1;
-        if *state < n {
-            Some(state.clone())
-        } else {
-            None
-        }
-    })
-}
-
 pub fn elements<R: FiniteRing>(ring: R) -> impl Clone + Iterator<Item = R::El> {
     std::iter::repeat(()).scan(ring.iter_fn(), move |iter_fn, ()| {
         iter_fn.next(&ring)

@@ -99,15 +99,40 @@ impl<R> PolyRing<R>
     }
 }
 
-impl<R> CanonicalEmbeddingInfo<R> for PolyRing<R>
+impl<R> CanonicalEmbeddingInfo<R> for PolyRing<R> 
     where R: Ring
 {
+
     fn has_embedding(&self, _from: &R) -> RingPropValue {
         RingPropValue::True
     }
 
     fn embed(&self, _from: &R, el: R::El) -> Self::El {
         self.from(el)
+    }
+}
+
+impl<R> CanonicalEmbeddingInfo<PolyRing<R>> for PolyRing<R>
+    where R: Ring
+{
+    fn has_embedding(&self, _from: &PolyRing<R>) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embed(&self, _from: &PolyRing<R>, el: Self::El) -> Self::El {
+        el
+    }
+}
+
+impl<R> CanonicalIsomorphismInfo<PolyRing<R>> for PolyRing<R>
+    where R: Ring
+{
+    fn has_isomorphism(&self, _from: &PolyRing<R>) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn preimage(&self, _from: &PolyRing<R>, el: Self::El) -> Self::El {
+        el
     }
 }
 

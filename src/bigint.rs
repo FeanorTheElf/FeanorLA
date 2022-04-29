@@ -1,5 +1,8 @@
 use super::ring::*;
 use super::algebra::primes;
+use super::embedding::*;
+use super::primitive::*;
+use super::algebra::integer::*;
 
 use std::cmp::Ordering;
 use std::ops::*;
@@ -609,117 +612,17 @@ impl BigInt {
         Self::RING.pow_big(self, power)
     }
 
-    ///
-    /// Given an increasing, continuous function f: R -> R that is negative for some x1 and 
-    /// positive for some x2, finds the floor of some root of f (if f is strictly increasing, 
-    /// this is unique).
-    /// 
-    /// # General case
-    /// 
-    /// This function also works in a slightly more general context. Assume that
-    /// f(x) is negative for all sufficiently small x and positive for all suffiently 
-    /// large x. Then this function will return the floor of some root of f. Note that
-    /// this might not be a root of f, even if f has integral roots.
-    /// 
-    /// # Complexity
-    /// 
-    /// This function runs in O((T + log(d)) * log(d)) where d is the error made in 
-    /// approx (i.e. the difference between the found root x and approx) and T is the
-    /// time required for computing f on a value between x - d and x + d.
-    /// 
-    pub fn find_zero_floor<F>(mut f: F, approx: BigInt) -> BigInt
-        where F: FnMut(&BigInt) -> BigInt
-    {
-        let mut begin = approx.clone();
-        let mut step = BigInt::RING.one();
-        while f(&begin).signum() > 0 {
-            begin = BigInt::RING.sub_ref_snd(begin, &step);
-            step *= 2;
-        }
-        let mut end = approx;
-        step = BigInt::RING.one();
-        while f(&end).signum() < 0 {
-            end = BigInt::RING.add_ref(end, &step);
-            step *= 2;
-        }
-        return Self::bisect(f, begin, end);
-    }
-
-    ///
-    /// Given a continuous function f: R -> R that is negative on `begin` and 
-    /// positive on `end`, finds the floor of some root of f. Note that even
-    /// if f has integral roots, the returned value does not have to be a root
-    /// of f.
-    /// 
-    /// # Complexity
-    /// 
-    /// This function runs in O((T + log(d)) * log(d)) where d is the difference between
-    /// begin and end and T is the time required for computing f on a value between 
-    /// begin and end. 
-    /// 
-    pub fn bisect<F>(mut f: F, mut start: BigInt, mut end: BigInt) -> BigInt
-        where F: FnMut(&BigInt) -> BigInt
-    {
-        assert!(f(&start).signum() <= 0);
-        assert!(f(&end).signum() >= 0);
-        if f(&end) == 0 {
-            return end;
-        }
-        loop {
-            let mid = BigInt::RING.add_ref(start.clone(), &end).floor_div_small(2);
-            if mid == start {
-                return start;
-            }
-            match f(&mid).signum() {
-                -1 => {
-                    start = mid;
-                },
-                1 => {
-                    end = mid;
-                },
-                _ => {
-                    return mid;
-                }
-            }
-        }
-    }
-
-    ///
-    /// Computes the n-th root of this number.
-    /// 
-    /// # Complexity
-    /// 
-    /// The asymptotic worst-case complexity is O(log(n)^2), however it
-    /// will be quite fast on most inputs due to internal use of floating
-    /// point approximations.
-    /// 
-    pub fn root_floor(self, n: usize) -> BigInt {
-        assert!(n > 0);
-        let root_approx = self.to_float_approx().powf(1. / n as f64);
-        if n % 2 == 0 {
-            return BigInt::find_zero_floor(
-                |x| BigInt::RING.sub_ref_snd(BigInt::RING.mul(x.clone().abs(), BigInt::RING.pow(x, (n - 1) as u32)), &self), 
-                BigInt::from_float_approx(root_approx).unwrap_or(BigInt::ZERO)
-            );
-        } else {
-            return BigInt::find_zero_floor(
-                |x| BigInt::RING.sub_ref_snd(BigInt::RING.pow(x, n as u32), &self), 
-                BigInt::from_float_approx(root_approx).unwrap_or(BigInt::ZERO)
-            );
-        }
+    pub fn abs(mut self) -> BigInt {
+        self.negative = false;
+        return self;
     }
 
     pub fn log_floor(self, base: BigInt) -> BigInt {
         let log_approx = self.to_float_approx().log(base.to_float_approx());
-        return BigInt::find_zero_floor(
+        return BigInt::RING.find_zero_floor(
             |x| base.clone().pow_big(x), 
             BigInt::from_float_approx(log_approx).unwrap_or(BigInt::ZERO)
         );
-    }
-
-    pub fn abs(mut self) -> BigInt {
-        self.negative = false;
-        return self;
     }
 
     ///
@@ -957,6 +860,20 @@ impl Ring for BigIntRing {
             write!(f, "0")?;
         }
         return Ok(());
+    }
+}
+
+impl OrderedRing for BigIntRing {
+
+    fn cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering {
+        lhs.cmp(rhs)
+    }
+}
+
+impl HashableElRing for BigIntRing {
+
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H, el: &BigInt) {
+        el.hash(h)
     }
 }
 
@@ -1253,6 +1170,28 @@ impl UfdInfoRing for BigIntRing {
     }
 }
 
+impl CanonicalEmbeddingInfo<StaticRing<i64>> for BigIntRing {
+
+    fn has_embedding(&self, _from: &StaticRing<i64>) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embed(&self, _from: &StaticRing<i64>, el: i64) -> BigInt {
+        BigInt::from(el)
+    }
+}
+
+impl CanonicalIsomorphismInfo<StaticRing<i64>> for BigIntRing {
+
+    fn has_isomorphism(&self, _from: &StaticRing<i64>) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn preimage(&self, _from: &StaticRing<i64>, el: BigInt) -> i64 {
+        el.to_int().expect("Overflow when embedding BigInt into i64")
+    }
+}
+
 #[cfg(test)]
 use std::str::FromStr;
 #[cfg(test)]
@@ -1503,21 +1442,6 @@ fn test_is_zero() {
 #[test]
 fn test_cmp_small() {
     assert!("-23678".parse::<BigInt>().unwrap() < 0);
-}
-
-#[test]
-fn test_find_zero_floor() {
-    let f = |x: &BigInt| BigInt::RING.mul_ref(x, x) - 234867;
-    assert_eq!(BigInt::from(484), BigInt::find_zero_floor(f, BigInt::ZERO));
-
-    let f = |x: &BigInt| x.clone();
-    assert_eq!(BigInt::ZERO, BigInt::find_zero_floor(f, BigInt::ZERO));
-}
-
-#[test]
-fn test_root_floor() {
-    let n = BigInt::from(7681).pow(32);
-    assert_eq!(BigInt::from(7681), n.root_floor(32));
 }
 
 #[test]

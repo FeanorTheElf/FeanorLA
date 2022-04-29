@@ -1,4 +1,5 @@
 use super::super::super::bigint::*;
+use super::super::integer::*;
 
 ///
 /// Uses the Fermat method to find nontrivial factors of a given number.
@@ -13,7 +14,7 @@ use super::super::super::bigint::*;
 /// 
 pub fn fermat(n: &BigInt) -> BigInt
 {
-    let mut m = (n.clone() - 1).root_floor(2) + 1;
+    let mut m = BigInt::RING.root_floor(&(n.clone() - 1), 2) + 1;
 
     // We try to find m such that m^2 - n = d^2 for some integer d, then
     // (m - d)(m + d) = n.
@@ -23,7 +24,7 @@ pub fn fermat(n: &BigInt) -> BigInt
     loop {
         assert!(m < *n);
         let m_squared = m.pow(2);
-        let d = (m_squared.clone() - n.clone()).root_floor(2);
+        let d = BigInt::RING.root_floor(&(m_squared.clone() - n.clone()), 2);
         if m_squared - d.pow(2) == *n {
             return m - d;
         }

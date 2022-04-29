@@ -5,6 +5,7 @@ use super::super::bigint::*;
 use super::fq::zn_big::*;
 use super::super::ring::*;
 use super::super::combinatorics::iters::*;
+use super::integer::*;
 pub use super::factoring_algorithms;
 
 use oorandom;
@@ -88,8 +89,8 @@ pub fn calc_factor(el: &BigInt) -> Option<BigInt> {
             return None;
         } else {
             for i in 2..n.abs_log2_floor() {
-                if n.clone().root_floor(i).pow(i as u32) == n {
-                    let root = n.root_floor(i);
+                if BigInt::RING.root_floor(&n, i).pow(i as u32) == n {
+                    let root = BigInt::RING.root_floor(&n, i);
                     return Some(root);
                 }
             }

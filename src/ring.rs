@@ -476,6 +476,26 @@ pub trait SingletonRing: Ring {
     fn singleton() -> Self;
 }
 
+pub trait HashableElRing: Ring {
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H, el: &Self::El);
+}
+
+impl<'a, R> HashableElRing for &'a R
+    where R: HashableElRing
+{
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H, el: &Self::El) { (**self).hash(h, el) }
+}
+
+pub trait OrderedRing: Ring {
+    fn cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering;
+}
+
+impl<'a, R> OrderedRing for &'a R
+    where R: OrderedRing
+{
+    fn cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering { (**self).cmp(lhs, rhs) }
+}
+
 #[cfg(test)]
 use super::primitive::*;
 

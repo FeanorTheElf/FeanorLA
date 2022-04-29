@@ -1,6 +1,10 @@
 use super::super::ring::*;
 use super::super::embedding::*;
+use super::super::primitive::*;
+use super::rat::*;
 use super::eea::*;
+use super::integer::*;
+use super::rationals::*;
 
 #[derive(Debug, Clone, Copy)]
 pub struct FieldOfFractions<R>
@@ -170,6 +174,29 @@ impl<R> Ring for FieldOfFractions<R>
     }
 }
 
+///
+/// The problem with hashing fractions is that we have to find
+/// a "normal form" of the denominator, which is only unique up
+/// to multiplication by units. In the case that the underlying
+/// ring is ordered and a PID, there are only the units +/-1, so
+/// it works out fine.
+/// 
+/// TODO: this is wrong, isn't it?
+/// 
+impl<R> HashableElRing for FieldOfFractions<R>
+    where R: HashableElRing + OrderedRing + EuclideanInfoRing
+{
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H, el: &Self::El) {
+        let (mut num, mut den) = self.reduce(el.clone());
+        if self.base_ring().cmp(&den, &self.base_ring().zero()) == std::cmp::Ordering::Less {
+            num = self.base_ring().neg(num);
+            den = self.base_ring().neg(den);
+        }
+        self.base_ring().hash(h, &num);
+        self.base_ring().hash(h, &den);
+    }
+}
+
 impl<R> CanonicalEmbeddingInfo<R> for FieldOfFractions<R> 
     where R: Ring
 {
@@ -179,6 +206,70 @@ impl<R> CanonicalEmbeddingInfo<R> for FieldOfFractions<R>
 
     fn embed(&self, _from: &R, el: R::El) -> Self::El {
         self.from(el)
+    }
+}
+
+impl<R> CanonicalEmbeddingInfo<FieldOfFractions<R>> for FieldOfFractions<R> 
+    where R: Ring
+{
+    fn has_embedding(&self, _from: &FieldOfFractions<R>) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embed(&self, _from: &FieldOfFractions<R>, el: Self::El) -> Self::El {
+        el
+    }
+}
+
+impl<R> CanonicalIsomorphismInfo<FieldOfFractions<R>> for FieldOfFractions<R> 
+    where R: Ring
+{
+    fn has_isomorphism(&self, _from: &FieldOfFractions<R>) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn preimage(&self, _from: &FieldOfFractions<R>, el: Self::El) -> Self::El {
+        el
+    }
+}
+
+impl<R: IntegerRing> CanonicalEmbeddingInfo<StaticRing<r64>> for FieldOfFractions<R> {
+
+    fn has_embedding(&self, _from: &StaticRing<r64>) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embed(&self, _from: &StaticRing<r64>, el: r64) -> Self::El {
+        self.div(self.from(self.base_ring().from_z(el.num())), &self.from(self.base_ring().from_z(el.den())))
+    }
+}
+
+impl<R: IntegerRing> CanonicalIsomorphismInfo<StaticRing<r64>> for FieldOfFractions<R> {
+
+    fn has_isomorphism(&self, _from: &StaticRing<r64>) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn preimage(&self, _from: &StaticRing<r64>, el: Self::El) -> r64 {
+        let (num, den) = self.soft_reduce(el);
+        r64::new(self.base_ring().preimage(&StaticRing::<i64>::RING, num), self.base_ring().preimage(&StaticRing::<i64>::RING, den))
+    }
+}
+
+impl<R: IntegerRing> RationalField for FieldOfFractions<R> {
+
+    type UnderlyingIntegers = R;
+
+    fn num(&self, el: &Self::El) -> <Self::UnderlyingIntegers as Ring>::El {
+        el.0.clone()
+    }
+
+    fn den(&self, el: &Self::El) -> <Self::UnderlyingIntegers as Ring>::El {
+        el.1.clone()
+    }
+
+    fn underlying_integers(&self) -> Self::UnderlyingIntegers {
+        self.base_ring().clone()
     }
 }
 

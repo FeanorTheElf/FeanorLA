@@ -1,6 +1,7 @@
 use super::super::super::ring::*;
 use super::super::super::bigint::*;
 use super::super::super::la::mat::*;
+use super::super::super::embedding::*;
 use super::uni_var::*;
 
 use std::ops::Index;
@@ -496,6 +497,84 @@ impl<R> DivisibilityInfoRing for MultivariatePolyRing<R>
     }
 }
 
+impl<R> CanonicalEmbeddingInfo<R> for MultivariatePolyRing<R>
+    where R: Ring
+{
+    fn has_embedding(&self, _from: &R) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embed(&self, _from: &R, el: R::El) -> Self::El {
+        self.from(el)
+    }
+}
+
+impl<R> CanonicalEmbeddingInfo<PolyRing<R>> for MultivariatePolyRing<R>
+    where R: Ring
+{
+    fn has_embedding(&self, _from: &PolyRing<R>) -> RingPropValue {
+        // It might seem natural to have the canonical embedding f(X) -> f(X),
+        // but this would contradict the general commutativity of canonical embeddings;
+        // The problem here is that we have defined k[X] and k[Y] to be canonically
+        // isomorphic as univariate polynomial rings, but not as multivariate polynomial
+        // rings.
+        RingPropValue::False
+    }
+
+    fn embed(&self, _from: &PolyRing<R>, _el: <PolyRing<R> as Ring>::El) -> Self::El {
+        panic!("No embedding defined!")
+    }
+}
+
+impl<R> CanonicalEmbeddingInfo<MultivariatePolyRing<R>> for MultivariatePolyRing<R>
+    where R: Ring
+{
+    fn has_embedding(&self, from: &MultivariatePolyRing<R>) -> RingPropValue {
+        if from.var_names.iter().all(|name| self.var_names.contains(name)) {
+            RingPropValue::True
+        } else {
+            RingPropValue::False
+        }
+    }
+
+    fn embed(&self, from: &MultivariatePolyRing<R>, el: Self::El) -> Self::El {
+        let var_mapping = from.var_names.iter().map(|v| 
+            self.var_names.iter().enumerate().find(|(_, v2)| v == *v2).unwrap().0
+        ).collect::<Vec<_>>();
+        let mut key_recycling = Vec::new();
+        let result = el.into_iter().map(|(key, val)| {
+            if key.len() == 0 {
+                return (Vec::new(), val);
+            }
+            let mut result = None;
+            take_mut::take(&mut key_recycling, |mut new_key| {
+                new_key.clear();
+                new_key.resize((0..key.len()).map(|i| var_mapping[i] + 1).max().unwrap(), 0);
+                for (i, power) in key.iter().enumerate() {
+                    new_key[var_mapping[i]] = *power;
+                }
+                result = Some((new_key, val));
+                return key;
+            });
+            return result.unwrap();
+        }).collect();
+        self.assert_valid(&result);
+        return result;
+    }
+}
+
+impl<R> CanonicalIsomorphismInfo<MultivariatePolyRing<R>> for MultivariatePolyRing<R>
+    where R: Ring
+{
+    fn has_isomorphism(&self, from: &MultivariatePolyRing<R>) -> RingPropValue {
+        self.has_embedding(from) & (self.var_names.len() == from.var_names.len())
+    }
+
+    fn preimage(&self, from: &MultivariatePolyRing<R>, el: Self::El) -> Self::El {
+        from.embed(self, el)
+    }
+}
+
 #[cfg(test)]
 use super::super::super::wrapper::*;
 #[cfg(test)]
@@ -643,4 +722,20 @@ fn test_is_unit() {
     assert_eq!(false, ring.is_unit(&(x + 1).val()));
     assert_eq!(false, ring.is_unit(&ring.from_z(2)));
     assert_eq!(true, ring.is_unit(&ring.from_z(-1)));
+}
+
+#[test]
+fn test_poly_ring_embedding() {
+    let mut ring1 = MultivariatePolyRing::new(i32::RING);
+    let x1 = ring1.adjoint("X");
+    let y1 = ring1.adjoint("Y");
+
+    let mut ring2 = MultivariatePolyRing::new(i32::RING);
+    let y2 = ring2.adjoint("Y");
+    let x2 = ring2.adjoint("X");
+
+    let (f, fi) = isomorphism(&ring1, &ring2);
+    assert!(!ring1.eq(&x1, &x2));
+    assert!(ring2.eq(&x2, &f(x1)));
+    assert!(ring1.eq(&y1, &fi(y2)));
 }

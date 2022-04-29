@@ -38,7 +38,7 @@ fn compute_det<F>(field: F, mut work_matrix: Matrix<MatrixOwned<F::El>, F::El>) 
 }
 
 impl<R, M> MatrixDeterminant<M> for R
-    where R: DivisibilityInfoRing, M: MatrixView<R::El>
+    where R: DivisibilityInfoRing + CanonicalIsomorphismInfo<R>, M: MatrixView<R::El>
 {
     default fn matrix_determinant(&self, matrix: Matrix<M, R::El>) -> R::El {
         if self.is_field().can_use() {
@@ -60,7 +60,7 @@ impl<M, T> Matrix<M, T>
     where M: MatrixView<T>
 {
     pub fn det<R>(&self, ring: &R) -> R::El
-        where R: Ring<El = T> + DivisibilityInfoRing
+        where R: Ring<El = T> + DivisibilityInfoRing + CanonicalIsomorphismInfo<R>
     {
         ring.matrix_determinant(self.as_ref())
     }
