@@ -36,11 +36,6 @@ pub static F4: F4Type = SimpleRingExtension::new(F2, F4_MIPO);
 pub static F49: F49Type = SimpleRingExtension::new(F7, F49_MIPO);
 
 #[test]
-fn test_zero_size() {
-    assert_eq!(0, std::mem::size_of_val(&F4));
-}
-
-#[test]
 fn test_arithmetic() {
     let a = F4.generator();
     assert!(!F4.eq(&a, &F4.one()));
@@ -57,11 +52,6 @@ fn test_division() {
     let c = F4.div(F4.one(), &a);
     println!("Found c");
     assert!(F4.eq(&b, &c));
-}
-
-#[test]
-fn test_size_zero() {
-    assert_eq!(0, std::mem::size_of::<F49Type>())
 }
 
 #[test]
