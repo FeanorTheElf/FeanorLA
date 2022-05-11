@@ -276,7 +276,6 @@ impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
         assert!(!self.is_zero(rhs));
         if self.base_ring.is_field().can_use() {
             let multiplication_matrix = self.create_multiplication_matrix(rhs.clone());
-            println!("{}", multiplication_matrix.display(self.base_ring()));
             <R as MatrixSolve>::solve_linear_equation(&self.base_ring, multiplication_matrix, &mut Matrix::col_vec(lhs.as_mut())).unwrap();
             return lhs;
         } else {
@@ -291,7 +290,7 @@ impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
 }
 
 impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
-    where R: CanonicalIsomorphismInfo<R>, for<'a> PolyRing<&'a R>: UfdInfoRing, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
+    where R: Ring, for<'a> PolyRing<&'a R>: UfdInfoRing, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn is_integral(&self) -> RingPropValue {
         if !self.is_integral_cache.is_computed() {
@@ -311,6 +310,25 @@ impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
             self.is_integral()
         } else {
             self.base_ring.is_field()
+        }
+    }
+}
+
+impl<R, V, W> DivisibilityInfoRing for SimpleRingExtension<R, V, W>
+    where R: Ring, for<'a> PolyRing<&'a R>: UfdInfoRing, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
+{
+    fn is_divisibility_computable(&self) -> bool {
+        // currently only implemented in case we have a field
+        self.is_field().can_use()
+    }
+
+    fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
+        if self.is_zero(rhs) && self.is_zero(lhs) {
+            Some(self.one())
+        } else if self.is_zero(rhs) {
+            None
+        } else {
+            Some(self.div(lhs.clone(), rhs))
         }
     }
 }
