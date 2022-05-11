@@ -296,6 +296,14 @@ impl<K> EllipticCurve<K>
     pub fn base_field(&self) -> &K {
         &self.base_field
     }
+
+    pub fn a4(&self) -> &K::El {
+        &self.A
+    }
+
+    pub fn a6(&self) -> &K::El {
+        &self.B
+    }
 }
 
 impl<K> EllipticCurve<K>
