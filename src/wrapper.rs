@@ -146,8 +146,7 @@ impl<R> AddAssign<RingElWrapper<R>> for RingElWrapper<R>
     where R: Ring
 {
     fn add_assign(&mut self, rhs: RingElWrapper<R>) {
-        let recover_el = self.ring().unspecified_element();
-        take_mut::take_or_recover(self, || recover_el, move |x| x + rhs);
+        rhs.ring.add_assign(self.val_mut(), rhs.el);
     }
 }
 
@@ -207,8 +206,8 @@ impl<R> SubAssign<RingElWrapper<R>> for RingElWrapper<R>
     where R: Ring
 {
     fn sub_assign(&mut self, rhs: RingElWrapper<R>) {
-        let recover_el = self.ring().unspecified_element();
-        take_mut::take_or_recover(self, || recover_el, move |x| x - rhs);
+        let value = std::mem::replace(&mut self.el, self.ring.unspecified_element());
+        self.el = self.ring.sub(value, rhs.el);
     }
 }
 
@@ -268,8 +267,8 @@ impl<R> MulAssign<RingElWrapper<R>> for RingElWrapper<R>
     where R: Ring
 {
     fn mul_assign(&mut self, rhs: RingElWrapper<R>) {
-        let recover_el = self.ring().unspecified_element();
-        take_mut::take_or_recover(self, || recover_el, move |x| x * rhs);
+        let value = std::mem::replace(&mut self.el, self.ring.unspecified_element());
+        self.el = self.ring.mul(value, rhs.el);
     }
 }
 
@@ -306,8 +305,8 @@ impl<R> DivAssign<RingElWrapper<R>> for RingElWrapper<R>
 {
     fn div_assign(&mut self, rhs: RingElWrapper<R>) {
         assert!(self.ring.is_field().can_use());
-        let recover_el = self.ring().unspecified_element();
-        take_mut::take_or_recover(self, || recover_el, move |x| x / rhs);
+        let value = std::mem::replace(&mut self.el, self.ring.unspecified_element());
+        self.el = self.ring.div(value, &rhs.el);
     }
 }
 
@@ -343,8 +342,8 @@ impl<'a, R> DivAssign<&'a RingElWrapper<R>> for RingElWrapper<R>
 {
     fn div_assign(&mut self, rhs: &'a RingElWrapper<R>) {
         assert!(self.ring.is_field().can_use());
-        let recover_el = self.ring().unspecified_element();
-        take_mut::take_or_recover(self, || recover_el, move |x| x / rhs);
+        let value = std::mem::replace(&mut self.el, self.ring.unspecified_element());
+        self.el = self.ring.div(value, &rhs.el);
     }
 }
 
@@ -592,6 +591,10 @@ impl<R> RingBase for WrappingRing<R>
             ring: self.ring.clone(),
             el: self.ring.unspecified_element()
         }
+    }
+
+    fn add_assign(&self, lhs: &mut Self::El, rhs: Self::El) { 
+        self.wrapped_ring().add_assign(lhs.val_mut(), rhs.el)
     }
 
     fn sub_ref_fst(&self, lhs: &Self::El, rhs: Self::El) -> Self::El {

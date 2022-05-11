@@ -87,6 +87,11 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
 
     fn add(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.add_ref(lhs, &rhs) }
 
+    fn add_assign(&self, lhs: &mut Self::El, rhs: Self::El) { 
+        let value = std::mem::replace(lhs, self.unspecified_element());
+        *lhs = self.add(value, rhs);
+    }
+
     fn sum<I>(&self, data: I) -> Self::El
         where I: Iterator<Item = Self::El>
     {
@@ -94,6 +99,11 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     }
 
     fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.mul_ref(&lhs, &rhs) }
+
+    fn mul_assign(&self, lhs: &mut Self::El, rhs: Self::El) { 
+        let value = std::mem::replace(lhs, self.unspecified_element());
+        *lhs = self.mul(value, rhs);
+    }
 
     fn product<I>(&self, data: I) -> Self::El 
         where I: Iterator<Item = Self::El>
@@ -244,6 +254,8 @@ impl<'a, R: RingBase> RingBase for &'a R {
 
     fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).add_ref(lhs, rhs) }
     fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El { (**self).mul_ref(lhs, rhs) }
+    fn add_assign(&self, lhs: &mut Self::El, rhs: Self::El) { (**self).add_assign(lhs, rhs) }
+    fn mul_assign(&self, lhs: &mut Self::El, rhs: Self::El) { (**self).mul_assign(lhs, rhs) }
     fn neg(&self, val: Self::El) -> Self::El { (**self).neg(val) }
     fn zero(&self) -> Self::El { (**self).zero() }
     fn one(&self) -> Self::El { (**self).one() }

@@ -83,11 +83,7 @@ impl<M, T> Matrix<M, T>
             for row in (0..self.row_count()).rev() {
                 for i in (row + 1)..self.row_count() {
                     let d = ring.mul_ref(self.at(row, i), rhs.at(i, col));
-                    take_mut::take_or_recover(
-                        rhs.at_mut(row, col), 
-                        || ring.unspecified_element(), 
-                        |v| ring.sub(v, d)
-                    );
+                    ring.add_assign(rhs.at_mut(row, col), ring.neg(d));
                 }
             }
         }

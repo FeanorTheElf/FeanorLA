@@ -33,15 +33,16 @@ pub trait IntegerRing: Ring + CanonicalIsomorphismInfo<StaticRing<i64>> + Canoni
     {
         let mut begin = approx.clone();
         let mut step = self.one();
+        let two = self.from_z(2);
         while self.cmp(&f(&begin), &self.zero()) == Ordering::Greater {
             begin = self.sub_ref_snd(begin, &step);
-            take_mut::take(&mut step, |x| self.add(x.clone(), x));
+            self.mul_assign(&mut step, two.clone());
         }
         let mut end = approx;
         step = self.one();
         while self.cmp(&f(&end), &self.zero()) == Ordering::Less {
             end = self.add_ref(end, &step);
-            take_mut::take(&mut step, |x| self.add(x.clone(), x));
+            self.mul_assign(&mut step, two.clone());
         }
         return self.bisect(f, begin, end);
     }

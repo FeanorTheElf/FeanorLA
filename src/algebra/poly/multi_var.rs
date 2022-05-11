@@ -213,11 +213,7 @@ impl<R> MultivariatePolyRing<R>
                 let added_value = self.base_ring.mul_ref(&val, &accumulator);
                 match reduced_poly.entry(key) {
                     Entry::Occupied(e) => {
-                        take_mut::take_or_recover(
-                            e.into_mut(), 
-                            || self.base_ring.unspecified_element(), 
-                            |v| self.base_ring.add(v, added_value)
-                        );
+                        self.base_ring.add_assign(e.into_mut(), added_value);
                     },
                     Entry::Vacant(e) => {
                         e.insert(added_value);
@@ -260,11 +256,7 @@ impl<R> RingBase for MultivariatePolyRing<R>
 
         for entry in rhs.iter() {
             if let Some(coeff) = lhs.get_mut(entry.0) {
-                take_mut::take_or_recover(
-                    coeff, 
-                    || self.base_ring.unspecified_element(), 
-                    |c| self.base_ring.add_ref(c, entry.1)
-                );
+                self.base_ring.add_assign(coeff, entry.1.clone());
             } else {
                 lhs.insert(entry.0.clone(), entry.1.clone());
             }
@@ -299,11 +291,7 @@ impl<R> RingBase for MultivariatePolyRing<R>
 
                 match result.entry(new_vars) {
                     Entry::Occupied(e) => {
-                        take_mut::take_or_recover(
-                            e.into_mut(), 
-                            || self.base_ring.unspecified_element(), 
-                            |c| self.base_ring.add(c, new_coeff)
-                        );
+                        self.base_ring.add_assign(e.into_mut(), new_coeff);
                     },
                     Entry::Vacant(e) => {
                         e.insert(new_coeff);
@@ -318,13 +306,9 @@ impl<R> RingBase for MultivariatePolyRing<R>
 
     fn neg(&self, mut val: Self::El) -> Self::El {
         self.assert_valid(&val);
-
         for (_, coeff) in val.iter_mut() {
-            take_mut::take_or_recover(
-                coeff, 
-                || self.base_ring.unspecified_element(), 
-                |c| self.base_ring.neg(c)
-            );
+            let value = std::mem::replace(coeff, self.base_ring.unspecified_element());
+            *coeff = self.base_ring.neg(value);
         }
 
         self.assert_valid(&val);
@@ -391,32 +375,8 @@ impl<R> RingBase for MultivariatePolyRing<R>
         }
     }
     
-    fn div(&self, mut lhs: Self::El, rhs: &Self::El) -> Self::El {
-        assert!(!self.is_zero(rhs));
-        if let Some(division_var) = rhs.iter()
-            .filter_map(|(key, _coeff)| 
-                key.iter().enumerate().filter(|(_i, pow)| **pow != 0).map(|(i, _pow)| i).next()
-            ).min() 
-        {
-            let ring = self.elevate_var_ring(Var(division_var));
-            let lhs_new = self.elevate_var_element(Var(division_var), lhs);
-            let rhs_new = self.elevate_var_element(Var(division_var), rhs.clone());
-            let result = ring.div(lhs_new, &rhs_new);
-            return self.de_elevate_var(Var(division_var), result);
-        } else {
-            // rhs is only a scalar
-            debug_assert!(rhs.len() == 1);
-            let (key, scalar) = rhs.iter().next().unwrap();
-            debug_assert_eq!(Vec::<usize>::new(), *key);
-            for coeff in lhs.values_mut() {
-                take_mut::take_or_recover(
-                    coeff, 
-                    || self.base_ring.unspecified_element(), 
-                    |v| self.base_ring.div(v, &scalar)
-                );
-            }
-            return lhs;
-        }
+    fn div(&self, _lhs: Self::El, _rhs: &Self::El) -> Self::El {
+        panic!("Not a field!")
     }
 
     fn format(&self, el: &El<Self>, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
@@ -566,21 +526,17 @@ impl<R> CanonicalEmbeddingInfo<MultivariatePolyRing<R>> for MultivariatePolyRing
             self.var_names.iter().enumerate().find(|(_, v2)| v == *v2).unwrap().0
         ).collect::<Vec<_>>();
         let mut key_recycling = Vec::new();
-        let result = el.into_iter().map(|(key, val)| {
+        let result = el.into_iter().map(|(mut key, val)| {
             if key.len() == 0 {
                 return (Vec::new(), val);
             }
-            let mut result = None;
-            take_mut::take(&mut key_recycling, |mut new_key| {
-                new_key.clear();
-                new_key.resize((0..key.len()).map(|i| var_mapping[i] + 1).max().unwrap(), 0);
-                for (i, power) in key.iter().enumerate() {
-                    new_key[var_mapping[i]] = *power;
-                }
-                result = Some((new_key, val));
-                return key;
-            });
-            return result.unwrap();
+            key_recycling.clear();
+            key_recycling.resize((0..key.len()).map(|i| var_mapping[i] + 1).max().unwrap(), 0);
+            for (i, power) in key.iter().enumerate() {
+                key_recycling[var_mapping[i]] = *power;
+            }
+            std::mem::swap(&mut key_recycling, &mut key);
+            return (key, val);
         }).collect();
         self.assert_valid(&result);
         return result;

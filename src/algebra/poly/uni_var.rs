@@ -178,11 +178,8 @@ impl<R> RingBase for PolyRing<R>
 
     fn neg(&self, mut val: Self::El) -> Self::El {
         for i in 0..val.len() {
-            take_mut::take_or_recover(
-                val.at_mut(i), 
-                || self.base_ring.unspecified_element(), 
-                |v| self.base_ring.neg(v)
-            );
+            let value = std::mem::replace(val.at_mut(i), self.base_ring.unspecified_element());
+            *val.at_mut(i) = self.base_ring.neg(value);
         }
         return val;
     }
@@ -241,7 +238,7 @@ impl<R> RingBase for PolyRing<R>
     }
     
     fn div(&self, _lhs: Self::El, _rhs: &Self::El) -> Self::El {
-        panic!("Not a field")
+        panic!("Not a field!")
     }
 
     fn format(&self, el: &El<Self>, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {

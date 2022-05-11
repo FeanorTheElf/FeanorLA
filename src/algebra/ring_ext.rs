@@ -96,9 +96,7 @@ impl<R, V, W> SimpleRingExtension<R, V, W>
             }
             let last_el = matrix.at(d - 1, i - 1).clone();
             for j in 0..d {
-                take_mut::take_or_recover(matrix.at_mut(j, i), || self.base_ring().unspecified_element(), 
-                    |x| self.base_ring().add(x, self.base_ring().mul_ref(&self.mipo_values[j], &last_el))
-                );
+                self.base_ring().add_assign(matrix.at_mut(j, i), self.base_ring().mul_ref(&self.mipo_values[j], &last_el));
             }
         }
         return matrix;
@@ -114,9 +112,7 @@ impl<R, V, W> SimpleRingExtension<R, V, W>
             .chain(std::iter::once(self.base_ring.neg(self.base_ring.one())))
             .scan(poly_ring.one(), |state, coeff| {
                 let result = poly_ring.mul_ref(state, &poly_ring.from(coeff));
-                take_mut::take_or_recover(state, || poly_ring.unspecified_element(), 
-                    |x| poly_ring.mul(x, poly_ring.unknown())
-                );
+                poly_ring.mul_assign(state, poly_ring.unknown());
                 return Some(result);
             }).fold(poly_ring.zero(), |a, b| poly_ring.add(a, b))
     }
@@ -206,17 +202,15 @@ impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
         let mut result = (0..(2 * self.degree())).map(|_| self.base_ring.zero()).collect::<Vec<_>>();
         for i in 0..lhs.len() {
             for j in 0..rhs.len() {
-                take_mut::take_or_recover(&mut result[i + j], || self.base_ring.unspecified_element(), |y| self.base_ring.add(y, 
-                    self.base_ring.mul_ref(&lhs[i], &rhs[j])
-                ));
+                let value = std::mem::replace(&mut result[i + j], self.base_ring().unspecified_element());
+                result[i + j] = self.base_ring.add(value, self.base_ring.mul_ref(&lhs[i], &rhs[j]));
             }
         }
         for i in (self.degree()..result.len()).rev() {
             let x = result.pop().unwrap();
             for j in (i - self.degree())..i {
-                take_mut::take_or_recover(&mut result[j], || self.base_ring.unspecified_element(), |y| self.base_ring.add(y, 
-                    self.base_ring.mul_ref(&self.mipo_values[j + self.degree() - i], &x)
-                ));
+                let value = std::mem::replace(&mut result[j], self.base_ring().unspecified_element());
+                result[j] = self.base_ring.add(value, self.base_ring.mul_ref(&self.mipo_values[j + self.degree() - i], &x));
             }
         }
         return Vector::new(result.into_iter().collect());

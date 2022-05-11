@@ -22,7 +22,8 @@ impl<R: Ring, M: MatrixViewMut<Self::El>> MatrixScale<M> for R {
     default fn negate_matrix(&self, a: &mut M) {
         for i in 0..a.row_count() {
             for j in 0..a.col_count() {
-                take_mut::take_or_recover(a.at_mut(i, j), || self.unspecified_element(), |x| self.neg(x));
+                let value = std::mem::replace(a.at_mut(i, j), self.unspecified_element());
+                *a.at_mut(i, j) = self.neg(value);
             }
         }
     }
@@ -63,11 +64,7 @@ impl<R: Ring, M: MatrixViewMut<Self::El>, N: MatrixView<Self::El>> MatrixAddAssi
         assert_eq!(a.col_count(), b.col_count());
         for row in 0..a.row_count() {
             for col in 0..a.col_count() {
-                take_mut::take_or_recover(
-                    a.at_mut(row, col), 
-                    || self.unspecified_element(), 
-                    |v| self.add_ref(v, b.at(row, col))
-                );
+                self.add_assign(a.at_mut(row, col), b.at(row, col).clone());
             }
         }
     }
@@ -77,11 +74,7 @@ impl<R: Ring, M: MatrixViewMut<Self::El>, N: MatrixView<Self::El>> MatrixAddAssi
         assert_eq!(a.col_count(), b.col_count());
         for row in 0..a.row_count() {
             for col in 0..a.col_count() {
-                take_mut::take_or_recover(
-                    a.at_mut(row, col), 
-                    || self.unspecified_element(), 
-                    |v| self.sub_ref_snd(v, b.at(row, col))
-                );
+                self.add_assign(a.at_mut(row, col), self.neg(b.at(row, col).clone()));
             }
         }
     }

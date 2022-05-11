@@ -1019,7 +1019,7 @@ impl AddAssign<i64> for BigInt {
                 negative: rhs < 0,
                 data: vec![rhs.abs() as u64]
             };
-            take_mut::take_or_recover(self, || BigInt::ZERO, |x| BigInt::RING.add(x, rhs_bigint));
+            BigInt::RING.add_assign(self, rhs_bigint);
         }
     }
 }

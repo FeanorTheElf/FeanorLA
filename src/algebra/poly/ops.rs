@@ -43,11 +43,7 @@ pub fn poly_division<V, W, R, F>(coeff_ring: &R, mut lhs: Vector<V, R::El>, rhs:
         let pow = lhs_deg - rhs_deg;
         result[pow] = coeff;
         for i in 0..=rhs_deg {
-            take_mut::take_or_recover(
-                lhs.at_mut(i + pow), 
-                || coeff_ring.unspecified_element(), 
-                |v| coeff_ring.sub(v, coeff_ring.mul_ref(&result[pow], &rhs[i]))
-            );
+            coeff_ring.add_assign(lhs.at_mut(i + pow), coeff_ring.neg(coeff_ring.mul_ref(&result[pow], &rhs[i])));
         }
         if !coeff_ring.is_zero(&lhs[lhs_deg]) {
             panic!("Passed division function yielded the wrong result!");
@@ -63,11 +59,7 @@ pub fn poly_add<R, V, W>(coeff_ring: &R, lhs: Vector<V, R::El>, rhs: Vector<W, R
         where R: Ring, V: VectorView<R::El>, W: VectorViewMut<R::El>
     {
         for i in 0..add.len() {
-            take_mut::take_or_recover(
-                base.at_mut(i), 
-                || coeff_ring.unspecified_element(), 
-                |v| coeff_ring.add_ref(v, add.at(i))
-            );
+            coeff_ring.add_assign(base.at_mut(i), add.at(i).clone());
         }
         return base;
     }

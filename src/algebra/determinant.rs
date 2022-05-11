@@ -16,9 +16,7 @@ fn compute_det<F>(field: F, mut work_matrix: Matrix<MatrixOwned<F::El>, F::El>) 
     let mut det_factor = field.one();
     let mut negated = false;
     let result = work_matrix.gaussion_elimination_half(
-        |_, a, ()| {
-            take_mut::take_or_recover(&mut det_factor, || field.unspecified_element(), |x| field.div(x, &a))
-        },
+        |_, a, ()| { field.mul_assign(&mut det_factor, a) },
         |_, _, ()| { negated = !negated; },
         |_, _, _, ()| {},
         &mut (),
