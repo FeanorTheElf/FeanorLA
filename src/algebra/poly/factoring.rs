@@ -11,7 +11,7 @@ use std::hash::{Hash, Hasher};
 use oorandom;
 
 fn pow_mod_f<F>(poly_ring: &PolyRing<F>, g: &El<PolyRing<F>>, f: &El<PolyRing<F>>, pow: &BigInt) -> El<PolyRing<F>>
-    where F: DivisibilityInfoRing + CanonicalIsomorphismInfo<F>
+    where F: Ring
 {
     if *pow == 0 {
         return poly_ring.one();
@@ -31,7 +31,7 @@ fn pow_mod_f<F>(poly_ring: &PolyRing<F>, g: &El<PolyRing<F>>, f: &El<PolyRing<F>
 // we cannot really check if the given field is really a prime field, so just assume that it is.
 // furthermore, the input polynomial must be square-free
 pub fn distinct_degree_factorization<F>(prime_field: F, p: &BigInt, mut f: Vector<VectorOwned<F::El>, F::El>) -> Vec<Vector<VectorOwned<F::El>, F::El>>
-    where F: FiniteRing + CanonicalIsomorphismInfo<F>
+    where F: FiniteRing
 {
     assert!(prime_field.size() == *p);
     let poly_ring = PolyRing::adjoint(prime_field.clone(), "X");
@@ -83,7 +83,7 @@ pub fn distinct_degree_factorization<F>(prime_field: F, p: &BigInt, mut f: Vecto
 ///
 #[allow(non_snake_case)]
 pub fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<El<F>>, El<F>>, d: usize) -> Vector<VectorOwned<El<F>>, El<F>>
-    where F: FiniteRing + CanonicalIsomorphismInfo<F>
+    where F: FiniteRing + DivisibilityInfoRing
 {
     assert!(*p != 2);
     assert!(prime_field.size() == *p);
@@ -116,7 +116,7 @@ pub fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<El
 }
 
 pub fn poly_squarefree_part<R>(ring: &R, poly: Vector<VectorOwned<R::El>, R::El>) -> Vector<VectorOwned<R::El>, R::El>
-    where R: DivisibilityInfoRing + CanonicalIsomorphismInfo<R>
+    where R: DivisibilityInfoRing
 {
     assert!(ring.is_field().can_use());
     let poly_ring = PolyRing::adjoint(ring, "X");

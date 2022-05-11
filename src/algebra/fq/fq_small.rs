@@ -35,6 +35,9 @@ pub type F49Type = SimpleRingExtension<StaticRing::<ZnEl<7>>, F49MipoType, Vecto
 pub const F4: F4Type = SimpleRingExtension::new(F2, F4_MIPO);
 pub const F49: F49Type = SimpleRingExtension::new(F7, F49_MIPO);
 
+#[cfg(test)]
+use super::FiniteRing;
+
 #[test]
 fn test_arithmetic() {
     let a = F4.generator();
@@ -59,6 +62,14 @@ fn test_finite_odd_field_is_field() {
 #[test]
 fn test_is_ring() {
     fn as_ring<R: Ring>(ring: R) {
+        assert!(true);
+    }
+    as_ring(F49);
+}
+
+#[test]
+fn test_is_finite_ring() {
+    fn as_ring<R: FiniteRing>(ring: R) {
         assert!(true);
     }
     as_ring(F49);

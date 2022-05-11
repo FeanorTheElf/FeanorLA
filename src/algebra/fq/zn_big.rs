@@ -96,7 +96,6 @@ impl FiniteRingIterFn<Zn> for ZnIterFn {
 
 impl FiniteRing for Zn {
 
-    type VectorBasisType = VectorConstant<Self::El>;
     type IterFn = ZnIterFn;
     
     fn characteristic(&self) -> BigInt {

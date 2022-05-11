@@ -1,7 +1,6 @@
 use super::super::eea::*;
 use super::*;
 use super::super::super::primitive::*;
-use super::super::super::la::constant::*;
 
 use std::ops::{AddAssign, MulAssign, SubAssign, DivAssign, Add, Mul, Sub, Div, Neg};
 
@@ -226,7 +225,6 @@ impl<const N: u64> FiniteRingIterFn<StaticRing<ZnElImpl<N, false>>> for StaticZn
 
 impl<const N: u64> FiniteRing for StaticRing<ZnElImpl<N, true>> {
 
-    type VectorBasisType = VectorConstant<Self::El>;
     type IterFn = StaticZnIterFn;
 
     fn characteristic(&self) -> BigInt {
@@ -266,7 +264,6 @@ impl<const N: u64> DivisibilityInfoRing for StaticRing<ZnElImpl<N, false>> {
 
 impl<const N: u64> FiniteRing for StaticRing<ZnElImpl<N, false>> {
 
-    type VectorBasisType = VectorConstant<Self::El>;
     type IterFn = StaticZnIterFn;
 
     fn characteristic(&self) -> BigInt {

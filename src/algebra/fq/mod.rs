@@ -1,7 +1,6 @@
 use super::super::ring::*;
 use super::super::bigint::*;
 use super::super::wrapper::*;
-use super::super::la::vec::*;
 
 pub trait FiniteRingIterFn<R: FiniteRing>: Clone {
 
@@ -15,9 +14,8 @@ impl<'a, R: FiniteRing, F: FiniteRingIterFn<R>> FiniteRingIterFn<&'a R> for F {
     }
 }
 
-pub trait FiniteRing : DivisibilityInfoRing {
+pub trait FiniteRing : Ring {
 
-    type VectorBasisType: Clone + VectorView<Self::El>;
     type IterFn: FiniteRingIterFn<Self>;
 
     fn characteristic(&self) -> BigInt;
@@ -28,7 +26,6 @@ pub trait FiniteRing : DivisibilityInfoRing {
 impl<'a, R> FiniteRing for &'a R
     where R: FiniteRing
 {
-    type VectorBasisType = R::VectorBasisType;
     type IterFn = R::IterFn;
 
     fn characteristic(&self) -> BigInt { (**self).characteristic() }
@@ -60,7 +57,6 @@ impl<R: FiniteRing> FiniteRingIterFn<WrappingRing<R>> for WrappingRingIterFn<R> 
 impl<R> FiniteRing for WrappingRing<R>
     where R: FiniteRing
 {
-    type VectorBasisType = VectorOwned<El<WrappingRing<R>>>;
     type IterFn = WrappingRingIterFn<R>;
 
     fn characteristic(&self) -> BigInt {
@@ -78,10 +74,29 @@ impl<R> FiniteRing for WrappingRing<R>
     }
 }
 
-pub fn elements<R: FiniteRing>(ring: R) -> impl Clone + Iterator<Item = R::El> {
-    std::iter::repeat(()).scan(ring.iter_fn(), move |iter_fn, ()| {
-        iter_fn.next(&ring)
-    })
+#[derive(Clone)]
+pub struct FiniteRingElementIter<R>
+    where R: FiniteRing
+{
+    ring: R,
+    iter_fn: R::IterFn
+}
+
+impl<R> Iterator for FiniteRingElementIter<R>
+    where R: FiniteRing
+{
+    type Item = R::El;
+
+    fn next(&mut self) -> Option<R::El> {
+        self.iter_fn.next(&self.ring)
+    }
+}
+
+pub fn elements<R: FiniteRing>(ring: R) -> FiniteRingElementIter<R> {
+    FiniteRingElementIter {
+        iter_fn: ring.iter_fn(),
+        ring: ring
+    }
 }
 
 pub mod zn_big;

@@ -383,7 +383,7 @@ impl<S, P> Fn<(RingElWrapper<S>, )> for RingElWrapper<P>
 }
 
 impl<R> UfdInfoRing for PolyRing<R>
-    where R: FiniteRing + CanonicalIsomorphismInfo<R>
+    where R: FiniteRing + DivisibilityInfoRing
 {
     fn is_ufd(&self) -> RingPropValue {
         if self.base_ring.is_field().can_use() && self.base_ring().characteristic() != 2 && self.base_ring().size() == self.base_ring().characteristic() {
