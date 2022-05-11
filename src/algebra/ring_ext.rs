@@ -130,6 +130,30 @@ impl<R, V, W> CanonicalEmbeddingInfo<R> for SimpleRingExtension<R, V, W>
     }
 }
 
+impl<R, V, W> CanonicalEmbeddingInfo<&R> for SimpleRingExtension<R, V, W>
+    where R: Ring, V: VectorView<R::El> + Clone + FromIterator<R::El>, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
+{
+    fn has_embedding(&self, _from: &&R) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embed(&self, _from: &&R, el: R::El) -> Self::El {
+        self.from(el)
+    }
+}
+
+impl<R, V, W> CanonicalEmbeddingInfo<R> for SimpleRingExtension<&R, V, W>
+    where R: Ring, V: VectorView<R::El> + Clone + FromIterator<R::El>, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
+{
+    fn has_embedding(&self, _from: &R) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embed(&self, _from: &R, el: R::El) -> Self::El {
+        self.from(el)
+    }
+}
+
 impl<R, V, W> Ring for SimpleRingExtension<R, V, W>
     where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {

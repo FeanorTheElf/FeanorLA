@@ -507,6 +507,32 @@ impl<R> CanonicalEmbeddingInfo<R> for MultivariatePolyRing<R>
     }
 }
 
+impl<R> CanonicalEmbeddingInfo<R> for MultivariatePolyRing<&R> 
+    where R: Ring
+{
+
+    fn has_embedding(&self, _from: &R) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embed(&self, _from: &R, el: R::El) -> Self::El {
+        self.from(el)
+    }
+}
+
+impl<R> CanonicalEmbeddingInfo<&R> for MultivariatePolyRing<R> 
+    where R: Ring
+{
+
+    fn has_embedding(&self, _from: &&R) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embed(&self, _from: &&R, el: R::El) -> Self::El {
+        self.from(el)
+    }
+}
+
 impl<R> CanonicalEmbeddingInfo<PolyRing<R>> for MultivariatePolyRing<R>
     where R: Ring
 {
