@@ -43,7 +43,7 @@ impl Zn {
         return m;
     }
 
-    pub fn project(&self, n: BigInt) -> <Self as Ring>::El {
+    pub fn project(&self, n: BigInt) -> El<Self> {
         let mut red_n = n;
         let negated = red_n < 0;
         if negated {
@@ -117,7 +117,7 @@ impl FiniteRing for Zn {
 #[derive(Debug, Clone)]
 pub struct FactorRingZEl(BigInt);
 
-impl Ring for Zn {
+impl RingBase for Zn {
 
     type El = FactorRingZEl;
 

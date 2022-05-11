@@ -19,7 +19,7 @@ impl<R> FieldOfFractions<R>
         FieldOfFractions { base_ring }
     }
 
-    pub fn from(&self, el: R::El) -> <Self as Ring>::El {
+    pub fn from(&self, el: R::El) -> El<Self> {
         (el, self.base_ring.one())
     }
 
@@ -45,7 +45,7 @@ impl<R> FieldOfFractions<R>
 impl<R> FieldOfFractions<R>
     where R: EuclideanInfoRing
 {
-    pub fn reduce(&self, el: <Self as Ring>::El) -> <Self as Ring>::El {
+    pub fn reduce(&self, el: El<Self>) -> El<Self> {
         assert!(self.base_ring().is_euclidean().can_use());
         let d = gcd(&self.base_ring, el.0.clone(), el.1.clone());
         return (self.base_ring.euclidean_div(el.0, &d), self.base_ring.euclidean_div(el.1, &d));
@@ -62,13 +62,13 @@ impl<R> SingletonRing for FieldOfFractions<R>
 
 trait SoftReducable: Ring {
 
-    fn soft_reduce(&self, el: <Self as Ring>::El) -> <Self as Ring>::El;
+    fn soft_reduce(&self, el: El<Self>) -> El<Self>;
 }
 
 impl<R> SoftReducable for FieldOfFractions<R>
     where R: Ring
 {
-    default fn soft_reduce(&self, el: <Self as Ring>::El) -> <Self as Ring>::El {
+    default fn soft_reduce(&self, el: El<Self>) -> El<Self> {
         el
     }
 }
@@ -76,7 +76,7 @@ impl<R> SoftReducable for FieldOfFractions<R>
 impl<R> SoftReducable for FieldOfFractions<R>
     where R: EuclideanInfoRing
 {
-    fn soft_reduce(&self, el: <Self as Ring>::El) -> <Self as Ring>::El {
+    fn soft_reduce(&self, el: El<Self>) -> El<Self> {
         if self.base_ring.is_euclidean().can_use() {
             self.reduce(el)
         } else {
@@ -88,13 +88,13 @@ impl<R> SoftReducable for FieldOfFractions<R>
 impl<R> FieldOfFractions<R>
     where R: DivisibilityInfoRing
 {
-    pub fn in_base_ring(&self, (num, den): &<Self as Ring>::El) -> Option<R::El> {
+    pub fn in_base_ring(&self, (num, den): &El<Self>) -> Option<R::El> {
         assert!(self.base_ring.is_divisibility_computable());
         self.base_ring.quotient(num, den)
     }
 }
 
-impl<R> Ring for FieldOfFractions<R>
+impl<R> RingBase for FieldOfFractions<R>
     where R: Ring
 {
     type El = (R::El, R::El);
@@ -283,11 +283,11 @@ impl<R: IntegerRing> RationalField for FieldOfFractions<R> {
 
     type UnderlyingIntegers = R;
 
-    fn num(&self, el: &Self::El) -> <Self::UnderlyingIntegers as Ring>::El {
+    fn num(&self, el: &Self::El) -> El<Self::UnderlyingIntegers> {
         el.0.clone()
     }
 
-    fn den(&self, el: &Self::El) -> <Self::UnderlyingIntegers as Ring>::El {
+    fn den(&self, el: &Self::El) -> El<Self::UnderlyingIntegers> {
         el.1.clone()
     }
 

@@ -1,18 +1,19 @@
 use super::bigint::*;
+use super::embedding::*;
 use super::wrapper::*;
 use super::ring_property::*;
 
 use vector_map::VecMap;
 
 pub struct RingElDisplay<'a, R: ?Sized> 
-    where R: Ring
+    where R: RingBase
 {
     ring: &'a R,
     el: &'a R::El
 }
 
 impl<'a, R> std::fmt::Display for RingElDisplay<'a, R>
-where R: Ring
+    where R: RingBase
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         self.ring.format(self.el, f, false)
@@ -43,7 +44,7 @@ where R: Ring
 /// cannot profit from getting the parameters by value. If this is not true, then
 /// one should implement the default-implemented mul()-function
 /// 
-pub trait Ring : std::fmt::Debug + std::clone::Clone {
+pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     type El: Sized + Clone + std::fmt::Debug;
 
     fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El;
@@ -238,7 +239,7 @@ pub trait Ring : std::fmt::Debug + std::clone::Clone {
     }
 }
 
-impl<'a, R: Ring> Ring for &'a R {
+impl<'a, R: RingBase> RingBase for &'a R {
     type El = R::El;
 
     fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).add_ref(lhs, rhs) }
@@ -275,6 +276,14 @@ impl<'a, R: Ring> Ring for &'a R {
     fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result { (**self).format(el, f, in_prod) }
     fn format_in_brackets(&self, el: &Self::El, f: &mut std::fmt::Formatter) -> std::fmt::Result { (**self).format_in_brackets(el, f) }
 }
+
+pub trait Ring: RingBase + CanonicalIsomorphismInfo<Self> {}
+
+impl<R: ?Sized> Ring for R
+    where R: RingBase + CanonicalIsomorphismInfo<R>
+{}
+
+pub type El<R: Ring> = <R as RingBase>::El;
 
 ///
 /// Trait for rings that might have a euclidean division.

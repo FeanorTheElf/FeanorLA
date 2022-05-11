@@ -1,6 +1,5 @@
-use super::super::super::ring::*;
+use super::super::super::prelude::*;
 use super::super::super::la::mat::*;
-use super::super::super::bigint::*;
 use super::super::eea::*;
 use super::super::fq::*;
 use super::uni_var::*;
@@ -11,8 +10,8 @@ use std::hash::{Hash, Hasher};
 
 use oorandom;
 
-fn pow_mod_f<F>(poly_ring: &PolyRing<F>, g: &<PolyRing<F> as Ring>::El, f: &<PolyRing<F> as Ring>::El, pow: &BigInt) -> <PolyRing<F> as Ring>::El
-    where F: DivisibilityInfoRing
+fn pow_mod_f<F>(poly_ring: &PolyRing<F>, g: &El<PolyRing<F>>, f: &El<PolyRing<F>>, pow: &BigInt) -> El<PolyRing<F>>
+    where F: DivisibilityInfoRing + CanonicalIsomorphismInfo<F>
 {
     if *pow == 0 {
         return poly_ring.one();
@@ -32,7 +31,7 @@ fn pow_mod_f<F>(poly_ring: &PolyRing<F>, g: &<PolyRing<F> as Ring>::El, f: &<Pol
 // we cannot really check if the given field is really a prime field, so just assume that it is.
 // furthermore, the input polynomial must be square-free
 pub fn distinct_degree_factorization<F>(prime_field: F, p: &BigInt, mut f: Vector<VectorOwned<F::El>, F::El>) -> Vec<Vector<VectorOwned<F::El>, F::El>>
-    where F: FiniteRing
+    where F: FiniteRing + CanonicalIsomorphismInfo<F>
 {
     assert!(prime_field.size() == *p);
     let poly_ring = PolyRing::adjoint(prime_field.clone(), "X");
@@ -83,8 +82,8 @@ pub fn distinct_degree_factorization<F>(prime_field: F, p: &BigInt, mut f: Vecto
 /// the other is not is approximately 1/2.
 ///
 #[allow(non_snake_case)]
-pub fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<<F as Ring>::El>, <F as Ring>::El>, d: usize) -> Vector<VectorOwned<<F as Ring>::El>, <F as Ring>::El>
-    where F: FiniteRing
+pub fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<El<F>>, El<F>>, d: usize) -> Vector<VectorOwned<El<F>>, El<F>>
+    where F: FiniteRing + CanonicalIsomorphismInfo<F>
 {
     assert!(*p != 2);
     assert!(prime_field.size() == *p);
@@ -117,7 +116,7 @@ pub fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<<F
 }
 
 pub fn poly_squarefree_part<R>(ring: &R, poly: Vector<VectorOwned<R::El>, R::El>) -> Vector<VectorOwned<R::El>, R::El>
-    where R: DivisibilityInfoRing
+    where R: DivisibilityInfoRing + CanonicalIsomorphismInfo<R>
 {
     assert!(ring.is_field().can_use());
     let poly_ring = PolyRing::adjoint(ring, "X");
@@ -132,10 +131,6 @@ use super::super::rat::*;
 use super::super::fq::zn_small::*;
 #[cfg(test)]
 use super::super::super::wrapper::*;
-#[cfg(test)]
-use super::super::super::primitive::*;
-#[cfg(test)]
-use super::super::super::embedding::*;
 
 #[test]
 fn test_poly_squarefree_part() {

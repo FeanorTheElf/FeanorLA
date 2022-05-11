@@ -47,8 +47,8 @@ use std::marker::PhantomData;
 ///
 /// The same holds for `CanonicalIsomorphismInfo`.
 /// 
-pub trait CanonicalEmbeddingInfo<R>: Ring
-    where R: Ring
+pub trait CanonicalEmbeddingInfo<R>: RingBase
+    where R: RingBase
 {
     fn has_embedding(&self, from: &R) -> RingPropValue;
     fn embed(&self, from: &R, el: R::El) -> Self::El;
@@ -67,7 +67,7 @@ pub trait CanonicalEmbeddingInfo<R>: Ring
 /// combinations. For more details, see the notes on `CanonicalEmbeddingInfo`.
 /// 
 pub trait CanonicalIsomorphismInfo<R>: CanonicalEmbeddingInfo<R>
-    where R: Ring
+    where R: RingBase
 {
     fn has_isomorphism(&self, from: &R) -> RingPropValue;
     fn preimage(&self, from: &R, el: Self::El) -> R::El;
@@ -98,7 +98,7 @@ impl<'b, R> CanonicalEmbeddingInfo<BigIntRing> for &'b R
 }
 
 impl<'a, 'b, R, S> CanonicalEmbeddingInfo<&'a R> for &'b S
-    where R: Ring, S: CanonicalEmbeddingInfo<R>
+    where R: RingBase, S: CanonicalEmbeddingInfo<R>
 {
     fn has_embedding(&self, from: &&'a R) -> RingPropValue {
         (**self).has_embedding(&**from)

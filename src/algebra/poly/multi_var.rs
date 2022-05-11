@@ -30,7 +30,7 @@ impl<R> MultivariatePolyRing<R>
         Var(self.var_names.iter().enumerate().filter(|(_, x)| **x == name).next().unwrap().0)
     }
 
-    pub fn get_indeterminate(&self, Var(index): Var) -> <Self as Ring>::El {
+    pub fn get_indeterminate(&self, Var(index): Var) -> El<Self> {
         let mut result = BTreeMap::new();
         result.insert(
             (0..index).map(|_| 0).chain(std::iter::once(1)).collect(), 
@@ -39,7 +39,7 @@ impl<R> MultivariatePolyRing<R>
         return result;
     }
 
-    pub fn derive(&self, el: &<Self as Ring>::El, variable: Var) -> <Self as Ring>::El {
+    pub fn derive(&self, el: &El<Self>, variable: Var) -> El<Self> {
         let var = variable.0;
         let mut result = BTreeMap::new();
         for (key, coeff) in el {
@@ -54,14 +54,14 @@ impl<R> MultivariatePolyRing<R>
         return result;
     }
 
-    pub fn gradient(&self, el: &<Self as Ring>::El) -> Vector<VectorOwned<<Self as Ring>::El>, <Self as Ring>::El> {
+    pub fn gradient(&self, el: &El<Self>) -> Vector<VectorOwned<El<Self>>, El<Self>> {
         Vector::from_fn(self.var_names.len(), |i| self.derive(el, Var(i)))
     }
 
     pub fn elevate_var<'a>(&'a self, var: Var) -> (
         PolyRing<&'a MultivariatePolyRing<R>>, 
-        impl Fn(<Self as Ring>::El) -> <PolyRing<&'a MultivariatePolyRing<R>> as Ring>::El,
-        impl Fn(<PolyRing<&'a MultivariatePolyRing<R>> as Ring>::El) -> <Self as Ring>::El
+        impl Fn(El<Self>) -> El<PolyRing<&'a MultivariatePolyRing<R>>>,
+        impl Fn(El<PolyRing<&'a MultivariatePolyRing<R>>>) -> El<Self>
     ) {
         (
             self.elevate_var_ring(var),
@@ -74,7 +74,7 @@ impl<R> MultivariatePolyRing<R>
         PolyRing::adjoint(self, self.var_names[var.0])
     }
 
-    fn elevate_var_element(&self, variable: Var, x: <Self as Ring>::El) -> <PolyRing<&MultivariatePolyRing<R>> as Ring>::El {
+    fn elevate_var_element(&self, variable: Var, x: El<Self>) -> El<PolyRing<&MultivariatePolyRing<R>>> {
         self.assert_valid(&x);
 
         let var = variable.0;
@@ -96,7 +96,7 @@ impl<R> MultivariatePolyRing<R>
         return Vector::new(result);
     }
 
-    fn de_elevate_var(&self, variable: Var, x: <PolyRing<&MultivariatePolyRing<R>> as Ring>::El) -> <Self as Ring>::El {
+    fn de_elevate_var(&self, variable: Var, x: El<PolyRing<&MultivariatePolyRing<R>>>) -> El<Self> {
         let var = variable.0;
         let mut result = BTreeMap::new();
         for (pow, coeff) in x.raw_data().into_vec().into_iter().enumerate() {
@@ -113,7 +113,7 @@ impl<R> MultivariatePolyRing<R>
         return result;
     }
 
-    pub fn from(&self, el: R::El) -> <Self as Ring>::El {
+    pub fn from(&self, el: R::El) -> El<Self> {
         let mut result = BTreeMap::new();
         result.insert(Vec::new(), el);
 
@@ -121,7 +121,7 @@ impl<R> MultivariatePolyRing<R>
         return result;
     }
 
-    fn assert_valid(&self, el: &<Self as Ring>::El) {
+    fn assert_valid(&self, el: &El<Self>) {
         //
         // We require that the power vector has no trailing zeros, as otherwise this
         // would allow extremely blown-up polynomials (like n * X = 1 * X + ... + 1 * X) 
@@ -136,12 +136,12 @@ impl<R> MultivariatePolyRing<R>
         }
     }
 
-    fn nonzero_monomials<'a>(&'a self, el: &'a <Self as Ring>::El) -> impl 'a + Iterator<Item = (&'a Vec<usize>, &'a <R as Ring>::El)> {
+    fn nonzero_monomials<'a>(&'a self, el: &'a El<Self>) -> impl 'a + Iterator<Item = (&'a Vec<usize>, &'a El<R>)> {
         self.assert_valid(el);
         el.iter().filter(move |(_, coeff)| !self.base_ring.is_zero(coeff))
     }
 
-    pub fn as_constant<'a>(&self, el: &<Self as Ring>::El) -> Option<R::El> {
+    pub fn as_constant<'a>(&self, el: &El<Self>) -> Option<R::El> {
         self.assert_valid(el);
         if self.is_zero(el) {
             return Some(self.base_ring.zero());
@@ -161,7 +161,7 @@ impl<R> MultivariatePolyRing<R>
         }
     }
 
-    pub fn adjoint(&mut self, var: &'static str) -> <Self as Ring>::El {
+    pub fn adjoint(&mut self, var: &'static str) -> El<Self> {
         assert!(!self.var_names.contains(&var));
         let mut result = BTreeMap::new();
         result.insert(
@@ -187,7 +187,7 @@ impl<R> MultivariatePolyRing<R>
     /// the number of monomials in the given polynomial, P is the highest power of a
     /// variable and T is the complexity of a multiplication in the base ring.
     /// 
-    pub fn evaluate_at<V>(&self, mut poly: <Self as Ring>::El, values: &V) -> R::El 
+    pub fn evaluate_at<V>(&self, mut poly: El<Self>, values: &V) -> R::El 
         where V: Index<usize, Output = R::El>
     {
         self.assert_valid(&poly);
@@ -231,20 +231,20 @@ impl<R> MultivariatePolyRing<R>
             .fold(self.base_ring.zero(), |a, b| self.base_ring.add(a, b));
     }
 
-    pub fn evaluate_matrix_at<M, V>(&self, m: Matrix<M, <Self as Ring>::El>, vars: &V) -> Matrix<MatrixOwned<R::El>, R::El> 
-        where M: MatrixView<<Self as Ring>::El>, V: Index<usize, Output = R::El>
+    pub fn evaluate_matrix_at<M, V>(&self, m: Matrix<M, El<Self>>, vars: &V) -> Matrix<MatrixOwned<R::El>, R::El> 
+        where M: MatrixView<El<Self>>, V: Index<usize, Output = R::El>
     {
         Matrix::from_fn(m.row_count(), m.col_count(), |i, j| self.evaluate_at(m.at(i, j).clone(), vars))
     }
 
-    pub fn evaluate_vector_at<M, V>(&self, m: Vector<M, <Self as Ring>::El>, vars: &V) -> Vector<VectorOwned<R::El>, R::El> 
-        where M: VectorView<<Self as Ring>::El>, V: Index<usize, Output = R::El>
+    pub fn evaluate_vector_at<M, V>(&self, m: Vector<M, El<Self>>, vars: &V) -> Vector<VectorOwned<R::El>, R::El> 
+        where M: VectorView<El<Self>>, V: Index<usize, Output = R::El>
     {
         Vector::from_fn(m.len(), |i| self.evaluate_at(m.at(i).clone(), vars))
     }
 }
 
-impl<R> Ring for MultivariatePolyRing<R>
+impl<R> RingBase for MultivariatePolyRing<R>
     where R: Ring
 {
     ///
@@ -419,7 +419,7 @@ impl<R> Ring for MultivariatePolyRing<R>
         }
     }
 
-    fn format(&self, el: &<Self as Ring>::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
+    fn format(&self, el: &El<Self>, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
         self.assert_valid(el);
         if self.is_zero(el) {
             return self.base_ring.format(&self.base_ring.zero(), f, in_prod);
@@ -534,7 +534,7 @@ impl<R> CanonicalEmbeddingInfo<&R> for MultivariatePolyRing<R>
 }
 
 impl<R> CanonicalEmbeddingInfo<PolyRing<R>> for MultivariatePolyRing<R>
-    where R: Ring
+    where R: CanonicalIsomorphismInfo<R>
 {
     fn has_embedding(&self, _from: &PolyRing<R>) -> RingPropValue {
         // It might seem natural to have the canonical embedding f(X) -> f(X),
@@ -545,7 +545,7 @@ impl<R> CanonicalEmbeddingInfo<PolyRing<R>> for MultivariatePolyRing<R>
         RingPropValue::False
     }
 
-    fn embed(&self, _from: &PolyRing<R>, _el: <PolyRing<R> as Ring>::El) -> Self::El {
+    fn embed(&self, _from: &PolyRing<R>, _el: El<PolyRing<R>>) -> Self::El {
         panic!("No embedding defined!")
     }
 }

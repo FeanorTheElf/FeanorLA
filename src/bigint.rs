@@ -754,7 +754,7 @@ impl BigInt {
     pub const RING: BigIntRing = BigIntRing {};
 }
 
-impl Ring for BigIntRing {
+impl RingBase for BigIntRing {
 
     type El = BigInt;
 

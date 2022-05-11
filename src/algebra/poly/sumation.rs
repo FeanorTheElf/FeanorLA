@@ -3,8 +3,8 @@ use super::super::super::embedding::*;
 use super::uni_var::*;
 use super::multi_var::*;
 
-fn rising_power_poly<R>(ring: &PolyRing<R>, n: usize) -> <PolyRing<R> as Ring>::El
-    where R: DivisibilityInfoRing
+fn rising_power_poly<R>(ring: &PolyRing<R>, n: usize) -> El<PolyRing<R>>
+    where R: DivisibilityInfoRing + CanonicalIsomorphismInfo<R>
 {
     let mut result = ring.one();
     let x = ring.unknown();
@@ -14,8 +14,8 @@ fn rising_power_poly<R>(ring: &PolyRing<R>, n: usize) -> <PolyRing<R> as Ring>::
     return result;
 }
 
-fn sumation_poly<R>(ring: &PolyRing<R>, f: <PolyRing<R> as Ring>::El) -> <PolyRing<R> as Ring>::El 
-    where R: DivisibilityInfoRing
+fn sumation_poly<R>(ring: &PolyRing<R>, f: El<PolyRing<R>>) -> El<PolyRing<R>> 
+    where R: DivisibilityInfoRing + CanonicalIsomorphismInfo<R>
 {
     let mut current = f;
     let mut result = ring.zero();
@@ -30,8 +30,8 @@ fn sumation_poly<R>(ring: &PolyRing<R>, f: <PolyRing<R> as Ring>::El) -> <PolyRi
     return result;
 }
 
-pub fn sumation_operator<R>(ring: &MultivariatePolyRing<R>, f: <MultivariatePolyRing<R> as Ring>::El, var: Var) -> <MultivariatePolyRing<R> as Ring>::El
-    where R: DivisibilityInfoRing
+pub fn sumation_operator<R>(ring: &MultivariatePolyRing<R>, f: El<MultivariatePolyRing<R>>, var: Var) -> El<MultivariatePolyRing<R>>
+    where R: DivisibilityInfoRing + CanonicalIsomorphismInfo<R>
 {
     let (elevated_ring, iso, iso_inv) = ring.elevate_var(var);
     return iso_inv(sumation_poly(&elevated_ring, iso(f)));

@@ -3,6 +3,7 @@ use super::super::super::la::vec::*;
 use super::super::super::wrapper::*;
 use super::ops::*;
 use super::factoring;
+use super::super::fq::*;
 
 use vector_map::VecMap;
 
@@ -15,9 +16,9 @@ pub struct PolyRing<R>
 }
 
 impl<R> PolyRing<R>
-    where R: Ring
+    where R: CanonicalIsomorphismInfo<R>
 {
-    pub fn derive(&self, el: <Self as Ring>::El) -> <Self as Ring>::El {
+    pub fn derive(&self, el: El<Self>) -> El<Self> {
         let mut result = el.into_owned();
         poly_formal_derivative(&self.base_ring, result.as_mut());
         return result;
@@ -29,22 +30,24 @@ impl<R> PolyRing<R>
         }
     }
 
-    pub fn evaluate(&self, poly: &<Self as Ring>::El, value: R::El) -> R::El {
-        poly_evaluate(&self.base_ring, value, poly.as_ref())
+    pub fn evaluate<S>(&self, poly: &El<Self>, value: S::El, ring: &S) -> S::El 
+        where S: CanonicalEmbeddingInfo<R>
+    {
+        poly_evaluate(&self.base_ring, value, poly.as_ref(), ring)
     }
 
-    pub fn from(&self, el: R::El) -> <Self as Ring>::El {
+    pub fn from(&self, el: R::El) -> El<Self> {
         let mut result = Vec::with_capacity(1);
         result.push(el);
         return Vector::new(result);
     }
 
-    pub fn evaluation_hom<'a>(&'a self, x: R::El) -> impl 'a + FnMut(<Self as Ring>::El) -> R::El {
-        move |poly| self.evaluate(&poly, x.clone())
+    pub fn evaluation_hom<'a>(&'a self, x: R::El) -> impl 'a + FnMut(El<Self>) -> R::El {
+        move |poly| self.evaluate(&poly, x.clone(), self.base_ring())
     }
 
-    pub fn lift_hom<F, S>(&self, (ring_ext, mut hom): (S, F)) -> (PolyRing<S>, impl FnMut(<Self as Ring>::El) -> <PolyRing<S> as Ring>::El)
-        where S: Ring, F: FnMut(R::El) -> S::El
+    pub fn lift_hom<F, S>(&self, (ring_ext, mut hom): (S, F)) -> (PolyRing<S>, impl FnMut(El<Self>) -> El<PolyRing<S>>)
+        where S: CanonicalIsomorphismInfo<S>, F: FnMut(R::El) -> S::El
     {
         (
             PolyRing::adjoint(ring_ext, self.var_name),
@@ -54,11 +57,11 @@ impl<R> PolyRing<R>
         )
     }
 
-    pub fn deg(&self, el: &<Self as Ring>::El) -> Option<usize> {
+    pub fn deg(&self, el: &El<Self>) -> Option<usize> {
         poly_degree(&self.base_ring, el.as_ref())
     }
 
-    pub fn lc<'a>(&self, el: &'a <Self as Ring>::El) -> Option<&'a R::El> {
+    pub fn lc<'a>(&self, el: &'a El<Self>) -> Option<&'a R::El> {
         self.deg(el).map(|i| &el[i])
     }
 
@@ -72,13 +75,13 @@ impl<R> PolyRing<R>
     /// (in this case, `PolyRing::div`). Errors from this function are forwarded, and this is
     /// the only case in which this function returns Err(()).
     /// 
-    pub fn poly_division<F>(&self, lhs: &mut <Self as Ring>::El, rhs: &<Self as Ring>::El, div_lc: F) -> Result<<Self as Ring>::El, ()>
+    pub fn poly_division<F>(&self, lhs: &mut El<Self>, rhs: &El<Self>, div_lc: F) -> Result<El<Self>, ()>
         where F: FnMut(&R::El) -> Result<R::El, ()>
     {
         poly_division(&self.base_ring, lhs.as_mut(), rhs.as_ref(), div_lc)
     }
 
-    pub fn unknown(&self) -> <Self as Ring>::El {
+    pub fn unknown(&self) -> El<Self> {
         let mut result = Vec::with_capacity(2);
         result.push(self.base_ring.zero());
         result.push(self.base_ring.one());
@@ -89,7 +92,7 @@ impl<R> PolyRing<R>
         &self.base_ring
     }
 
-    pub fn normalize(&self, f: <Self as Ring>::El) -> (<Self as Ring>::El, R::El) {
+    pub fn normalize(&self, f: El<Self>) -> (El<Self>, R::El) {
         assert!(self.base_ring().is_field().can_use());
         let lc = self.lc(&f).unwrap().clone();
         let lc_inv = self.base_ring().div(self.base_ring().one(), &lc);
@@ -98,7 +101,7 @@ impl<R> PolyRing<R>
 }
 
 impl<R> CanonicalEmbeddingInfo<R> for PolyRing<R> 
-    where R: Ring
+    where R: CanonicalIsomorphismInfo<R>
 {
 
     fn has_embedding(&self, _from: &R) -> RingPropValue {
@@ -111,7 +114,7 @@ impl<R> CanonicalEmbeddingInfo<R> for PolyRing<R>
 }
 
 impl<R> CanonicalEmbeddingInfo<R> for PolyRing<&R> 
-    where R: Ring
+    where R: CanonicalIsomorphismInfo<R>
 {
 
     fn has_embedding(&self, _from: &R) -> RingPropValue {
@@ -124,7 +127,7 @@ impl<R> CanonicalEmbeddingInfo<R> for PolyRing<&R>
 }
 
 impl<R> CanonicalEmbeddingInfo<&R> for PolyRing<R> 
-    where R: Ring
+    where R: CanonicalIsomorphismInfo<R>
 {
 
     fn has_embedding(&self, _from: &&R) -> RingPropValue {
@@ -137,7 +140,7 @@ impl<R> CanonicalEmbeddingInfo<&R> for PolyRing<R>
 }
 
 impl<R> CanonicalEmbeddingInfo<PolyRing<R>> for PolyRing<R>
-    where R: Ring
+    where R: CanonicalIsomorphismInfo<R>
 {
     fn has_embedding(&self, _from: &PolyRing<R>) -> RingPropValue {
         RingPropValue::True
@@ -149,7 +152,7 @@ impl<R> CanonicalEmbeddingInfo<PolyRing<R>> for PolyRing<R>
 }
 
 impl<R> CanonicalIsomorphismInfo<PolyRing<R>> for PolyRing<R>
-    where R: Ring
+    where R: CanonicalIsomorphismInfo<R>
 {
     fn has_isomorphism(&self, _from: &PolyRing<R>) -> RingPropValue {
         RingPropValue::True
@@ -160,8 +163,8 @@ impl<R> CanonicalIsomorphismInfo<PolyRing<R>> for PolyRing<R>
     }
 }
 
-impl<R> Ring for PolyRing<R>
-    where R: Ring
+impl<R> RingBase for PolyRing<R>
+    where R: CanonicalIsomorphismInfo<R>
 {
     type El = Vector<Vec<R::El>, R::El>;
 
@@ -241,7 +244,7 @@ impl<R> Ring for PolyRing<R>
         panic!("Not a field")
     }
 
-    fn format(&self, el: &<Self as Ring>::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
+    fn format(&self, el: &El<Self>, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
         if in_prod {
             self.format_in_brackets(el, f)
         } else {
@@ -251,7 +254,7 @@ impl<R> Ring for PolyRing<R>
 }
 
 impl<R> DivisibilityInfoRing for PolyRing<R> 
-    where R: DivisibilityInfoRing
+    where R: DivisibilityInfoRing + CanonicalIsomorphismInfo<R>
 {
     fn is_divisibility_computable(&self) -> bool {
         self.base_ring.is_divisibility_computable()
@@ -281,7 +284,7 @@ impl<R> DivisibilityInfoRing for PolyRing<R>
 }
 
 impl<R> EuclideanInfoRing for PolyRing<R> 
-    where R: Ring
+    where R: Ring + CanonicalIsomorphismInfo<R>
 {
     fn is_euclidean(&self) -> RingPropValue {
         if self.base_ring.is_field().can_use() {
@@ -314,15 +317,52 @@ impl<R> EuclideanInfoRing for PolyRing<R>
 impl<R> RingElWrapper<PolyRing<R>>
     where R: Ring
 {
-    pub fn lc(&self) -> <WrappingRing<&R> as Ring>::El {
-        self.base_ring().base_ring().bind(self.base_ring().lc(self.val()).unwrap().clone())
+    pub fn lc(&self) -> El<WrappingRing<&R>> {
+        self.parent_ring().base_ring().bind(self.parent_ring().lc(self.val()).unwrap().clone())
     }
 }
 
-use super::super::fq::*;
+impl<R, S> FnOnce<(RingElWrapper<S>, )> for RingElWrapper<PolyRing<R>>
+    where S: Ring + CanonicalEmbeddingInfo<R>, R: Ring
+{
+    type Output = RingElWrapper<S>;
+
+    extern "rust-call" fn call_once(
+        mut self, 
+        (x, ): (RingElWrapper<S>, )
+    ) -> Self::Output {
+        self.call_mut((x, ))
+    }
+}
+
+impl<R, S> FnMut<(RingElWrapper<S>, )> for RingElWrapper<PolyRing<R>>
+    where S: Ring + CanonicalEmbeddingInfo<R>, R: Ring
+{
+    extern "rust-call" fn call_mut(
+        &mut self, 
+        (x, ): (RingElWrapper<S>, )
+    ) -> Self::Output {
+        self.call((x, ))
+    }
+}
+
+impl<R, S> Fn<(RingElWrapper<S>, )> for RingElWrapper<PolyRing<R>>
+    where S: Ring + CanonicalEmbeddingInfo<R>, R: Ring
+{
+    extern "rust-call" fn call(
+        &self, 
+        (x, ): (RingElWrapper<S>, )
+    ) -> Self::Output {
+        let poly_vec = self.val().as_ref();
+        let (el, ring) = x.destruct();
+        let coeff_ring = self.parent_ring().base_ring();
+        let result: S::El = poly_evaluate(coeff_ring, el, poly_vec, &ring);
+        return ring.bind_by_value(result);
+    }
+}
 
 impl<R> UfdInfoRing for PolyRing<R>
-    where R: FiniteRing
+    where R: FiniteRing + CanonicalIsomorphismInfo<R>
 {
     fn is_ufd(&self) -> RingPropValue {
         if self.base_ring.is_field().can_use() && self.base_ring().characteristic() != 2 && self.base_ring().size() == self.base_ring().characteristic() {

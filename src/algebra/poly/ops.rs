@@ -1,4 +1,4 @@
-use super::super::super::ring::*;
+use super::super::super::prelude::*;
 use super::super::super::la::mat::*;
 
 pub fn poly_degree<V, R>(coeff_ring: &R, poly_coeffs: Vector<V, R::El>) -> Option<usize>
@@ -138,20 +138,18 @@ pub fn poly_format<R, V>(coeff_ring: &R, el: Vector<V, R::El>, f: &mut std::fmt:
     }
 }
 
-pub fn poly_evaluate<R, V>(coeff_ring: &R, value: R::El, poly: Vector<V, R::El>) -> R::El
-    where R: Ring, V: VectorView<R::El>
+pub fn poly_evaluate<R, S, V>(coeff_ring: &R, value: S::El, poly: Vector<V, R::El>, ring: &S) -> S::El
+    where S: CanonicalEmbeddingInfo<R>, R: Ring, V: VectorView<R::El>
 {
-    let mut result = poly.at(0).clone();
+    let incl = embedding(coeff_ring, ring);
+    let mut result = incl(poly.at(0).clone());
     let mut current_power = value.clone();
     for i in 1..poly.len() {
-        result = coeff_ring.add(result, coeff_ring.mul_ref(poly.at(i), &current_power));
-        current_power = coeff_ring.mul(current_power, value.clone());
+        result = ring.add(result, ring.mul(incl(poly.at(i).clone()), current_power.clone()));
+        current_power = ring.mul(current_power, value.clone());
     }
     return result;
 }
-
-#[cfg(test)]
-use super::super::super::primitive::*;
 
 #[test]
 fn test_poly_mul() {

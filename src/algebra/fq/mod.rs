@@ -60,7 +60,7 @@ impl<R: FiniteRing> FiniteRingIterFn<WrappingRing<R>> for WrappingRingIterFn<R> 
 impl<R> FiniteRing for WrappingRing<R>
     where R: FiniteRing
 {
-    type VectorBasisType = VectorOwned<<WrappingRing<R> as Ring>::El>;
+    type VectorBasisType = VectorOwned<El<WrappingRing<R>>>;
     type IterFn = WrappingRingIterFn<R>;
 
     fn characteristic(&self) -> BigInt {

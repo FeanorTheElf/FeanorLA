@@ -45,8 +45,8 @@ impl<K> std::fmt::Display for EllipticCurve<K>
     }
 }
 
-pub type CoordRing<K> = SimpleRingExtension<PolyRing<K>, VectorArray<<PolyRing<K> as Ring>::El, 2>, VectorArray<<PolyRing<K> as Ring>::El, 2>>;
-pub type FunctionField<K> = FieldOfFractions<CoordRing<K>>;
+pub type CoordRing<K: Ring> = SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>;
+pub type FunctionField<K: Ring> = FieldOfFractions<CoordRing<K>>;
 
 #[derive(Clone)]
 pub enum EllipticCurvePoint<K> 
@@ -126,7 +126,7 @@ impl<K> EllipticCurve<K>
     /// Returns the coordinate ring together with the `x` and `y` elements of
     /// this elliptic curve.
     /// 
-    pub fn coordinate_ring(&self) -> (CoordRing<K>, <CoordRing<K> as Ring>::El, <CoordRing<K> as Ring>::El) {
+    pub fn coordinate_ring(&self) -> (CoordRing<K>, El<CoordRing<K>>, El<CoordRing<K>>) {
         let poly_ring = PolyRing::adjoint(self.base_field().clone(), "X");
         let mipo = Vector::new(VectorArray::new([poly_ring.zero(), 
             poly_ring.add(
@@ -144,7 +144,7 @@ impl<K> EllipticCurve<K>
         return (result, X, Y);
     }
 
-    pub fn function_field(&self) -> (FunctionField<K>, <FunctionField<K> as Ring>::El, <FunctionField<K> as Ring>::El) {
+    pub fn function_field(&self) -> (FunctionField<K>, El<FunctionField<K>>, El<FunctionField<K>>) {
         assert!(self.base_field().is_field().can_use());
         let (ring, x, y) = self.coordinate_ring();
         let field = FieldOfFractions::new(ring.clone());
@@ -194,7 +194,9 @@ impl<K> EllipticCurve<K>
         self.base_field().eq(&self.j_invariant(), &rhs.j_invariant())
     }
 
-    pub fn point_add<F: CanonicalEmbeddingInfo<K>>(&self, a: EllipticCurvePoint<F>, b: EllipticCurvePoint<F>, field: &F) -> EllipticCurvePoint<F> {
+    pub fn point_add<F>(&self, a: EllipticCurvePoint<F>, b: EllipticCurvePoint<F>, field: &F) -> EllipticCurvePoint<F>
+        where F: Ring + CanonicalEmbeddingInfo<K>
+    {
         assert!(field.is_field().can_use());
         assert!(field.has_embedding(self.base_field()).can_use());
         match (a, b) {
@@ -245,7 +247,9 @@ impl<K> EllipticCurve<K>
         }
     }
 
-    pub fn mul_point<F: CanonicalEmbeddingInfo<K>>(&self, point: &EllipticCurvePoint<F>, n: &BigInt, field: &F) -> EllipticCurvePoint<F> {
+    pub fn mul_point<F>(&self, point: &EllipticCurvePoint<F>, n: &BigInt, field: &F) -> EllipticCurvePoint<F> 
+        where F: Ring + CanonicalEmbeddingInfo<K>
+    {
         assert!(field.is_field().can_use());
         assert!(field.has_embedding(self.base_field()).can_use());
         assert!(*n >= 0);

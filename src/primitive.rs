@@ -458,7 +458,7 @@ impl<T> PartialEq for StaticRingImpl<T::Axioms, T>
     }
 }
 
-impl<T> Ring for StaticRingImpl<T::Axioms, T>
+impl<T> RingBase for StaticRingImpl<T::Axioms, T>
     where T: RingEl
 {
     type El = T;
@@ -484,7 +484,7 @@ impl<T> Ring for StaticRingImpl<T::Axioms, T>
     }
 }
 
-impl<T> Ring for StaticRingImpl<RingAxiomsEuclidean, T> 
+impl<T> RingBase for StaticRingImpl<RingAxiomsEuclidean, T> 
     where T: RingEl<Axioms = RingAxiomsEuclidean>
 {
     fn is_integral(&self) -> RingPropValue { RingPropValue::True }
@@ -560,7 +560,7 @@ impl<T> EuclideanInfoRing for StaticRingImpl<RingAxiomsField, T>
     }
 }
 
-impl<T> Ring for StaticRingImpl<RingAxiomsField, T> 
+impl<T> RingBase for StaticRingImpl<RingAxiomsField, T> 
     where T: FieldEl
 {
     fn is_integral(&self) -> RingPropValue { RingPropValue::True }

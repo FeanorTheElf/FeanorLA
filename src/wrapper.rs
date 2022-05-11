@@ -46,8 +46,12 @@ impl<R> RingElWrapper<R>
         }
     }
 
-    pub fn base_ring(&self) -> &R {
+    pub fn parent_ring(&self) -> &R {
         &self.ring
+    }
+
+    pub fn destruct(self) -> (R::El, R) {
+        (self.el, self.ring)
     }
 }
 
@@ -531,7 +535,7 @@ impl<R> Copy for WrappingRing<R>
     where R: Ring + Copy
 {}
 
-impl<R> Ring for WrappingRing<R> 
+impl<R> RingBase for WrappingRing<R> 
     where R: Ring
 {
     type El = RingElWrapper<R>;
@@ -702,7 +706,7 @@ impl<R> WrappingRing<R>
         &self.ring
     }
 
-    pub fn wrapping_embedding<'a>(&'a self) -> impl 'a + Clone + Fn(R::El) -> <Self as Ring>::El {
+    pub fn wrapping_embedding<'a>(&'a self) -> impl 'a + Clone + Fn(R::El) -> <Self as RingBase>::El {
         move |x| self.ring.bind_by_value(x)
     }
 }
@@ -748,7 +752,7 @@ impl<R> HashableElRing for WrappingRing<R>
     where R: HashableElRing
 {
     fn hash<H: std::hash::Hasher>(&self, h: &mut H, el: &Self::El) {
-        el.base_ring().hash(h, &el.el)
+        el.parent_ring().hash(h, &el.el)
     }
 }
 
@@ -806,70 +810,70 @@ impl<R> UfdInfoRing for WrappingRing<R>
 }
 
 impl<R, S> CanonicalEmbeddingInfo<WrappingRing<S>> for WrappingRing<R>
-    where R: CanonicalEmbeddingInfo<S>, S: Ring
+    where R: Ring + CanonicalEmbeddingInfo<S>, S: Ring
 {
     fn has_embedding(&self, from: &WrappingRing<S>) -> RingPropValue {
         self.ring.has_embedding(&from.ring)
     }
 
-    fn embed(&self, from: &WrappingRing<S>, el: <WrappingRing<S> as Ring>::El) -> Self::El {
+    fn embed(&self, from: &WrappingRing<S>, el: <WrappingRing<S> as RingBase>::El) -> Self::El {
         RingElWrapper {
-            el: self.wrapped_ring().embed(&from.wrapped_ring(), el.el),
+            el: self.wrapped_ring().embed(from.wrapped_ring(), el.el),
             ring: self.wrapped_ring().clone()
         }
     }
 }
 
 impl<R, T: RingEl> CanonicalEmbeddingInfo<StaticRing<T>> for WrappingRing<R>
-    where R: CanonicalEmbeddingInfo<StaticRing<T>>
+    where R: Ring + CanonicalEmbeddingInfo<StaticRing<T>>
 {
     fn has_embedding(&self, from: &StaticRing<T>) -> RingPropValue {
-        self.ring.has_embedding(&from)
+        self.ring.has_embedding(from)
     }
 
     fn embed(&self, from: &StaticRing<T>, el: T) -> Self::El {
         RingElWrapper {
-            el: self.wrapped_ring().embed(&from, el),
+            el: self.wrapped_ring().embed(from, el),
             ring: self.wrapped_ring().clone()
         }
     }
 }
 
 impl<R> CanonicalEmbeddingInfo<BigIntRing> for WrappingRing<R>
-    where R: CanonicalEmbeddingInfo<BigIntRing>
+    where R: Ring + CanonicalEmbeddingInfo<BigIntRing>
 {
     fn has_embedding(&self, from: &BigIntRing) -> RingPropValue {
-        self.ring.has_embedding(&from)
+        self.ring.has_embedding(from)
     }
 
     fn embed(&self, from: &BigIntRing, el: BigInt) -> Self::El {
         RingElWrapper {
-            el: self.wrapped_ring().embed(&from, el),
+            el: self.wrapped_ring().embed(from, el),
             ring: self.wrapped_ring().clone()
         }
     }
 }
 
 impl<R, S> CanonicalIsomorphismInfo<WrappingRing<S>> for WrappingRing<R>
-    where R: CanonicalIsomorphismInfo<S>, S: Ring
+    where R: Ring + CanonicalIsomorphismInfo<S>, S: Ring
 {
     fn has_isomorphism(&self, from: &WrappingRing<S>) -> RingPropValue {
         self.ring.has_isomorphism(&from.ring)
     }
 
-    fn preimage(&self, from: &WrappingRing<S>, el: Self::El) -> <WrappingRing<S> as Ring>::El {
+    fn preimage(&self, from: &WrappingRing<S>, el: Self::El) -> <WrappingRing<S> as RingBase>::El {
         RingElWrapper {
-            el: self.wrapped_ring().preimage(&from.wrapped_ring(), el.el),
+            el: self.wrapped_ring().preimage(from.wrapped_ring(), el.el),
             ring: from.wrapped_ring().clone()
         }
     }
 }
 
 impl<R, T: RingEl> CanonicalIsomorphismInfo<StaticRing<T>> for WrappingRing<R>
-    where R: CanonicalIsomorphismInfo<StaticRing<T>>
+    where R: Ring + CanonicalIsomorphismInfo<StaticRing<T>>
 {
     fn has_isomorphism(&self, from: &StaticRing<T>) -> RingPropValue {
-        self.ring.has_isomorphism(&from)
+        self.ring.has_isomorphism(from)
     }
 
     fn preimage(&self, from: &StaticRing<T>, el: Self::El) -> T {
@@ -878,10 +882,10 @@ impl<R, T: RingEl> CanonicalIsomorphismInfo<StaticRing<T>> for WrappingRing<R>
 }
 
 impl<R> CanonicalIsomorphismInfo<BigIntRing> for WrappingRing<R>
-    where R: CanonicalIsomorphismInfo<BigIntRing>
+    where R: Ring + CanonicalIsomorphismInfo<BigIntRing>
 {
     fn has_isomorphism(&self, from: &BigIntRing) -> RingPropValue {
-        self.ring.has_isomorphism(&from)
+        self.ring.has_isomorphism(from)
     }
 
     fn preimage(&self, from: &BigIntRing, el: Self::El) -> BigInt {
@@ -921,6 +925,6 @@ impl<R> std::hash::Hash for RingElWrapper<R>
     where R: HashableElRing
 {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.base_ring().hash(state, &self.el)
+        self.parent_ring().hash(state, &self.el)
     }
 }
