@@ -96,7 +96,9 @@ impl<R, V, W> SimpleRingExtension<R, V, W>
             }
             let last_el = matrix.at(d - 1, i - 1).clone();
             for j in 0..d {
-                *matrix.at_mut(j, i) =self.base_ring.mul_ref(&self.mipo_values[j], &last_el);
+                take_mut::take_or_recover(matrix.at_mut(j, i), || self.base_ring().unspecified_element(), 
+                    |x| self.base_ring().add(x, self.base_ring().mul_ref(&self.mipo_values[j], &last_el))
+                );
             }
         }
         return matrix;
@@ -274,6 +276,7 @@ impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
         assert!(!self.is_zero(rhs));
         if self.base_ring.is_field().can_use() {
             let multiplication_matrix = self.create_multiplication_matrix(rhs.clone());
+            println!("{}", multiplication_matrix.display(self.base_ring()));
             <R as MatrixSolve>::solve_linear_equation(&self.base_ring, multiplication_matrix, &mut Matrix::col_vec(lhs.as_mut())).unwrap();
             return lhs;
         } else {
@@ -367,10 +370,26 @@ impl<R, V, W> FiniteRing for SimpleRingExtension<R, V, W>
     }
 }
 
+#[cfg(test)]
+use super::fq::zn_small::*;
+
 #[test]
 fn test_format() {
     let ring: SimpleRingExtension<_, _> = SimpleRingExtension::new(i64::RING, Vector::from_array([-1, 0]));
     let i = ring.generator();
     assert_eq!("α", format!("{}", ring.display(&i)));
     assert_eq!("-1", format!("{}", ring.display(&ring.mul_ref(&i, &i))));
+}
+
+#[test]
+fn test_division() {
+    let base = ZnEl::<7>::RING;
+    let field: SimpleRingExtension<_, _> = SimpleRingExtension::new(base, Vector::from_array([ZnEl::project(-1), ZnEl::project(0)]));
+    assert!(field.is_field().can_use());
+    assert!(field.eq(&field.from(ZnEl::project(1) / ZnEl::project(2)), &field.div(field.from_z(1), &field.from_z(2))));
+
+    let a = field.add(field.generator(), field.from_z(3));
+    let b = field.add(field.mul(field.generator(), field.from_z(2)), field.from_z(4));
+    let x = field.div(a.clone(), &b);
+    assert!(field.eq(&a, &field.mul(b, x)));
 }

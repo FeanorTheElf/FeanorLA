@@ -61,7 +61,7 @@ fn test_finite_odd_field_is_field() {
 
 #[test]
 fn test_is_ring() {
-    fn as_ring<R: Ring>(ring: R) {
+    fn as_ring<R: Ring>(_: R) {
         assert!(true);
     }
     as_ring(F49);
@@ -69,7 +69,7 @@ fn test_is_ring() {
 
 #[test]
 fn test_is_finite_ring() {
-    fn as_ring<R: FiniteRing>(ring: R) {
+    fn as_ring<R: FiniteRing>(_: R) {
         assert!(true);
     }
     as_ring(F49);
