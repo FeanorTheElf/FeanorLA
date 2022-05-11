@@ -89,6 +89,52 @@ impl<'a, T, V> VectorViewMut<T> for &'a mut V
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct VectorArray<T, const N: usize>([T; N]);
+
+impl<T, const N: usize> VectorArray<T, N> {
+
+    pub const fn new(data: [T; N]) -> Self {
+        VectorArray(data)
+    }
+
+    pub fn destruct(self) -> [T; N] {
+        self.0
+    }
+}
+
+impl<T, const N: usize> VectorView<T> for VectorArray<T, N> {
+    
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    fn at(&self, i: usize) -> &T {
+        &self.0[i]
+    }
+}
+
+impl<T, const N: usize> VectorViewMut<T> for VectorArray<T, N> {
+    
+    fn at_mut(&mut self, i: usize) -> &mut T {
+        &mut self.0[i]
+    }
+
+    fn swap(&mut self, fst: usize, snd: usize) {
+        self.0.swap(fst, snd)
+    }
+}
+
+impl<T, const N: usize> std::iter::FromIterator<T> for VectorArray<T, N> {
+    
+    fn from_iter<I: IntoIterator<Item = T>>(into_iter: I) -> Self {
+        let mut iter = into_iter.into_iter();
+        let result = core::array::from_fn::<_, T, N>(|_| iter.next().unwrap());
+        assert!(iter.next().is_none());
+        return VectorArray(result);
+    }
+}
+
 //
 // It would be nice to build this in the same way as `MatrixRowIter`,
 // so directly store an element of type V which then may (probably will)

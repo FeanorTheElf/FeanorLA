@@ -31,8 +31,8 @@ pub const F3: F3Type = ZnEl::<3>::RING;
 pub const F5: F5Type = ZnEl::<5>::RING;
 pub const F7: F7Type = ZnEl::<7>::RING;
 
-pub type F4Type = SimpleRingExtension<StaticRing::<ZnEl<2>>, F4MipoType>;
-pub type F49Type = SimpleRingExtension<StaticRing::<ZnEl<7>>, F49MipoType>;
+pub type F4Type = SimpleRingExtension<StaticRing::<ZnEl<2>>, F4MipoType, VectorArray<ZnEl<2>, 2>>;
+pub type F49Type = SimpleRingExtension<StaticRing::<ZnEl<7>>, F49MipoType, VectorArray<ZnEl<7>, 2>>;
 pub const F4: F4Type = SimpleRingExtension::new(F2, F4_MIPO);
 pub const F49: F49Type = SimpleRingExtension::new(F7, F49_MIPO);
 

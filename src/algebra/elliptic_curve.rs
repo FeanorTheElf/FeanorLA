@@ -39,7 +39,7 @@ impl<K: Ring> std::fmt::Display for EllipticCurve<K> {
     }
 }
 
-pub type CoordRing<K> = SimpleRingExtension<PolyRing<K>, VectorOwned<<PolyRing<K> as Ring>::El>>;
+pub type CoordRing<K> = SimpleRingExtension<PolyRing<K>, VectorArray<<PolyRing<K> as Ring>::El, 2>, VectorArray<<PolyRing<K> as Ring>::El, 2>>;
 pub type FunctionField<K> = FieldOfFractions<CoordRing<K>>;
 
 #[derive(Clone)]
@@ -122,7 +122,7 @@ impl<K> EllipticCurve<K>
     /// 
     pub fn coordinate_ring(&self) -> (CoordRing<K>, <CoordRing<K> as Ring>::El, <CoordRing<K> as Ring>::El) {
         let poly_ring = PolyRing::adjoint(self.base_ring.clone(), "X");
-        let mipo = Vector::from_array([poly_ring.zero(), 
+        let mipo = Vector::new(VectorArray::new([poly_ring.zero(), 
             poly_ring.add(
                 poly_ring.pow(&poly_ring.unknown(), 3),
                 poly_ring.add(
@@ -130,7 +130,7 @@ impl<K> EllipticCurve<K>
                     poly_ring.from(self.B.clone())
                 )
             )
-        ]);
+        ]));
         let poly_ring_x = poly_ring.unknown();
         let result = SimpleRingExtension::new(poly_ring, mipo);
         let X = result.from(poly_ring_x);

@@ -59,8 +59,8 @@ pub fn poly_division<V, W, R, F>(coeff_ring: &R, mut lhs: Vector<V, R::El>, rhs:
 pub fn poly_add<R, V, W>(coeff_ring: &R, lhs: Vector<V, R::El>, rhs: Vector<W, R::El>) -> Vector<VectorOwned<R::El>, R::El>
     where R: Ring, V: VectorView<R::El>, W: VectorView<R::El>
 {
-    fn poly_add_assign<R, V>(coeff_ring: &R, mut base: Vector<VectorOwned<R::El>, R::El>, add: Vector<V, R::El>) -> Vector<VectorOwned<R::El>, R::El>
-        where R: Ring, V: VectorView<R::El>
+    fn poly_add_assign<R, V, W>(coeff_ring: &R, mut base: Vector<W, R::El>, add: Vector<V, R::El>) -> Vector<W, R::El>
+        where R: Ring, V: VectorView<R::El>, W: VectorViewMut<R::El>
     {
         for i in 0..add.len() {
             take_mut::take_or_recover(

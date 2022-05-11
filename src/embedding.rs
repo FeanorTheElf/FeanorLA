@@ -19,7 +19,7 @@ use std::marker::PhantomData;
 /// 
 /// Sadly, we cannot provide all blanket implementations for references,
 /// as the implementations
-/// ```
+/// ```text
 ///     impl CanonicalEmbeddingInfo<&R> for S
 ///     impl CanonicalEmbeddingInfo<R> for &S
 /// ```
@@ -34,9 +34,15 @@ use std::marker::PhantomData;
 ///    `BigIntRing`, as they are required for the definition of the Integers.
 /// 
 /// New ring implentations are strongly encouraged to implement
-/// ```
+/// ```text
 ///     impl CanonicalEmbeddingInfo<R> for R
 /// ```
+/// However, be careful not to violate the constraints of CanonicalEmbedding.
+/// Strictly speaking, rings with nontrivial automorphisms are not canonically
+/// isomorphic in the strict sense.
+/// However, it might still be possible to choose compatible isomorphisms for
+/// all ring implementations in the isomorphism class, and therefore implement
+/// `CanonicalEmbedding` resp. `CanonicalIsomorphism` correctly.
 ///
 /// The same holds for `CanonicalIsomorphismInfo`.
 /// 

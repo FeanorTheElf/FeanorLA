@@ -5,16 +5,20 @@ use super::super::la::algorithms::*;
 use super::super::embedding::*;
 use super::poly::ops::poly_format;
 
+use std::marker::PhantomData;
+use std::iter::FromIterator;
+
 #[derive(Clone)]
-pub struct SimpleRingExtension<R, V>
-    where R: Ring, V: VectorView<R::El> + Clone
+pub struct SimpleRingExtension<R, V, W = VectorOwned<<R as Ring>::El>>
+    where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El>
 {
     base_ring: R,
-    mipo_values: Vector<V, R::El>
+    mipo_values: Vector<V, R::El>,
+    element_vector: PhantomData<W>
 }
 
-impl<R> SimpleRingExtension<R, VectorOwned<R::El>>
-    where R: Ring
+impl<R, W> SimpleRingExtension<R, VectorOwned<R::El>, W>
+    where R: Ring, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     pub fn adjoin_element<F>(base_ring: R, mipo: F) -> Self
         where F: FnOnce(&PolyRing<&R>) -> <PolyRing<R> as Ring>::El
@@ -29,8 +33,8 @@ impl<R> SimpleRingExtension<R, VectorOwned<R::El>>
     }
 }
 
-impl<R, V> SimpleRingExtension<R, V>
-    where R: Ring, V: VectorView<R::El> + Clone
+impl<R, V, W> SimpleRingExtension<R, V, W>
+    where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     ///
     /// Creates the ring R[X]/(f) where 
@@ -40,7 +44,9 @@ impl<R, V> SimpleRingExtension<R, V>
     /// 
     pub const fn new(base_ring: R, mipo_values: Vector<V, R::El>) -> Self {
         SimpleRingExtension {
-            base_ring, mipo_values
+            base_ring: base_ring, 
+            mipo_values: mipo_values,
+            element_vector: PhantomData
         }
     }
 
@@ -53,25 +59,32 @@ impl<R, V> SimpleRingExtension<R, V>
     }
 
     pub fn polynomial_repr(&self, poly_ring: &PolyRing<&R>, el: <Self as Ring>::El) -> <PolyRing<R> as Ring>::El {
-        el.raw_data().into_vec().into_iter().enumerate()
+        el.into_owned().raw_data().into_vec().into_iter().enumerate()
             .map(|(i, x)| poly_ring.mul(poly_ring.pow(&poly_ring.unknown(), i as u32), poly_ring.from(x)))
             .fold(poly_ring.zero(), |a, b| poly_ring.add(a, b))
     }
 
     pub fn generator(&self) -> <Self as Ring>::El {
-        Vector::unit_vector_ring(1, self.degree(), &self.base_ring)
+        Vector::new(
+            std::iter::once(self.base_ring.zero())
+            .chain(std::iter::once(self.base_ring.one()))
+            .chain(std::iter::repeat(self.base_ring.zero()).take(self.degree() - 2))
+            .collect()
+        )
     }
 
     pub fn from(&self, el: R::El) -> <Self as Ring>::El {
-        let mut result = Vector::zero_ring(self.degree(), &self.base_ring).into_owned();
-        *result.at_mut(0) = el;
-        return result;
+        Vector::new(
+            std::iter::once(el)
+            .chain(std::iter::repeat(self.base_ring.zero()).take(self.degree() - 1))
+            .collect()
+        )
     }
 
     fn create_multiplication_matrix(&self, el: <Self as Ring>::El) -> Matrix<MatrixOwned<R::El>, R::El> {
         let d = self.degree();
         let mut matrix = Matrix::zero_ring(d, d, &self.base_ring).into_owned();
-        for (j, x) in el.raw_data().to_vec().into_iter().enumerate() {
+        for (j, x) in el.into_owned().raw_data().to_vec().into_iter().enumerate() {
             *matrix.at_mut(j, 0) = x;
         }
         for i in 1..d {
@@ -104,8 +117,8 @@ impl<R, V> SimpleRingExtension<R, V>
     }
 }
 
-impl<R, V> CanonicalEmbeddingInfo<R> for SimpleRingExtension<R, V>
-    where R: Ring, V: VectorView<R::El> + Clone
+impl<R, V, W> CanonicalEmbeddingInfo<R> for SimpleRingExtension<R, V, W>
+    where R: Ring, V: VectorView<R::El> + Clone + FromIterator<R::El>, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn has_embedding(&self, _from: &R) -> RingPropValue {
         RingPropValue::True
@@ -116,10 +129,10 @@ impl<R, V> CanonicalEmbeddingInfo<R> for SimpleRingExtension<R, V>
     }
 }
 
-impl<R, V> Ring for SimpleRingExtension<R, V>
-    where R: Ring, V: VectorView<R::El> + Clone
+impl<R, V, W> Ring for SimpleRingExtension<R, V, W>
+    where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
-    type El = Vector<VectorOwned<R::El>, R::El>;
+    type El = Vector<W, R::El>;
 
     fn add_ref(&self, mut lhs: Self::El, rhs: &Self::El) -> Self::El {
         self.assert_valid_element(&lhs);
@@ -149,20 +162,21 @@ impl<R, V> Ring for SimpleRingExtension<R, V>
                 ));
             }
         }
-        return Vector::new(result);
+        return Vector::new(result.into_iter().collect());
     }
 
-    fn neg(&self, val: Self::El) -> Self::El {
+    fn neg(&self, mut val: Self::El) -> Self::El {
         self.assert_valid_element(&val);
-        val.neg(&self.base_ring)
+        val.scale(&self.base_ring.neg(self.base_ring.one()), &self.base_ring);
+        return val;
     }
 
     fn zero(&self) -> Self::El {
-        Vector::zero_ring(self.degree(), &self.base_ring).into_owned()
+        self.from(self.base_ring.zero())
     }
 
     fn one(&self) -> Self::El {
-        Vector::unit_vector_ring(0, self.degree(), &self.base_ring)
+        self.from(self.base_ring.one())
     }
 
     fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
@@ -218,8 +232,8 @@ impl<R, V> Ring for SimpleRingExtension<R, V>
     }
 }
 
-impl<R, V> Ring for SimpleRingExtension<R, V>
-    where R: Ring, for<'a> PolyRing<&'a R>: UfdInfoRing, V: VectorView<R::El> + Clone
+impl<R, V, W> Ring for SimpleRingExtension<R, V, W>
+    where R: Ring, for<'a> PolyRing<&'a R>: UfdInfoRing, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn is_integral(&self) -> RingPropValue {
         let poly_ring = PolyRing::adjoint(&self.base_ring, "X");
@@ -240,8 +254,8 @@ impl<R, V> Ring for SimpleRingExtension<R, V>
     }
 }
 
-impl<R, V> std::fmt::Debug for SimpleRingExtension<R, V>
-    where R: Ring, V: VectorView<R::El> + Clone
+impl<R, V, W> std::fmt::Debug for SimpleRingExtension<R, V, W>
+    where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Ring extension of {:?} generated by equation X^{} = ", &self.base_ring, self.degree())?;
@@ -250,8 +264,8 @@ impl<R, V> std::fmt::Debug for SimpleRingExtension<R, V>
     }
 }
 
-impl<R, V> Copy for SimpleRingExtension<R, V>
-    where R: Ring + Copy, V: VectorView<R::El> + Copy
+impl<R, V, W> Copy for SimpleRingExtension<R, V, W>
+    where R: Ring + Copy, V: VectorView<R::El> + Copy, W: VectorViewMut<R::El> + Clone + FromIterator<R::El>
 {}
 
 #[cfg(test)]
@@ -259,7 +273,7 @@ use super::super::primitive::*;
 
 #[test]
 fn test_format() {
-    let ring = SimpleRingExtension::new(i64::RING, Vector::from_array([-1, 0]));
+    let ring: SimpleRingExtension<_, _> = SimpleRingExtension::new(i64::RING, Vector::from_array([-1, 0]));
     let i = ring.generator();
     assert_eq!("α", format!("{}", ring.display(&i)));
     assert_eq!("-1", format!("{}", ring.display(&ring.mul_ref(&i, &i))));

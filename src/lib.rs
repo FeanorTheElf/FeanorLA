@@ -1,6 +1,7 @@
 #![feature(adt_const_params)]
 #![feature(generic_const_exprs)]
 #![feature(specialization)]
+#![feature(array_from_fn)]
 #![feature(generic_associated_types)]
 #![feature(fn_traits)]
 #![feature(test)]
