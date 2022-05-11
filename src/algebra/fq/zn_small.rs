@@ -26,11 +26,12 @@ pub const fn is_prime(n: u64) -> bool {
 impl<const N: u64, const IS_FIELD: bool> ZnElImpl<N, IS_FIELD> {
 
     pub const IS_FIELD: bool = IS_FIELD;
+    const N_PRIME: bool = is_prime(N);
 
     pub const fn project(v: i64) -> ZnElImpl<N, IS_FIELD> {
         assert!(N <= u64::MAX / 2);
         assert!(N <= i64::MAX as u64);
-        assert!(!IS_FIELD || is_prime(N));
+        assert!(!IS_FIELD || Self::N_PRIME);
         let mut result = v % N as i64;
         if result < 0 {
             result += N as i64;
@@ -92,9 +93,9 @@ impl<const N: u64, const IS_FIELD: bool> MulAssign for ZnElImpl<N, IS_FIELD> {
 impl<const N: u64> DivAssign for ZnElImpl<N, true> {
 
     fn div_assign(&mut self, rhs: ZnElImpl<N, true>) {
-        assert!(is_prime(N));
-        debug_assert!(self.repr < N);
-        debug_assert!(rhs.repr < N);
+        assert!(Self::N_PRIME);
+        assert!(self.repr < N);
+        assert!(rhs.repr < N);
         let (s, _t, _d) = signed_eea(rhs.repr as i64, N as i64, &i64::RING);
         let mut result = ((s as i128 * self.repr as i128) % N as i128) as i64;
         if result < 0 {
