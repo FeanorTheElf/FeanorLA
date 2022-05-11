@@ -322,8 +322,33 @@ impl<R> RingElWrapper<PolyRing<R>>
     }
 }
 
-impl<R, S> FnOnce<(RingElWrapper<S>, )> for RingElWrapper<PolyRing<R>>
+trait Evaluatable<S: Ring>: Ring {
+
+    fn evaluate_at(&self, f: &El<Self>, x: El<S>) -> El<S>;
+}
+
+impl<R, S> Evaluatable<WrappingRing<S>> for PolyRing<R>
     where S: Ring + CanonicalEmbeddingInfo<R>, R: Ring
+{
+    fn evaluate_at(&self, f: &El<Self>, x: El<WrappingRing<S>>) -> El<WrappingRing<S>> { 
+        let poly_vec = f.as_ref();
+        let (el, ring) = x.destruct();
+        let coeff_ring = self.base_ring();
+        let result: S::El = poly_evaluate(coeff_ring, el, poly_vec, &ring);
+        return ring.bind_by_value(result);
+    }
+}
+
+impl<S, P> Evaluatable<S> for &P
+    where S: Ring, P: Evaluatable<S>
+{
+    fn evaluate_at(&self, f: &El<Self>, x: El<S>) -> El<S> { 
+        (**self).evaluate_at(f, x)
+    }
+}
+
+impl<S, P> FnOnce<(RingElWrapper<S>, )> for RingElWrapper<P>
+    where S: Ring, P: Evaluatable<WrappingRing<S>>
 {
     type Output = RingElWrapper<S>;
 
@@ -335,8 +360,8 @@ impl<R, S> FnOnce<(RingElWrapper<S>, )> for RingElWrapper<PolyRing<R>>
     }
 }
 
-impl<R, S> FnMut<(RingElWrapper<S>, )> for RingElWrapper<PolyRing<R>>
-    where S: Ring + CanonicalEmbeddingInfo<R>, R: Ring
+impl<S, P> FnMut<(RingElWrapper<S>, )> for RingElWrapper<P>
+    where S: Ring, P: Evaluatable<WrappingRing<S>>
 {
     extern "rust-call" fn call_mut(
         &mut self, 
@@ -346,18 +371,14 @@ impl<R, S> FnMut<(RingElWrapper<S>, )> for RingElWrapper<PolyRing<R>>
     }
 }
 
-impl<R, S> Fn<(RingElWrapper<S>, )> for RingElWrapper<PolyRing<R>>
-    where S: Ring + CanonicalEmbeddingInfo<R>, R: Ring
+impl<S, P> Fn<(RingElWrapper<S>, )> for RingElWrapper<P>
+    where S: Ring, P: Evaluatable<WrappingRing<S>>
 {
     extern "rust-call" fn call(
         &self, 
         (x, ): (RingElWrapper<S>, )
     ) -> Self::Output {
-        let poly_vec = self.val().as_ref();
-        let (el, ring) = x.destruct();
-        let coeff_ring = self.parent_ring().base_ring();
-        let result: S::El = poly_evaluate(coeff_ring, el, poly_vec, &ring);
-        return ring.bind_by_value(result);
+        self.parent_ring().evaluate_at(self.val(), x)
     }
 }
 
@@ -553,6 +574,11 @@ fn test_evaluate() {
     let i = embedding(i64::RING, i64::RING.bind_ring_by_value());
     let poly_ring = PolyRing::adjoint(i64::RING, "X").bind_ring_by_value();
     let x = poly_ring.wrapped_ring().clone().bind_by_value(poly_ring.wrapped_ring().unknown());
+    let f = x.pow(4) + x.pow(2) * 3 - x + 7;
+    assert_eq!(f(i(2)), 16 + 12 - 2 + 7);
+
+    let poly_ring = PolyRing::adjoint(i64::RING, "X");
+    let x = poly_ring.bind(poly_ring.unknown());
     let f = x.pow(4) + x.pow(2) * 3 - x + 7;
     assert_eq!(f(i(2)), 16 + 12 - 2 + 7);
 }
