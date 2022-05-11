@@ -6,6 +6,7 @@ macro_rules! discard {
     };
 }
 
+#[macro_export]
 macro_rules! gen_const_vector {
     ($name:ident; $value_type:ty; $($value:ident),*) => {
         #[derive(Debug, Clone, Copy)]
