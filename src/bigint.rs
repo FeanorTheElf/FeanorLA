@@ -1,7 +1,9 @@
 use super::ring::*;
-use super::algebra::primes;
 use super::embedding::*;
 use super::primitive::*;
+use super::ring_property::*;
+
+use super::algebra::primes;
 use super::algebra::integer::*;
 
 use std::cmp::Ordering;

@@ -1,6 +1,4 @@
-use super::super::ring::*;
-use super::super::embedding::*;
-use super::super::primitive::*;
+use super::super::prelude::*;
 use super::rat::*;
 use super::eea::*;
 use super::integer::*;

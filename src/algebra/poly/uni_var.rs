@@ -1,10 +1,8 @@
-use super::super::super::ring::*;
+use super::super::super::prelude::*;
 use super::super::super::la::vec::*;
-use super::super::super::bigint::*;
-use super::super::super::embedding::*;
+use super::super::super::wrapper::*;
 use super::ops::*;
 use super::factoring;
-use super::super::super::wrapper::*;
 
 use vector_map::VecMap;
 

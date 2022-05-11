@@ -1,7 +1,5 @@
-use super::super::super::ring::*;
-use super::super::super::bigint::*;
+use super::super::super::prelude::*;
 use super::super::super::la::mat::*;
-use super::super::super::embedding::*;
 use super::uni_var::*;
 
 use std::ops::Index;

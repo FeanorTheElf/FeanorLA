@@ -1,6 +1,7 @@
 use super::ring::*;
 use super::primitive::*;
 use super::bigint::*;
+use super::ring_property::*;
 
 use std::marker::PhantomData;
 

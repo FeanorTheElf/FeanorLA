@@ -1,7 +1,5 @@
 #![allow(non_camel_case_types)]
-use super::super::primitive::*;
-use super::super::embedding::*;
-use super::super::ring::*;
+use super::super::prelude::*;
 
 use std::cmp::{Ord, Ordering, PartialEq, PartialOrd};
 use std::convert::From;

@@ -2,6 +2,7 @@ use super::ring::*;
 use super::embedding::*;
 use super::bigint::*;
 use super::primitive::*;
+use super::ring_property::*;
 
 use vector_map::VecMap;
 use std::ops::{ 

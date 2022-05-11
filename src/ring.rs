@@ -1,59 +1,8 @@
 use super::bigint::*;
 use super::wrapper::*;
+use super::ring_property::*;
 
 use vector_map::VecMap;
-use std::ops::BitAnd;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RingPropValue {
-    True, False, Unknown
-}
-
-impl RingPropValue {
-
-    pub fn can_use(&self) -> bool {
-        *self == RingPropValue::True
-    }
-}
-
-impl BitAnd for RingPropValue {
-
-    type Output = RingPropValue;
-
-    fn bitand(self, rhs: RingPropValue) -> RingPropValue {
-        match (self, rhs) {
-            (RingPropValue::False, _) => RingPropValue::False,
-            (_, RingPropValue::False) => RingPropValue::False,
-            (RingPropValue::Unknown, _) => RingPropValue::Unknown,
-            (_, RingPropValue::Unknown) => RingPropValue::Unknown,
-            (RingPropValue::True, RingPropValue::True) => RingPropValue::True
-        }
-    }
-}
-
-impl BitAnd<bool> for RingPropValue {
-
-    type Output = RingPropValue;
-
-    fn bitand(self, rhs: bool) -> RingPropValue {
-        if rhs {
-            self & RingPropValue::True
-        } else {
-            self & RingPropValue::False
-        }
-    }
-}
-
-impl std::fmt::Display for RingPropValue {
-
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            RingPropValue::True => write!(f, "true"),
-            RingPropValue::False => write!(f, "false"),
-            RingPropValue::Unknown => write!(f, "???")
-        }
-    }
-}
 
 pub struct RingElDisplay<'a, R: ?Sized> 
     where R: Ring

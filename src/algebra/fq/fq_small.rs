@@ -1,11 +1,10 @@
 
 mod internal_definitions{
-    pub use super::super::super::ring_ext::*;
-    pub use super::super::zn_small::*;
+    pub use super::super::super::super::prelude::*;
     pub use super::super::super::super::la::vec::*;
     pub use super::super::super::super::la::const_vector::*;
-    pub use super::super::super::super::ring::*;
-    pub use super::super::super::super::primitive::*;
+    pub use super::super::super::ring_ext::*;
+    pub use super::super::zn_small::*;
 
     // because of a (probable) compiler bug, `ZnEl<2>` does not work here
     type F2El = ZnElImpl<2, true>;
@@ -33,8 +32,8 @@ pub const F7: F7Type = ZnEl::<7>::RING;
 
 pub type F4Type = SimpleRingExtension<StaticRing::<ZnEl<2>>, F4MipoType, VectorArray<ZnEl<2>, 2>>;
 pub type F49Type = SimpleRingExtension<StaticRing::<ZnEl<7>>, F49MipoType, VectorArray<ZnEl<7>, 2>>;
-pub const F4: F4Type = SimpleRingExtension::new(F2, F4_MIPO);
-pub const F49: F49Type = SimpleRingExtension::new(F7, F49_MIPO);
+pub static F4: F4Type = SimpleRingExtension::new(F2, F4_MIPO);
+pub static F49: F49Type = SimpleRingExtension::new(F7, F49_MIPO);
 
 #[test]
 fn test_zero_size() {

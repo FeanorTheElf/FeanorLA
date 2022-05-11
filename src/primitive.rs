@@ -1,6 +1,7 @@
 use super::ring::*;
 use super::bigint::*;
 use super::embedding::*;
+use super::ring_property::*;
 use std::ops::{ 
     Add, Mul, Sub, Neg, Div,
     AddAssign, MulAssign, SubAssign, DivAssign

@@ -1,6 +1,5 @@
-use super::super::super::ring::*;
+use super::super::super::prelude::*;
 use super::super::super::la::constant::*;
-use super::super::super::embedding::*;
 use super::super::eea::*;
 use super::*;
 

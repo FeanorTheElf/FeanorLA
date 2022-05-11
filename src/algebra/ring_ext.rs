@@ -1,8 +1,7 @@
-use super::super::ring::*;
+use super::super::prelude::*;
 use super::poly::*;
 use super::super::la::mat::*;
 use super::super::la::algorithms::*;
-use super::super::embedding::*;
 use super::poly::ops::poly_format;
 
 use std::marker::PhantomData;
@@ -14,7 +13,8 @@ pub struct SimpleRingExtension<R, V, W = VectorOwned<<R as Ring>::El>>
 {
     base_ring: R,
     mipo_values: Vector<V, R::El>,
-    element_vector: PhantomData<W>
+    element_vector: PhantomData<W>,
+    is_integral_cache: RingPropValueCache
 }
 
 impl<R, W> SimpleRingExtension<R, VectorOwned<R::El>, W>
@@ -46,7 +46,8 @@ impl<R, V, W> SimpleRingExtension<R, V, W>
         SimpleRingExtension {
             base_ring: base_ring, 
             mipo_values: mipo_values,
-            element_vector: PhantomData
+            element_vector: PhantomData,
+            is_integral_cache: RingPropValueCache::new()
         }
     }
 
@@ -263,13 +264,6 @@ impl<R, V, W> std::fmt::Debug for SimpleRingExtension<R, V, W>
         return Ok(());
     }
 }
-
-impl<R, V, W> Copy for SimpleRingExtension<R, V, W>
-    where R: Ring + Copy, V: VectorView<R::El> + Copy, W: VectorViewMut<R::El> + Clone + FromIterator<R::El>
-{}
-
-#[cfg(test)]
-use super::super::primitive::*;
 
 #[test]
 fn test_format() {

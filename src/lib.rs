@@ -16,12 +16,14 @@ extern crate take_mut;
 extern crate oorandom;
 extern crate vector_map;
 
+pub mod ring_property;
 pub mod bigint;
 pub mod ring;
 pub mod primitive;
 pub mod embedding;
 pub mod wrapper;
 pub mod float;
+pub mod prelude;
 
 #[macro_use]
 pub mod la;
@@ -29,5 +31,3 @@ pub mod algebra;
 
 pub mod numerics;
 pub mod combinatorics;
-
-pub mod exp;
