@@ -547,3 +547,12 @@ fn test_is_prime() {
     assert_eq!(false, ring.is_prime(a.val()));
     assert_eq!(false, ring.is_prime(b.val()));
 }
+
+#[test]
+fn test_evaluate() {
+    let i = embedding(i64::RING, i64::RING.bind_ring_by_value());
+    let poly_ring = PolyRing::adjoint(i64::RING, "X").bind_ring_by_value();
+    let x = poly_ring.wrapped_ring().clone().bind_by_value(poly_ring.wrapped_ring().unknown());
+    let f = x.pow(4) + x.pow(2) * 3 - x + 7;
+    assert_eq!(f(i(2)), 16 + 12 - 2 + 7);
+}

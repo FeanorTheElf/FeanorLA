@@ -82,6 +82,14 @@ impl<R> Eq for RingElWrapper<R>
     where R: Ring
 {}
 
+impl<R> PartialEq<i64> for RingElWrapper<R>
+    where R: Ring
+{
+    fn eq(&self, rhs: &i64) -> bool {
+        self.ring.eq(&self.el, &self.ring.from_z(*rhs))
+    }
+}
+
 impl<R> Add<RingElWrapper<R>> for RingElWrapper<R>
     where R: Ring
 {
