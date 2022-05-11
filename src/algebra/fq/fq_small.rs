@@ -46,17 +46,22 @@ fn test_arithmetic() {
 #[test]
 fn test_division() {
     let a = F4.generator();
-    println!("Found gen");
     let b = F4.add_ref(F4.one(), &a);
-    println!("Found b");
     let c = F4.div(F4.one(), &a);
-    println!("Found c");
     assert!(F4.eq(&b, &c));
 }
 
 #[test]
 fn test_finite_odd_field_is_field() {
     assert!(F49.is_field().can_use());
+}
+
+#[test]
+fn test_is_ring() {
+    fn as_ring<R: Ring>(ring: R) {
+        assert!(true);
+    }
+    as_ring(F49);
 }
 
 #[test]

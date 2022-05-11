@@ -119,7 +119,7 @@ impl<R, V, W> SimpleRingExtension<R, V, W>
 }
 
 impl<R, V, W> CanonicalEmbeddingInfo<R> for SimpleRingExtension<R, V, W>
-    where R: CanonicalIsomorphismInfo<R>, V: VectorView<R::El> + Clone + FromIterator<R::El>, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
+    where R: CanonicalIsomorphismInfo<R>, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn has_embedding(&self, _from: &R) -> RingPropValue {
         RingPropValue::True
@@ -131,7 +131,7 @@ impl<R, V, W> CanonicalEmbeddingInfo<R> for SimpleRingExtension<R, V, W>
 }
 
 impl<R, V, W> CanonicalEmbeddingInfo<&R> for SimpleRingExtension<R, V, W>
-    where R: CanonicalIsomorphismInfo<R>, V: VectorView<R::El> + Clone + FromIterator<R::El>, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
+    where R: CanonicalIsomorphismInfo<R>, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn has_embedding(&self, _from: &&R) -> RingPropValue {
         RingPropValue::True
@@ -143,7 +143,7 @@ impl<R, V, W> CanonicalEmbeddingInfo<&R> for SimpleRingExtension<R, V, W>
 }
 
 impl<R, V, W> CanonicalEmbeddingInfo<R> for SimpleRingExtension<&R, V, W>
-    where R: CanonicalIsomorphismInfo<R>, V: VectorView<R::El> + Clone + FromIterator<R::El>, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
+    where R: CanonicalIsomorphismInfo<R>, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn has_embedding(&self, _from: &R) -> RingPropValue {
         RingPropValue::True
@@ -155,7 +155,7 @@ impl<R, V, W> CanonicalEmbeddingInfo<R> for SimpleRingExtension<&R, V, W>
 }
 
 impl<R, V, W> CanonicalEmbeddingInfo<SimpleRingExtension<R, V, W>> for SimpleRingExtension<R, V, W>
-    where R: CanonicalIsomorphismInfo<R>, V: VectorView<R::El> + Clone + FromIterator<R::El>, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
+    where R: CanonicalIsomorphismInfo<R>, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn has_embedding(&self, _from: &Self) -> RingPropValue {
         RingPropValue::True
@@ -167,7 +167,7 @@ impl<R, V, W> CanonicalEmbeddingInfo<SimpleRingExtension<R, V, W>> for SimpleRin
 }
 
 impl<R, V, W> CanonicalIsomorphismInfo<SimpleRingExtension<R, V, W>> for SimpleRingExtension<R, V, W>
-    where R: CanonicalIsomorphismInfo<R>, V: VectorView<R::El> + Clone + FromIterator<R::El>, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
+    where R: CanonicalIsomorphismInfo<R>, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn has_isomorphism(&self, _from: &Self) -> RingPropValue {
         RingPropValue::True
