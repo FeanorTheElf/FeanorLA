@@ -237,13 +237,16 @@ impl<R, V, W> Ring for SimpleRingExtension<R, V, W>
     where R: Ring, for<'a> PolyRing<&'a R>: UfdInfoRing, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn is_integral(&self) -> RingPropValue {
-        let poly_ring = PolyRing::adjoint(&self.base_ring, "X");
-        let can_compute = self.base_ring.is_integral() & poly_ring.is_ufd();
-        if can_compute.can_use() {
-            RingPropValue::True & poly_ring.is_prime(&self.generating_polynomial(&poly_ring))
-        } else {
-            can_compute
+        if !self.is_integral_cache.is_computed() {
+            let poly_ring = PolyRing::adjoint(&self.base_ring, "X");
+            let can_compute = self.base_ring.is_integral() & poly_ring.is_ufd();
+            if can_compute.can_use() {
+                self.is_integral_cache.set(RingPropValue::True & poly_ring.is_prime(&self.generating_polynomial(&poly_ring)))
+            } else {
+                self.is_integral_cache.set(can_compute)
+            }
         }
+        self.is_integral_cache.get()
     }
 
     fn is_field(&self) -> RingPropValue {

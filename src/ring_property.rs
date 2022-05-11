@@ -70,7 +70,7 @@ impl RingPropValueCache {
         self.content.load(Ordering::Relaxed) != 0
     }
 
-    pub fn computed_value(&self) -> RingPropValue {
+    pub fn get(&self) -> RingPropValue {
         match self.content.load(Ordering::Relaxed) {
             0 => panic!("Value not computed!"),
             1 => RingPropValue::False,

@@ -392,8 +392,6 @@ impl<R> UfdInfoRing for PolyRing<R>
 }
 
 #[cfg(test)]
-use super::super::super::primitive::*;
-#[cfg(test)]
 use super::super::fq::zn_big::*;
 
 #[test]

@@ -289,8 +289,6 @@ impl<R> DivisibilityInfoRing for FieldOfFractions<R>
 }
 
 #[cfg(test)]
-use super::super::bigint::*;
-#[cfg(test)]
 use super::super::wrapper::*;
 
 #[test]

@@ -575,8 +575,6 @@ impl<R> CanonicalIsomorphismInfo<MultivariatePolyRing<R>> for MultivariatePolyRi
 
 #[cfg(test)]
 use super::super::super::wrapper::*;
-#[cfg(test)]
-use super::super::super::primitive::*;
 
 #[test]
 fn test_binomial_formula() {
