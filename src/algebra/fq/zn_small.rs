@@ -36,7 +36,7 @@ impl<const N: u64, const IS_FIELD: bool> ZnElImpl<N, IS_FIELD> {
         if result < 0 {
             result += N as i64;
         }
-        debug_assert!((result as u64) < N);
+        assert!((result as u64) < N);
         ZnElImpl {
             repr: result as u64
         }
@@ -56,37 +56,37 @@ impl<const N: u64, const IS_FIELD: bool> From<i8> for ZnElImpl<N, IS_FIELD> {
 impl<const N: u64, const IS_FIELD: bool> AddAssign for ZnElImpl<N, IS_FIELD> {
 
     fn add_assign(&mut self, rhs: ZnElImpl<N, IS_FIELD>) {
-        debug_assert!(self.repr < N);
-        debug_assert!(rhs.repr < N);
+        assert!(self.repr < N);
+        assert!(rhs.repr < N);
         self.repr += rhs.repr;
         if self.repr >= N {
             self.repr -= N;
         }
-        debug_assert!(self.repr < N);
+        assert!(self.repr < N);
     }
 }
 
 impl<const N: u64, const IS_FIELD: bool> SubAssign for ZnElImpl<N, IS_FIELD> {
 
     fn sub_assign(&mut self, rhs: ZnElImpl<N, IS_FIELD>) {
-        debug_assert!(self.repr < N);
-        debug_assert!(rhs.repr < N);
+        assert!(self.repr < N);
+        assert!(rhs.repr < N);
         self.repr += N;
         self.repr -= rhs.repr;
         if self.repr >= N {
             self.repr -= N;
         }
-        debug_assert!(self.repr < N);
+        assert!(self.repr < N);
     }
 }
 
 impl<const N: u64, const IS_FIELD: bool> MulAssign for ZnElImpl<N, IS_FIELD> {
 
     fn mul_assign(&mut self, rhs: ZnElImpl<N, IS_FIELD>) {
-        debug_assert!(self.repr < N);
-        debug_assert!(rhs.repr < N);
+        assert!(self.repr < N);
+        assert!(rhs.repr < N);
         self.repr = ((self.repr as u128 * rhs.repr as u128) % N as u128) as u64;
-        debug_assert!(self.repr < N);
+        assert!(self.repr < N);
     }
 }
 
@@ -102,7 +102,7 @@ impl<const N: u64> DivAssign for ZnElImpl<N, true> {
             result += N as i64;
         }
         self.repr = result as u64;
-        debug_assert!(self.repr < N);
+        assert!(self.repr < N);
     }
 }
 
@@ -155,7 +155,7 @@ impl<const N: u64, const IS_FIELD: bool> Neg for ZnElImpl<N, IS_FIELD> {
         if self.repr != 0 {
             self.repr = N - self.repr;
         }
-        debug_assert!(self.repr < N);
+        assert!(self.repr < N);
         return self;
     }
 }
@@ -163,7 +163,7 @@ impl<const N: u64, const IS_FIELD: bool> Neg for ZnElImpl<N, IS_FIELD> {
 impl<const N: u64, const IS_FIELD: bool> std::fmt::Display for ZnElImpl<N, IS_FIELD> {
 
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "[{}]_{}", self.repr, N)
+        write!(f, "{}", self.repr)
     }
 }
 

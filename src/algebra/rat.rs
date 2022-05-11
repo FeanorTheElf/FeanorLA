@@ -405,7 +405,7 @@ fn test_mul_assign_overflow() {
 }
 
 #[bench]
-fn benchmark_combined_add_mult_eq(bencher: &mut test::Bencher) {
+fn bench_combined_add_mult_eq(bencher: &mut test::Bencher) {
     let numerator_a = (1 << 62) / 50; // divisible by 3
     let numerator_b = (1 << 62) / 81;
     let result_numerator = 44211 * 69540552025927 + 1350;

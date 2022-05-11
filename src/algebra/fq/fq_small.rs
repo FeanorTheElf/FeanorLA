@@ -9,6 +9,7 @@ mod internal_definitions{
     // because of a (probable) compiler bug, `ZnEl<2>` does not work here
     type F2El = ZnElImpl<2, true>;
     type F7El = ZnElImpl<7, true>;
+    type F37El = ZnElImpl<37, true>;
 
     gen_const_vector!(ConstVector2F2; F2El; V0, V1);
     pub type F4MipoType = ConstVector2F2<{F2El::project(-1)}, {F2El::project(-1)}>;
@@ -17,6 +18,10 @@ mod internal_definitions{
     gen_const_vector!(ConstVector2F7; F7El; V0, V1);
     pub type F49MipoType = ConstVector2F7<{F7El::project(-1)}, {F7El::project(0)}>;
     pub const F49_MIPO: Vector<F49MipoType, F7El> = Vector::new(F49MipoType {});
+
+    gen_const_vector!(ConstVector2F37; F37El; V0, V1);
+    pub type F1369MipoType = ConstVector2F37<{F37El::project(2)}, {F37El::project(33)}>;
+    pub const F1369_MIPO: Vector<F1369MipoType, F37El> = Vector::new(F1369MipoType {});
 }
 
 use internal_definitions::*;
@@ -32,8 +37,10 @@ pub const F7: F7Type = ZnEl::<7>::RING;
 
 pub type F4Type = SimpleRingExtension<StaticRing::<ZnEl<2>>, F4MipoType, VectorArray<ZnEl<2>, 2>>;
 pub type F49Type = SimpleRingExtension<StaticRing::<ZnEl<7>>, F49MipoType, VectorArray<ZnEl<7>, 2>>;
+pub type F1369Type = SimpleRingExtension<StaticRing<ZnEl<37>>, F1369MipoType, VectorArray<ZnEl<37>, 2>>;
 pub const F4: F4Type = SimpleRingExtension::new(F2, F4_MIPO);
 pub const F49: F49Type = SimpleRingExtension::new(F7, F49_MIPO);
+pub const F1369: F1369Type = F1369Type::new(ZnEl::<37>::RING, F1369_MIPO);
 
 #[cfg(test)]
 use super::FiniteRing;

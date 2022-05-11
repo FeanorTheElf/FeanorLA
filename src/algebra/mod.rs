@@ -12,3 +12,6 @@ pub mod primes;
 pub mod diophantine;
 pub mod elliptic_curve;
 pub mod determinant;
+
+#[cfg(test)]
+pub mod benchmarks;
