@@ -1,5 +1,7 @@
 pub use super::vector_view::*;
+pub use super::super::{discard, gen_const_vector};
 
+#[macro_export]
 macro_rules! discard {
     ($value:expr) => {
         0
