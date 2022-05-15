@@ -199,21 +199,33 @@ impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
         self.assert_valid_element(&lhs);
         self.assert_valid_element(rhs);
 
-        let mut result = (0..(2 * self.degree())).map(|_| self.base_ring.zero()).collect::<Vec<_>>();
-        for i in 0..lhs.len() {
-            for j in 0..rhs.len() {
-                let value = std::mem::replace(&mut result[i + j], self.base_ring().unspecified_element());
-                result[i + j] = self.base_ring.add(value, self.base_ring.mul_ref(&lhs[i], &rhs[j]));
+        // when we start, result contains the upper half of the product lhs * rhs as
+        // polynomials; then we reduce that piece by piece
+        let mut result: Vector<W, R::El> = Vector::new((self.degree()..(self.degree() * 2)).map(|i|
+            self.base_ring().sum(((i - self.degree() + 1)..self.degree()).map(|j| 
+                self.base_ring().mul_ref(lhs.at(j), rhs.at(i - j))
+            ))
+        ).collect());
+
+        for i in (0..self.degree()).rev() {
+            let value = std::mem::replace(result.at_mut(i), self.base_ring().zero());
+            for j in 0..self.degree() {
+                let index = if i + j < self.degree() {
+                    i + j
+                } else {
+                    i + j - self.degree()
+                };
+                self.base_ring().add_assign(result.at_mut(index), self.base_ring().mul_ref(self.mipo_values.at(j), &value));
             }
         }
-        for i in (self.degree()..result.len()).rev() {
-            let x = result.pop().unwrap();
-            for j in (i - self.degree())..i {
-                let value = std::mem::replace(&mut result[j], self.base_ring().unspecified_element());
-                result[j] = self.base_ring.add(value, self.base_ring.mul_ref(&self.mipo_values[j + self.degree() - i], &x));
+
+        for i in 0..self.degree() {
+            for j in 0..=i {
+                self.base_ring().add_assign(result.at_mut(i), self.base_ring().mul_ref(lhs.at(j), rhs.at(i - j)));
             }
         }
-        return Vector::new(result.into_iter().collect());
+
+        return result;
     }
 
     fn neg(&self, mut val: Self::El) -> Self::El {
@@ -404,4 +416,13 @@ fn test_division() {
     let b = field.add(field.mul(field.generator(), field.from_z(2)), field.from_z(4));
     let x = field.div(a.clone(), &b);
     assert!(field.eq(&a, &field.mul(b, x)));
+}
+
+#[test]
+fn test_mul() {
+    let base = i64::RING;
+    let extension: SimpleRingExtension<_, _> = SimpleRingExtension::new(base, Vector::from_array([-1, 0]));
+    let a = extension.sub(extension.one(), extension.generator());
+    let b = extension.add(extension.one(), extension.generator());
+    assert!(extension.eq(&extension.from_z(2), &extension.mul(a, b)));
 }

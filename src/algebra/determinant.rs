@@ -13,10 +13,10 @@ fn compute_det<F>(field: F, mut work_matrix: Matrix<MatrixOwned<F::El>, F::El>) 
     where F: Ring
 {
     assert!(field.is_field().can_use());
-    let mut det_factor = field.one();
+    let mut det_factor_inv = field.one();
     let mut negated = false;
     let result = work_matrix.gaussion_elimination_half(
-        |_, a, ()| { field.mul_assign(&mut det_factor, a) },
+        |_, a, ()| { field.mul_assign(&mut det_factor_inv, a) },
         |_, _, ()| { negated = !negated; },
         |_, _, _, ()| {},
         &mut (),
@@ -24,7 +24,7 @@ fn compute_det<F>(field: F, mut work_matrix: Matrix<MatrixOwned<F::El>, F::El>) 
     );
     if let Ok(()) = result {
         let value = work_matrix.into_nonmain_diag(0).into_owned().raw_data().into_vec().into_iter().fold(field.one(), |a, b| field.mul(a, b));
-        let scaled = field.mul(value, det_factor);
+        let scaled = field.div(value, &det_factor_inv);
         if negated {
             return field.neg(scaled);
         } else {
@@ -46,7 +46,9 @@ impl<R, M> MatrixDeterminant<M> for R
             let field = FieldOfFractions::new(self);
             let incl = embedding(self, field);
             let work_matrix = Matrix::from_fn(matrix.row_count(), matrix.col_count(), |i, j| incl(matrix.at(i, j).clone()));
+            println!("{}", work_matrix.display(&field));
             let result = compute_det(&field, work_matrix);
+            println!("{}", field.display(&result));
             field.in_base_ring(&result).unwrap()
         } else {
             unimplemented!()
