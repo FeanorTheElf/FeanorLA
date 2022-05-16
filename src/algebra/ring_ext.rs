@@ -196,18 +196,22 @@ impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
     }
 
     fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El {
-        self.assert_valid_element(&lhs);
+        self.assert_valid_element(lhs);
         self.assert_valid_element(rhs);
+        // I have somewhat optimized the following code: In the "simple" case that the
+        // degree is a compile-time constant, W is array-base and the base ring multiplication
+        // is simple as well, the generated assembly vnow looks pretty close to optimal 
+        // - no memory allocations, no loops, just some register arithmetic
 
         // when we start, result contains the upper half of the product lhs * rhs as
         // polynomials; then we reduce that piece by piece
-        let mut result: Vector<W, R::El> = Vector::new((self.degree()..(self.degree() * 2)).map(|i|
+        let mut result: Vector<W, R::El> = Vector::new((self.degree()..=(self.degree() * 2 - 2)).map(|i|
             self.base_ring().sum(((i - self.degree() + 1)..self.degree()).map(|j| 
                 self.base_ring().mul_ref(lhs.at(j), rhs.at(i - j))
             ))
-        ).collect());
+        ).chain(std::iter::once(self.base_ring().zero())).collect());
 
-        for i in (0..self.degree()).rev() {
+        for i in (0..=(self.degree() - 2)).rev() {
             let value = std::mem::replace(result.at_mut(i), self.base_ring().zero());
             for j in 0..self.degree() {
                 let index = if i + j < self.degree() {
