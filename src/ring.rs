@@ -160,6 +160,7 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     fn is_one(&self, val: &Self::El) -> bool { self.eq(val, &self.one()) }
     fn is_neg_one(&self, val: &Self::El) -> bool { self.eq(val, &self.neg(self.one())) }
 
+    fn characteristic(&self) -> BigInt;
     ///
     /// Returns whether the ring is integral, so if there for all nonzero a, b it holds
     /// that ab != 0.

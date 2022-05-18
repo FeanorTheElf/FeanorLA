@@ -18,7 +18,6 @@ pub trait FiniteRing : Ring {
 
     type IterFn: FiniteRingIterFn<Self>;
 
-    fn characteristic(&self) -> BigInt;
     fn size(&self) -> BigInt;
     fn iter_fn(&self) -> Self::IterFn;
 }
@@ -28,7 +27,6 @@ impl<'a, R> FiniteRing for &'a R
 {
     type IterFn = R::IterFn;
 
-    fn characteristic(&self) -> BigInt { (**self).characteristic() }
     fn size(&self) -> BigInt { (**self).size() }
     fn iter_fn(&self) -> Self::IterFn { (**self).iter_fn() }
 }
@@ -58,10 +56,6 @@ impl<R> FiniteRing for WrappingRing<R>
     where R: FiniteRing
 {
     type IterFn = WrappingRingIterFn<R>;
-
-    fn characteristic(&self) -> BigInt {
-        self.wrapped_ring().characteristic()
-    }
 
     fn size(&self) -> BigInt {
         self.wrapped_ring().size()
