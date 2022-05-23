@@ -67,6 +67,8 @@ impl<V, T> Vector<V, T>
             Bound::Excluded(x) => *x,
             Bound::Unbounded => self.len(),
         };
+        assert!(begin <= end);
+        assert!(end <= self.len());
         return Vector::new(
             self.data.subvector(begin, end)
         )
@@ -94,14 +96,20 @@ impl<V, T> Vector<V, T>
             Bound::Excluded(x) => x + 1,
             Bound::Unbounded => 0,
         });
-        let end = std::cmp::max(begin, std::cmp::min(self.len(), match range.end_bound() {
+        let end = std::cmp::min(self.len(), match range.end_bound() {
             Bound::Included(x) => x + 1,
             Bound::Excluded(x) => *x,
             Bound::Unbounded => self.len(),
-        }));
-        return Vector::new(
-            self.data.subvector(begin, end)
-        )
+        });
+        if begin >= end {
+            return Vector::new(
+                self.data.subvector(0, 0)
+            );
+        } else {
+            return Vector::new(
+                self.data.subvector(begin, end)
+            );
+        }
     }
 
     pub fn subvector<'a, R>(&'a self, range: R) -> Vector<<&'a V as VectorView<T>>::Subvector, T>

@@ -531,11 +531,13 @@ impl<M, T> Matrix<M, T>
             .map(|(r, c)| format_entry(self.at(r, c)))
             .collect::<Result<Vec<_>, _>>()?;
 
-        let width = entries.iter().map(|s| s.chars().count()).max().unwrap();
+        let width = entries.iter().map(|s| s.chars().count()).max().unwrap_or(0);
         writeln!(f, "[")?;
         for row in 0..self.row_count() {
             write!(f, "[")?;
-            write!(f, "{:>width$}", entries[row * self.col_count()], width = width)?;
+            if self.col_count() > 0 {
+                write!(f, "{:>width$}", entries[row * self.col_count()], width = width)?;
+            }
             for col in 1..self.col_count() {
                 write!(f, ", {:>width$}", entries[row * self.col_count() + col], width = width)?;
             }

@@ -1,5 +1,5 @@
 use super::super::prelude::*;
-use super::super::la::mat::*;
+use super::super::karatsuba::*;
 
 pub fn poly_degree<V, R>(coeff_ring: &R, poly_coeffs: Vector<V, R::El>) -> Option<usize>
     where R: Ring, V: VectorView<R::El>
@@ -85,16 +85,10 @@ pub fn poly_mul<R, V, W>(coeff_ring: &R, lhs: Vector<V, R::El>, rhs: Vector<W, R
     // this is only the degree of result if the product of the leading coeffs is nonzero
     // e.g. if coeff_ring is integral
     // the code works anyway
-    let result_deg = lhs_deg + rhs_deg + 1;
-    let mut result = Vec::with_capacity(result_deg);
-    for i in 0..result_deg {
-        let mut val = coeff_ring.zero();
-        for j in (rhs.len().max(i + 1) - rhs.len())..lhs.len().min(i + 1) {
-            val = coeff_ring.add(val, coeff_ring.mul_ref(&lhs[j], &rhs[i - j]));
-        }
-        result.push(val);
-    }
-    return Vector::new(result);
+    let result_deg = lhs_deg + rhs_deg;
+    let mut result = Vector::new((0..(result_deg + 1)).map(|_| coeff_ring.zero()).collect::<Vec<_>>());
+    karatsuba_mul(lhs, rhs, result.as_mut(), coeff_ring);
+    return result;
 }
 
 pub fn poly_format<R, V>(coeff_ring: &R, el: Vector<V, R::El>, f: &mut std::fmt::Formatter, var_name: &str) -> std::fmt::Result

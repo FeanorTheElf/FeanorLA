@@ -351,6 +351,7 @@ impl<V, T> VectorView<T> for Subvector<V, T>
     }
 
     fn at(&self, index: usize) -> &T {
+        self.assert_in_range(index);
         self.view.at(index + self.from)
     }
 
