@@ -91,6 +91,48 @@ fn karatsuba_impl<R, U, V, W>(
 
 }
 
+///
+/// Computes the convoluted product out[n] += sum_{i+j = n} lhs[i] * rhs[j] using
+/// O(n^log2(3)) base ring multiplications.
+/// 
+/// # Example
+/// 
+/// ```
+/// # use feanor_la::karatsuba::*;
+/// # use feanor_la::prelude::*;
+/// let lhs = Vector::from_array([1, 2, 3]);
+/// let rhs = Vector::from_array([2, 1]);
+/// let mut out = Vector::from_array([0, 0, 0, 0]);
+/// karatsuba_mul(lhs, rhs, out.as_mut(), &i64::RING);
+/// assert_eq!(Vector::from_array([2, 5, 8, 3]), out);
+/// ```
+/// 
+pub fn karatsuba_mul<R, U, V, W>(
+    lhs: Vector<U, R::El>,
+    rhs: Vector<V, R::El>,
+    mut out: Vector<W, R::El>,
+    ring: &R
+)
+    where R: Ring, U: VectorView<R::El>, V: VectorView<R::El>, W: VectorViewMut<R::El>
+{
+    if lhs.len() < rhs.len() {
+        karatsuba_mul(rhs, lhs, out, ring);
+        return;
+    }
+    let block_size = 1 << (usize::BITS - rhs.len().leading_zeros());
+    let mut tmp = (0..(4 * block_size - 4)).map(|_| ring.unspecified_element()).collect::<Vec<_>>();
+    for i in 0..((lhs.len() - 1) / block_size + 1) {
+        karatsuba_impl(
+            lhs.subvector_intersect((i * block_size)..(i * block_size + block_size)), 
+            rhs.subvector(..), 
+            out.subvector_mut((i * block_size)..), 
+            &mut tmp[..],
+            ring,
+            block_size
+        );
+    }
+}
+
 #[test]
 fn test_karatsuba_impl() {
     let a = Vector::from_array([1, 2, 3]);
