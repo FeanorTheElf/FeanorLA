@@ -21,10 +21,26 @@ pub mod embedding;
 pub mod wrapper;
 pub mod float;
 pub mod prelude;
+pub mod karatsuba;
+pub mod eea;
 
 #[macro_use]
 pub mod la;
-pub mod algebra;
+pub mod rat;
+pub mod fq;
+pub mod integer;
+pub mod rationals;
+pub mod factoring_algorithms;
+pub mod p_adic;
+pub mod fraction_field;
+pub mod poly;
+pub mod ring_extension;
+pub mod primes;
+pub mod diophantine;
+pub mod elliptic_curve;
+
+#[cfg(test)]
+pub mod benchmarks;
 
 pub mod numerics;
 pub mod combinatorics;

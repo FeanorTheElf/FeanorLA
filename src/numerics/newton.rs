@@ -41,9 +41,9 @@ pub fn newton_multidim<T, F, S>(
 #[cfg(test)]
 use super::super::ring::*;
 #[cfg(test)]
-use super::super::algebra::poly::*;
+use super::super::poly::*;
 #[cfg(test)]
-use super::super::la::algorithms::*;
+use super::super::la::inversion::*;
 #[cfg(test)]
 use super::super::primitive::*;
 

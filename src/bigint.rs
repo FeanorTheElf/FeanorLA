@@ -3,8 +3,8 @@ use super::embedding::*;
 use super::primitive::*;
 use super::ring_property::*;
 
-use super::algebra::primes;
-use super::algebra::integer::*;
+use super::primes;
+use super::integer::*;
 
 use std::cmp::Ordering;
 use std::ops::*;

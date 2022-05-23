@@ -1,11 +1,13 @@
 use super::super::ring::*;
 use super::super::primitive::*;
-use super::matrix_vector::*;
-use super::diagonal::*;
-use super::vector_view_const::*;
 use super::ops::*;
 
 pub use super::vector_view::*;
+pub use super::vector_view::compile_time_vector::*;
+pub use super::vector_view::constant_value_vector::*;
+pub use super::vector_view::matrix_diagonal::*;
+pub use super::vector_view::matrix_row_col::*;
+use super::matrix_view::matrix_vector::*;
 
 use std::marker::PhantomData;
 use std::ops::{AddAssign, Add, SubAssign, Sub, MulAssign, RangeBounds, Bound, Index};
@@ -111,6 +113,10 @@ impl<V, T> Vector<V, T>
     pub fn iter<'a>(&'a self) -> VectorIter<'a, T, V> {
         VectorIter::new(&self.data)
     }
+
+    pub fn raw_data(self) -> V {
+        self.data
+    }
 }
 
 impl<V, T> Vector<V, T>
@@ -119,7 +125,7 @@ impl<V, T> Vector<V, T>
     pub fn assign<W>(&mut self, rhs: Vector<W, T>) 
         where W: VectorView<T>
     {
-        <T as MatrixAssign<_, _>>::assign_matrix(&mut self.as_mut().as_column_vector(), rhs.as_ref().as_column_vector())
+        <T as MatrixAssign<_, _>>::assign_matrix(&mut ColumnVector::new(self.as_mut().data), ColumnVector::new(rhs.as_ref().data))
     }
 }
 
@@ -199,19 +205,19 @@ impl<V, T> Vector<V, T>
     pub fn scale<R>(&mut self, rhs: &T, ring: &R) 
         where R: Ring<El = T>
     {
-        <R as MatrixScale<_>>::scale_matrix(ring, rhs, &mut self.as_mut().as_column_vector());
+        <R as MatrixScale<_>>::scale_matrix(ring, rhs, &mut ColumnVector::new(self.as_mut().data));
     }
 
     pub fn add_assign<R, W>(&mut self, rhs: Vector<W, T>, ring: &R)
         where R: Ring<El = T>, W: VectorView<T>
     {
-        <R as MatrixAddAssign<_, _>>::add_assign_matrix(ring, &mut self.as_mut().as_column_vector(), rhs.as_ref().as_column_vector());
+        <R as MatrixAddAssign<_, _>>::add_assign_matrix(ring, &mut ColumnVector::new(self.as_mut().data), ColumnVector::new(rhs.as_ref().data));
     }
 
     pub fn sub_assign<R, W>(&mut self, rhs: Vector<W, T>, ring: &R)
         where R: Ring<El = T>, W: VectorView<T>
     {
-        <R as MatrixAddAssign<_, _>>::sub_assign_matrix(ring, &mut self.as_mut().as_column_vector(), rhs.as_ref().as_column_vector());
+        <R as MatrixAddAssign<_, _>>::sub_assign_matrix(ring, &mut ColumnVector::new(self.as_mut().data), ColumnVector::new(rhs.as_ref().data));
     }
 }
 
@@ -222,7 +228,7 @@ impl<V, T> Vector<V, T>
         where R: Ring<El = T>, W: VectorView<T>
     {
         let mut result = self.into_owned();
-        <R as MatrixAddAssign<_, _>>::add_assign_matrix(ring, &mut result.as_mut().as_column_vector(), rhs.as_ref().as_column_vector());
+        <R as MatrixAddAssign<_, _>>::add_assign_matrix(ring, &mut ColumnVector::new(result.as_mut().data), ColumnVector::new(rhs.as_ref().data));
         return result;
     }
 
@@ -230,7 +236,7 @@ impl<V, T> Vector<V, T>
         where R: Ring<El = T>, W: VectorView<T>
     {
         let mut result = self.into_owned();
-        <R as MatrixAddAssign<_, _>>::sub_assign_matrix(ring, &mut result.as_mut().as_column_vector(), rhs.as_ref().as_column_vector());
+        <R as MatrixAddAssign<_, _>>::sub_assign_matrix(ring, &mut ColumnVector::new(result.as_mut().data), ColumnVector::new(rhs.as_ref().data));
         return result;
     }
 
@@ -238,20 +244,20 @@ impl<V, T> Vector<V, T>
         where R: Ring<El = T>
     {
         let mut result = self.into_owned();
-        <R as MatrixScale<_>>::negate_matrix(ring, &mut result.as_mut().as_column_vector());
+        <R as MatrixScale<_>>::negate_matrix(ring, &mut ColumnVector::new(result.as_mut().data));
         return result;
     }
 
     pub fn eq<R, W>(self, rhs: Vector<W, T>, ring: &R) -> bool
         where R: Ring<El = T>, W: VectorView<T>
     {
-        <R as MatrixEq<_, _>>::eq_matrix(ring, self.as_ref().as_column_vector(), rhs.as_ref().as_column_vector())
+        <R as MatrixEq<_, _>>::eq_matrix(ring, ColumnVector::new(self.as_ref().data), ColumnVector::new(rhs.as_ref().data))
     }
 
     pub fn l2_norm_square<R>(self, ring: &R) -> R::El
         where R: Ring<El = T>
     {
-        <R as MatrixFrobenius<_>>::calc_matrix_frobenius_norm_square(ring, self.as_ref().as_column_vector())
+        <R as MatrixFrobenius<_>>::calc_matrix_frobenius_norm_square(ring, ColumnVector::new(self.as_ref().data))
     }
 }
 
@@ -302,26 +308,6 @@ impl<T> Vector<VectorOwned<T>, T> {
         let mut result = Vector::zero_ring(len, ring).into_owned();
         *result.at_mut(i) = ring.one();
         return result;
-    }
-
-    pub fn raw_data(self) -> Box<[T]> {
-        self.data.into_boxed_slice()
-    }
-}
-
-impl<V, T> Vector<V, T>
-    where V: VectorView<T>
-{
-    pub fn as_column_vector(self) -> ColumnVector<V, T> {
-        ColumnVector::new(self.data)
-    }
-
-    pub fn as_row_vector(self) -> RowVector<V, T> {
-        RowVector::new(self.data)
-    }
-
-    pub fn as_diag_matrix(self, diag_index: i64, zero: T) -> DiagonalMatrix<V, T> {
-        DiagonalMatrix::new(self.data, diag_index, zero)
     }
 }
 

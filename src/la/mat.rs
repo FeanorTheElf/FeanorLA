@@ -3,15 +3,15 @@ use super::super::primitive::*;
 use super::ops::*;
 
 pub use super::matrix_view::*;
-pub use super::submatrix::*;
+pub use super::matrix_view::constant_value_matrix::*;
+pub use super::matrix_view::matrix_transpose::*;
+pub use super::matrix_view::matrix_vector::*;
+pub use super::matrix_view::diagonal_matrix::*;
+pub use super::matrix_view::submatrix::*;
 pub use super::vec::*;
 pub use super::vector_view::*;
-
-use super::matrix_transpose::*;
-use super::diagonal::*;
-use super::matrix_vector::*;
-use super::matrix_row_col::*;
-use super::constant::*;
+pub use super::vector_view::matrix_row_col::*;
+pub use super::vector_view::matrix_diagonal::*;
 
 use std::marker::PhantomData;
 use std::ops::{AddAssign, Sub, SubAssign, MulAssign, Add, Mul, RangeBounds, Bound};
@@ -166,7 +166,7 @@ impl<V, T> Matrix<ColumnVector<V, T>, T>
     where V: VectorView<T>
 {
     pub fn col_vec(vector: Vector<V, T>) -> Self {
-        Matrix::new(vector.as_column_vector())
+        Matrix::new(ColumnVector::new(vector.raw_data()))
     }
 }
 
@@ -174,7 +174,7 @@ impl<V, T> Matrix<RowVector<V, T>, T>
     where V: VectorView<T>
 {
     pub fn row_vec(vector: Vector<V, T>) -> Self {
-        Matrix::new(vector.as_row_vector())
+        Matrix::new(RowVector::new(vector.raw_data()))
     }
 }
 
@@ -186,7 +186,7 @@ impl<V, T> Matrix<DiagonalMatrix<V, T>, T>
     }
 
     pub fn nonmain_diag_matrix_ring<R: Ring<El = T>>(vector: Vector<V, T>, diag_index: i64, ring: &R) -> Self {
-        Matrix::new(vector.as_diag_matrix(diag_index, ring.zero()))
+        Matrix::new(DiagonalMatrix::new(vector.raw_data(), diag_index, ring.zero()))
     }
 }
 
