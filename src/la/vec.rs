@@ -110,6 +110,15 @@ impl<V, T> Vector<V, T>
         Vector::new(&self.data).into_subvector(range)
     }
 
+    ///
+    /// Look at `into_subvector_intersect()` to see how this differs from `subvector_mut()`.
+    /// 
+    pub fn subvector_intersect<'a, R>(&'a self, range: R) -> Vector<<&'a V as VectorView<T>>::Subvector, T>
+        where R: RangeBounds<usize>
+    {
+        Vector::new(&self.data).into_subvector_intersect(range)
+    }
+
     pub fn iter<'a>(&'a self) -> VectorIter<'a, T, V> {
         VectorIter::new(&self.data)
     }
