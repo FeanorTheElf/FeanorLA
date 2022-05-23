@@ -129,7 +129,7 @@ impl<T, const N: usize> std::iter::FromIterator<T> for VectorArray<T, N> {
     
     fn from_iter<I: IntoIterator<Item = T>>(into_iter: I) -> Self {
         let mut iter = into_iter.into_iter();
-        let result = core::array::from_fn::<_, T, N>(|_| iter.next().unwrap());
+        let result = core::array::from_fn::<T, N, _>(|_| iter.next().unwrap());
         assert!(iter.next().is_none());
         return VectorArray(result);
     }

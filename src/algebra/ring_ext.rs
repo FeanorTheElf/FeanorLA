@@ -7,7 +7,6 @@ use super::poly::ops::poly_format;
 use super::fq::*;
 use super::super::combinatorics::iters::*;
 
-use vec_map::VecMap;
 use std::marker::PhantomData;
 use std::iter::FromIterator;
 
@@ -130,12 +129,6 @@ impl<R, V, W> SimpleRingExtension<R, V, W>
 
     pub fn is_field_extension(&self) -> RingPropValue {
         self.base_ring.is_field() & self.is_field()
-    }
-
-    pub fn is_separable(&self) -> RingPropValue {
-        assert!(self.is_field_extension());
-        self.base_ring.characteristic() == BigInt::ZERO || 
-            self.mipo_values().enumerate().all(|(i, val)| i %)
     }
 }
 
@@ -285,6 +278,10 @@ impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
         )
     }
 
+    fn characteristic(&self) -> BigInt {
+        self.base_ring().characteristic()
+    }
+
     default fn is_integral(&self) -> RingPropValue {
         return RingPropValue::Unknown;
     }
@@ -391,10 +388,6 @@ impl<R, V, W> FiniteRing for SimpleRingExtension<R, V, W>
 {
     type IterFn = FiniteRingExtensionIterFn<R, V, W>;
 
-    fn characteristic(&self) -> BigInt {
-        self.base_ring().characteristic()
-    }
-
     fn size(&self) -> BigInt {
         self.base_ring().size().pow(self.degree() as u32)
     }
@@ -412,22 +405,6 @@ impl<R, V, W> FiniteRing for SimpleRingExtension<R, V, W>
             ),
             vector_type: PhantomData
         }
-    }
-}
-
-impl<R, V, W> UfdInfoRing for PolyRing<SimpleRingExtension<R, V, W>>
-    where R: Ring, for<'a> PolyRing<&'a R>: UfdInfoRing, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
-{
-    fn is_ufd(&self) -> RingPropValue {
-        if self.is_field() && PolyRing::adjoint(self.base_ring()).is_ufd().can_use() {
-            return RingPropValue::True;
-        } else {
-            return RingPropValue::Unknown;
-        }
-    }
-
-    fn factor<'a>(&'a self, el: El<Self>) -> VecMap<RingElWrapper<&'a Self>, usize> {
-        assert!(self.is_ufd().can_use());
     }
 }
 

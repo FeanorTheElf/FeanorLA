@@ -152,6 +152,10 @@ impl<R> RingBase for FieldOfFractions<R>
     fn is_noetherian(&self) -> bool {
         true
     }
+    
+    fn characteristic(&self) -> BigInt {
+        self.base_ring().characteristic()
+    }
 
     fn is_field(&self) -> RingPropValue {
         RingPropValue::True

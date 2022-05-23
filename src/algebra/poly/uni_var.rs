@@ -221,6 +221,10 @@ impl<R> RingBase for PolyRing<R>
         self.base_ring.is_integral()
     }
 
+    fn characteristic(&self) -> BigInt {
+        self.base_ring().characteristic()
+    }
+    
     fn is_noetherian(&self) -> bool {
         self.base_ring.is_noetherian()
     }

@@ -318,6 +318,8 @@ impl RingEl for r64 {
     type Axioms = RingAxiomsField;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+    
+    fn characteristic() -> BigInt { BigInt::ZERO }
 }
 
 impl FieldEl for r64 {}

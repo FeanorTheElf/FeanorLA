@@ -236,6 +236,8 @@ pub trait RingEl:
     fn ring(&self) -> Self::RingType {
         Self::RING
     }
+
+    fn characteristic() -> BigInt;
 }
 
 pub trait EuclideanEl: 
@@ -258,30 +260,35 @@ impl RingEl for i8 {
     type Axioms = RingAxiomsEuclidean;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+    fn characteristic() -> BigInt { BigInt::ZERO }
 }
 
 impl RingEl for i16 {
     type Axioms = RingAxiomsEuclidean;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+    fn characteristic() -> BigInt { BigInt::ZERO }
 }
 
 impl RingEl for i32 {
     type Axioms = RingAxiomsEuclidean;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+    fn characteristic() -> BigInt { BigInt::ZERO }
 }
 
 impl RingEl for i64 {
     type Axioms = RingAxiomsEuclidean;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+    fn characteristic() -> BigInt { BigInt::ZERO }
 }
 
 impl RingEl for i128 {
     type Axioms = RingAxiomsEuclidean;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+    fn characteristic() -> BigInt { BigInt::ZERO }
 }
 
 
@@ -369,6 +376,8 @@ impl RingEl for f32 {
             f32::powi(self, exp as i32)
         }
     }
+
+    fn characteristic() -> BigInt { BigInt::ZERO }
 }
 
 impl RingEl for f64 {
@@ -388,6 +397,8 @@ impl RingEl for f64 {
             f64::powi(self, exp as i32)
         }
     }
+
+    fn characteristic() -> BigInt { BigInt::ZERO }
 }
 
 impl FieldEl for f32 {}
@@ -472,6 +483,7 @@ impl<T> RingBase for StaticRingImpl<T::Axioms, T>
     fn one(&self) -> Self::El { T::one() }
     fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool { lhs == rhs }
 
+    fn characteristic(&self) -> BigInt { T::characteristic() }
     fn is_noetherian(&self) -> bool { true }
     default fn is_integral(&self) -> RingPropValue { RingPropValue::False }
     default fn is_field(&self) -> RingPropValue { RingPropValue::False }

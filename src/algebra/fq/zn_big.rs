@@ -1,5 +1,4 @@
 use super::super::super::prelude::*;
-use super::super::super::la::constant::*;
 use super::super::eea::*;
 use super::*;
 
@@ -97,10 +96,6 @@ impl FiniteRingIterFn<Zn> for ZnIterFn {
 impl FiniteRing for Zn {
 
     type IterFn = ZnIterFn;
-    
-    fn characteristic(&self) -> BigInt {
-        self.modulus.clone()
-    }
 
     fn size(&self) -> BigInt {
         self.characteristic()
@@ -169,6 +164,10 @@ impl RingBase for Zn {
         assert!(lhs < &self.modulus);
         assert!(rhs < &self.modulus);
         lhs == rhs
+    }
+
+    fn characteristic(&self) -> BigInt {
+        self.modulus.clone()
     }
 
     fn is_integral(&self) -> RingPropValue {

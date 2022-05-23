@@ -823,6 +823,7 @@ impl RingBase for BigIntRing {
         val.highest_set_block() == None
     }
 
+    fn characteristic(&self) -> BigInt { BigInt::ZERO }
     fn is_noetherian(&self) -> bool { true }
     fn is_integral(&self) -> RingPropValue { RingPropValue::True }
     fn is_field(&self) -> RingPropValue { RingPropValue::False }

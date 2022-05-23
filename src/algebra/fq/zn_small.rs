@@ -185,6 +185,8 @@ impl<const N: u64> RingEl for ZnElImpl<N, true> {
     type Axioms = RingAxiomsField;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+
+    fn characteristic() -> BigInt { BigInt::RING.from_z(N as i64) }
 }
 
 impl<const N: u64> FieldEl for ZnElImpl<N, true> {}
@@ -193,6 +195,8 @@ impl<const N: u64> RingEl for ZnElImpl<N, false> {
     type Axioms = RingAxiomsGeneral;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+
+    fn characteristic() -> BigInt { BigInt::RING.from_z(N as i64) }
 }
 
 #[derive(Clone, Debug)]
@@ -228,10 +232,6 @@ impl<const N: u64> FiniteRing for StaticRing<ZnElImpl<N, true>> {
 
     type IterFn = StaticZnIterFn;
 
-    fn characteristic(&self) -> BigInt {
-        BigInt::from(N as i64)
-    }
-
     fn size(&self) -> BigInt {
         BigInt::from(N as i64)
     }
@@ -266,10 +266,6 @@ impl<const N: u64> DivisibilityInfoRing for StaticRing<ZnElImpl<N, false>> {
 impl<const N: u64> FiniteRing for StaticRing<ZnElImpl<N, false>> {
 
     type IterFn = StaticZnIterFn;
-
-    fn characteristic(&self) -> BigInt {
-        BigInt::from(N as i64)
-    }
 
     fn size(&self) -> BigInt {
         BigInt::from(N as i64)

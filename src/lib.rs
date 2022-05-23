@@ -1,14 +1,12 @@
 #![feature(adt_const_params)]
 #![feature(generic_const_exprs)]
 #![feature(specialization)]
-#![feature(array_from_fn)]
 #![feature(generic_associated_types)]
 #![feature(fn_traits)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(trace_macros)]
 #![feature(bench_black_box)]
-#![feature(const_fn_trait_bound)]
 
 #[cfg(test)]
 extern crate test;

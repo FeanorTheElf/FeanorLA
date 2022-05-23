@@ -662,6 +662,10 @@ impl<R> RingBase for WrappingRing<R>
         self.ring.is_neg_one(&val.el)
     }
 
+    fn characteristic(&self) -> BigInt {
+        self.wrapped_ring().characteristic()
+    }
+
     fn is_integral(&self) -> RingPropValue {
         self.ring.is_integral()
     }

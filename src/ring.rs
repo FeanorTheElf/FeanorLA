@@ -283,6 +283,7 @@ impl<'a, R: RingBase> RingBase for &'a R {
     fn is_one(&self, val: &Self::El) -> bool { (**self).is_one(val) }
     fn is_neg_one(&self, val: &Self::El) -> bool { (**self).is_neg_one(val) }
     fn is_integral(&self) -> RingPropValue { (**self).is_integral() }
+    fn characteristic(&self) -> BigInt { (**self).characteristic() }
     fn is_field(&self) -> RingPropValue { (**self).is_field() }
     fn is_noetherian(&self) -> bool { (**self).is_noetherian() }
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).div(lhs, rhs) }
