@@ -72,6 +72,6 @@ fn test_newton_multidim() {
         ).unwrap();
         return y;
     };
-    let root = newton_multidim(function, jacobian_solve, Vector::from_array([10., 10.]), 0.0001, 30).unwrap();
+    let root = newton_multidim(function, jacobian_solve, Vector::from_array([10., 10.]).into_owned(), 0.0001, 30).unwrap();
     assert_approx_eq!(Vector::from_array([2., -1.]), &root, 0.001);
 }

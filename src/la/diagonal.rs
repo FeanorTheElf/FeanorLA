@@ -105,6 +105,8 @@ where M: MatrixView<T>
 impl<M, T> VectorView<T> for MatrixDiagonal<M, T>
 where M: MatrixView<T>
 {
+    type Subvector = Subvector<Self, T>;
+
     fn len(&self) -> usize {
         if self.diagonal >= 0 {
             usize::min(self.matrix.row_count(), self.matrix.col_count() - self.diagonal as usize)
@@ -118,11 +120,17 @@ where M: MatrixView<T>
         let (i, j) = get_matrix_index(self.diagonal, index);
         self.matrix.at(i, j)
     }
+
+    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+        Subvector::new(from, to, self)
+    }
 }
 
 impl<M, T> VectorViewMut<T> for MatrixDiagonal<M, T>
 where M: MatrixViewMut<T>
 {
+    type SubvectorMut = Subvector<Self, T>;
+
     fn at_mut(&mut self, index: usize) -> &mut T {
         self.assert_in_range(index);
         let (i, j) = get_matrix_index(self.diagonal, index);
@@ -138,5 +146,9 @@ where M: MatrixViewMut<T>
             let (snd_i, snd_j) = get_matrix_index(self.diagonal, snd);
             self.matrix.swap((fst_i, fst_j), (snd_i, snd_j));
         }
+    }
+
+    fn cast_subvector(subvector: Self::Subvector) -> Self::SubvectorMut {
+        subvector
     }
 }

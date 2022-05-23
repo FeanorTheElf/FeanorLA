@@ -3,10 +3,9 @@ use super::super::primitive::*;
 use super::ops::*;
 
 pub use super::matrix_view::*;
-pub use super::vector_view::*;
-pub use super::vec::*;
 pub use super::submatrix::*;
-pub use super::subvector::*;
+pub use super::vec::*;
+pub use super::vector_view::*;
 
 use super::matrix_transpose::*;
 use super::diagonal::*;
@@ -105,18 +104,26 @@ impl<M, T> Matrix<M, T>
         MatrixRowIter::new(&self.data)
     }
 
-    pub fn row(&self, row: usize) -> Vector<MatrixRow<T, &M>, T> {
+    pub fn into_row(self, row: usize) -> Vector<MatrixRow<T, M>, T> {
         self.data.assert_row_in_range(row);
-        Vector::new(MatrixRow::new(&self.data, row))
+        Vector::new(MatrixRow::new(self.data, row))
+    }
+
+    pub fn row(&self, row: usize) -> Vector<MatrixRow<T, &M>, T> {
+        self.as_ref().into_row(row)
     }
 
     pub fn cols(&self) -> MatrixColIter<T, &M> {
         MatrixColIter::new(&self.data)
     }
 
-    pub fn col(&self, col: usize) -> Vector<MatrixCol<T, &M>, T> {
+    pub fn into_col(self, col: usize) -> Vector<MatrixCol<T, M>, T> {
         self.data.assert_col_in_range(col);
-        Vector::new(MatrixCol::new(&self.data, col))
+        Vector::new(MatrixCol::new(self.data, col))
+    }
+
+    pub fn col(&self, col: usize) -> Vector<MatrixCol<T, &M>, T> {
+        self.as_ref().into_col(col)
     }
 
     pub fn diag(&self) -> Vector<MatrixDiagonal<&M, T>, T> {
@@ -255,42 +262,6 @@ impl<M, T> Matrix<M, T>
         where R: RangeBounds<usize>, S: RangeBounds<usize>
     {
         Matrix::new(&mut self.data).into_submatrix(rows, cols)
-    }
-}
-
-impl<M, T> Matrix<M, T>
-    where M: MatrixMutRowIter<T>
-{
-    pub fn row_mut<'a>(
-        &'a mut self, 
-        row: usize
-    ) -> Vector<<M as LifetimeMatrixMutRowIter<'a, T>>::RowRef, T> 
-    {
-        Vector::new(self.data.get_row_mut(row))
-    }
-
-    pub fn rows_mut<'a>(
-        &'a mut self
-    ) -> impl Iterator<Item = Vector<<M as LifetimeMatrixMutRowIter<'a, T>>::RowRef, T>> 
-    {
-        self.data.rows_mut().map(|r| Vector::new(r))
-    }
-
-    pub fn two_rows_mut<'a>(
-        &'a mut self,
-        i: usize,
-        j: usize
-    ) -> (Vector<<M as LifetimeMatrixMutRowIter<'a, T>>::RowRef, T> , Vector<<M as LifetimeMatrixMutRowIter<'a, T>>::RowRef, T> )
-    {
-        assert_ne!(i, j);
-        self.data.assert_row_in_range(i);
-        self.data.assert_row_in_range(j);
-        let mut it = self.rows_mut();
-        if i < j {
-            (it.by_ref().nth(i).unwrap(), it.by_ref().nth(j - i).unwrap())
-        } else {
-            (it.by_ref().nth(j).unwrap(), it.by_ref().nth(i - j).unwrap())
-        }
     }
 }
 
@@ -658,7 +629,7 @@ fn test_mul() {
 
 #[test]
 fn test_zero_sized_matrix() {
-    let mut a: Matrix<_, i32> = Matrix::from_array([[], [], []]);
+    let a: Matrix<_, i32> = Matrix::from_array([[], [], []]);
     assert_eq!(3, a.row_count());
     assert_eq!(0, a.col_count());
 
@@ -672,7 +643,7 @@ fn test_zero_sized_matrix() {
 
     assert_eq!(Matrix::<_, i32>::zero(3, 0), a);
 
-    let mut d: Matrix<_, i32> = Matrix::zero(0, 5).into_owned();
+    let d: Matrix<_, i32> = Matrix::zero(0, 5).into_owned();
 
     assert_eq!(d.clone(), d);
 
@@ -680,9 +651,7 @@ fn test_zero_sized_matrix() {
     assert_eq!(a.submatrix(..0, ..), d.submatrix(.., 5..));
 
     assert_eq!(3, a.rows().count());
-    assert_eq!(3, a.rows_mut().count());
     assert_eq!(0, d.rows().count());
-    assert_eq!(0, d.rows_mut().count());
 
     assert_eq!(0, a.row(0).len());
     assert_eq!(0, d.col(1).len());

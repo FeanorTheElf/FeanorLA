@@ -1,9 +1,12 @@
 use std::marker::PhantomData;
 
 pub trait VectorView<T>: Sized {
+
+    type Subvector: VectorView<T>;
     
     fn len(&self) -> usize;
     fn at(&self, index: usize) -> &T;
+    fn subvector(self, from: usize, to: usize) -> Self::Subvector;
 
     fn assert_in_range(&self, index: usize) {
         assert!(index < self.len(), "Vector index {} out of range 0..{}", index, self.len());
@@ -17,13 +20,36 @@ pub trait VectorView<T>: Sized {
 }
 
 pub trait VectorViewMut<T>: VectorView<T> {
+
+    type SubvectorMut: VectorView<T>;
+
     fn at_mut(&mut self, index: usize) -> &mut T;
     fn swap(&mut self, i: usize, j: usize);
+
+    ///
+    /// Currently, there is no way to strengthen the associated type bound in
+    /// a subtrait, i.e. require `Self::Subvector: VectorViewMut` in VectorViewMut.
+    /// "Faking" this by adding a `where Self::Subvector: VectorViewMut` to the
+    /// subtrait definition does not work:
+    /// Adding such a where-clause then requires adding the corresponding where-clause
+    /// to every use of VectorViewMut, and besides the inconvenience, this causes a
+    /// recursion. In other words, we would have to add
+    /// ```text
+    ///     where V: VectorViewMut<T>,
+    ///           V::Subvector: VectorViewMut<T>,
+    ///           V::Subvector::Subvector: VectorViewMut<T>,
+    ///           ...
+    /// ```
+    /// This is the best workaround I found. Just implement this function as the identity...
+    /// 
+    fn cast_subvector(subvector: Self::Subvector) -> Self::SubvectorMut;
 }
 
 pub type VectorOwned<T> = Vec<T>;
 
 impl<T> VectorView<T> for VectorOwned<T> {
+
+    type Subvector = Subvector<Self, T>;
 
     fn len(&self) -> usize {
         self.len()
@@ -32,9 +58,15 @@ impl<T> VectorView<T> for VectorOwned<T> {
     fn at(&self, index: usize) -> &T {
         &self[index]
     }
+
+    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+        Subvector::new(from, to, self)
+    }
 }
 
 impl<T> VectorViewMut<T> for VectorOwned<T> {
+
+    type SubvectorMut = Subvector<Self, T>;
 
     fn at_mut(&mut self, index: usize) -> &mut T {
         &mut self[index]
@@ -46,28 +78,93 @@ impl<T> VectorViewMut<T> for VectorOwned<T> {
         if i == j {
             return;
         }
-        // I got an infinite recursion here before, so I want to be
-        // explicit that I don't call `<Vec<T> as VectorViewMut<T>>::swap`
-        let self_ref: &mut [T] = &mut self[..];
-        self_ref.swap(i, j);
+        <[T]>::swap(&mut self[..], i, j);
+    }
+
+    fn cast_subvector(subvector: Self::Subvector) -> Self::SubvectorMut {
+        subvector
+    }
+}
+
+impl<'a, T> VectorView<T> for &'a [T] {
+
+    type Subvector = Subvector<Self, T>;
+
+    fn len(&self) -> usize {
+        <[T]>::len(self)
+    }
+
+    fn at(&self, index: usize) -> &T {
+        &self[index]
+    }
+
+    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+        Subvector::new(from, to, self)
+    }
+}
+
+impl<'a, T> VectorView<T> for &'a mut [T] {
+
+    type Subvector = Subvector<Self, T>;
+
+    fn len(&self) -> usize {
+        <[T]>::len(self)
+    }
+
+    fn at(&self, index: usize) -> &T {
+        &self[index]
+    }
+
+    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+        Subvector::new(from, to, self)
+    }
+}
+
+impl<'a, T> VectorViewMut<T> for &'a mut [T] {
+
+    type SubvectorMut = Subvector<Self, T>;
+
+    fn at_mut(&mut self, index: usize) -> &mut T {
+        &mut self[index]
+    }
+
+    fn swap(&mut self, i: usize, j: usize) {
+        self.assert_in_range(i);
+        self.assert_in_range(j);
+        if i == j {
+            return;
+        }
+        <[T]>::swap(self, i, j);
+    }
+
+    fn cast_subvector(subvector: Self::Subvector) -> Self::SubvectorMut {
+        subvector
     }
 }
 
 impl<'a, T, V> VectorView<T> for &'a V
     where V: VectorView<T>
 {
+    type Subvector = Subvector<&'a V, T>;
+
     fn len(&self) -> usize {
         (**self).len()
     }
 
     fn at(&self, i: usize) -> &T {
         (**self).at(i)
+    }
+
+    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+        Subvector::new(from, to, self)
     }
 }
 
 impl<'a, T, V> VectorView<T> for &'a mut V
     where V: VectorView<T>
 {
+    type Subvector = Subvector<&'a mut V, T>;
+
     fn len(&self) -> usize {
         (**self).len()
     }
@@ -75,17 +172,27 @@ impl<'a, T, V> VectorView<T> for &'a mut V
     fn at(&self, i: usize) -> &T {
         (**self).at(i)
     }
+
+    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+        Subvector::new(from, to, self)
+    }
 }
 
 impl<'a, T, V> VectorViewMut<T> for &'a mut V
     where V: VectorViewMut<T>
 {
+    type SubvectorMut = Subvector<&'a mut V, T>;
+
     fn at_mut(&mut self, i: usize) -> &mut T {
         (**self).at_mut(i)
     }
 
     fn swap(&mut self, fst: usize, snd: usize) {
         (**self).swap(fst, snd)
+    }
+
+    fn cast_subvector(subvector: Self::Subvector) -> Self::SubvectorMut {
+        subvector
     }
 }
 
@@ -104,6 +211,8 @@ impl<T, const N: usize> VectorArray<T, N> {
 }
 
 impl<T, const N: usize> VectorView<T> for VectorArray<T, N> {
+
+    type Subvector = Subvector<Self, T>;
     
     fn len(&self) -> usize {
         self.0.len()
@@ -112,16 +221,26 @@ impl<T, const N: usize> VectorView<T> for VectorArray<T, N> {
     fn at(&self, i: usize) -> &T {
         &self.0[i]
     }
+
+    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+        Subvector::new(from, to, self)
+    }
 }
 
 impl<T, const N: usize> VectorViewMut<T> for VectorArray<T, N> {
     
+    type SubvectorMut = Subvector<Self, T>;
+
     fn at_mut(&mut self, i: usize) -> &mut T {
         &mut self.0[i]
     }
 
     fn swap(&mut self, fst: usize, snd: usize) {
         self.0.swap(fst, snd)
+    }
+
+    fn cast_subvector(subvector: Self::Subvector) -> Self::SubvectorMut {
+        subvector
     }
 }
 
@@ -188,6 +307,88 @@ impl<'a, T, V> Clone for VectorIter<'a, T, V>
 {
     fn clone(&self) -> Self {
         *self
+    }
+}
+
+#[derive(Debug)]
+pub struct Subvector<V, T> 
+    where V: VectorView<T>
+{
+    view: V,
+    from: usize,
+    to: usize,
+    element: PhantomData<T>
+}
+
+impl<V, T> Copy for Subvector<V, T> 
+    where V: VectorView<T> + Copy {}
+
+impl<V, T> Clone for Subvector<V, T>  
+    where V: VectorView<T> + Clone
+{
+    fn clone(&self) -> Self {
+        Subvector {
+            view: self.view.clone(),
+            from: self.from,
+            to: self.to,
+            element: PhantomData
+        }
+    }
+}
+
+impl<V, T> VectorView<T> for Subvector<V, T> 
+    where V: VectorView<T>
+{
+    type Subvector = Self;
+
+    fn len(&self) -> usize {
+        self.to - self.from
+    }
+
+    fn at(&self, index: usize) -> &T {
+        self.view.at(index + self.from)
+    }
+
+    fn subvector(mut self, from: usize, to: usize) -> Self::Subvector {
+        assert!(to <= self.len());
+        self.to = self.from + to;
+        self.from = self.from + from;
+        return self;
+    }
+}
+
+impl<V, T> VectorViewMut<T> for Subvector<V, T>
+    where V: VectorViewMut<T>
+{
+    type SubvectorMut = Self;
+
+    fn at_mut(&mut self, index: usize) -> &mut T {
+        self.view.at_mut(index + self.from)
+    }
+
+    fn swap(&mut self, i: usize, j: usize) {
+        self.assert_in_range(i);
+        self.assert_in_range(j);
+        self.view.swap(i + self.from, j + self.from);
+    }
+
+    fn cast_subvector(subvector: Self::Subvector) -> Self::SubvectorMut {
+        subvector
+    }
+}
+
+impl<V, T> Subvector<V, T> 
+    where V: VectorView<T>
+{
+    pub fn new(from: usize, to: usize, vector: V) -> Self {
+        assert!(from <= to);
+        assert!(to <= vector.len());
+        Subvector {
+            from: from,
+            to: to,
+            view: vector,
+            element: PhantomData
+        }
     }
 }
 

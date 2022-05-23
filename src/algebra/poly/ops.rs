@@ -78,7 +78,7 @@ pub fn poly_mul<R, V, W>(coeff_ring: &R, lhs: Vector<V, R::El>, rhs: Vector<W, R
     let lhs_deg = poly_degree(coeff_ring, lhs.as_ref());
     let rhs_deg = poly_degree(coeff_ring, rhs.as_ref());
     if lhs_deg.is_none() || rhs_deg.is_none() {
-        return Vector::from_array([]);
+        return Vector::from_array([]).into_owned();
     }
     let lhs_deg = lhs_deg.unwrap();
     let rhs_deg = rhs_deg.unwrap();

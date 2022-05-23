@@ -174,10 +174,6 @@ impl<R> MultivariatePolyRing<R>
         return result;
     }
 
-    pub fn base_ring(&self) -> &R {
-        &self.base_ring
-    }
-
     ///
     /// Evaluates the given polynomial at the given values, i.e. calculates the
     /// value in the base ring of the expression one gets from replacing the
@@ -363,16 +359,16 @@ impl<R> RingBase for MultivariatePolyRing<R>
         self.from(self.base_ring.from_z_big(x))
     }
 
+    fn characteristic(&self) -> BigInt {
+        self.base_ring.characteristic()
+    }
+
     fn is_integral(&self) -> RingPropValue {
         self.base_ring.is_integral()
     }
 
     fn is_noetherian(&self) -> bool {
         self.base_ring.is_noetherian()
-    }
-
-    fn characteristic(&self) -> BigInt {
-        self.base_ring().characteristic()
     }
 
     fn is_field(&self) -> RingPropValue {

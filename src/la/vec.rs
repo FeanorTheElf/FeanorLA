@@ -2,9 +2,8 @@ use super::super::ring::*;
 use super::super::primitive::*;
 use super::matrix_vector::*;
 use super::diagonal::*;
-use super::constant::*;
+use super::vector_view_const::*;
 use super::ops::*;
-use super::subvector::*;
 
 pub use super::vector_view::*;
 
@@ -53,7 +52,7 @@ impl<V, T> Vector<V, T>
         Vector::new(&self.data)
     }
 
-    pub fn into_subvector<R>(self, range: R) -> Vector<Subvector<V, T>, T>
+    pub fn into_subvector<R>(self, range: R) -> Vector<V::Subvector, T>
         where R: RangeBounds<usize>
     {
         let begin = match range.start_bound() {
@@ -67,11 +66,43 @@ impl<V, T> Vector<V, T>
             Bound::Unbounded => self.len(),
         };
         return Vector::new(
-            Subvector::new(begin, end, self.data)
+            self.data.subvector(begin, end)
         )
     }
 
-    pub fn subvector<'a, R>(&'a self, range: R) -> Vector<Subvector<&'a V, T>, T>
+    ///
+    /// Computes the subvector containing all elements with index within range 
+    /// that exist in this vector. In particular, this behaves like `into_subvector`
+    /// if the given range is completely contained in self.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// # use feanor_la::la::vec::*;
+    /// assert_eq!(Vector::<_, i64>::from_array([]), Vector::from_array([1, 2]).into_subvector_intersect(2..));
+    /// assert_eq!(Vector::from_array([2]), Vector::from_array([1, 2, 3]).into_subvector_intersect(1..2));
+    /// assert_eq!(Vector::<_, i64>::from_array([]), Vector::from_array([1, 2]).into_subvector_intersect(1..0));
+    /// ```
+    /// 
+    pub fn into_subvector_intersect<R>(self, range: R) -> Vector<V::Subvector, T>
+        where R: RangeBounds<usize>
+    {
+        let begin = std::cmp::max(0, match range.start_bound() {
+            Bound::Included(x) => *x,
+            Bound::Excluded(x) => x + 1,
+            Bound::Unbounded => 0,
+        });
+        let end = std::cmp::max(begin, std::cmp::min(self.len(), match range.end_bound() {
+            Bound::Included(x) => x + 1,
+            Bound::Excluded(x) => *x,
+            Bound::Unbounded => self.len(),
+        }));
+        return Vector::new(
+            self.data.subvector(begin, end)
+        )
+    }
+
+    pub fn subvector<'a, R>(&'a self, range: R) -> Vector<<&'a V as VectorView<T>>::Subvector, T>
         where R: RangeBounds<usize>
     {
         Vector::new(&self.data).into_subvector(range)
@@ -109,10 +140,56 @@ impl<V, T> Vector<V, T>
         Vector::new(&mut self.data)
     }
 
-    pub fn subvector_mut<'a, R>(&'a mut self, range: R) -> Vector<Subvector<&'a mut V, T>, T>
+    pub fn into_subvector_mut<R>(self, range: R) -> Vector<V::SubvectorMut, T>
+        where R: RangeBounds<usize>
+    {
+        Vector::new(V::cast_subvector(self.into_subvector(range).data))
+    }
+
+    ///
+    /// Look at `into_subvector_intersect()` to see how this differs from `subvector_mut()`.
+    /// 
+    pub fn into_subvector_mut_intersect<R>(self, range: R) -> Vector<V::SubvectorMut, T>
+        where R: RangeBounds<usize>
+    {
+        Vector::new(V::cast_subvector(self.into_subvector_intersect(range).data))
+    }
+
+    pub fn subvector_mut<'a, R>(&'a mut self, range: R) -> Vector<<&'a mut V as VectorViewMut<T>>::SubvectorMut, T>
         where R: RangeBounds<usize>
     {
         self.as_mut().into_subvector(range)
+    }
+
+    ///
+    /// Look at `into_subvector_intersect()` to see how this differs from `subvector_mut()`.
+    /// 
+    pub fn subvector_mut_intersect<'a, R>(&'a mut self, range: R) -> Vector<<&'a mut V as VectorViewMut<T>>::SubvectorMut, T>
+        where R: RangeBounds<usize>
+    {
+        self.as_mut().into_subvector_intersect(range)
+    }
+}
+
+impl<'a, V, T> Vector<&'a mut V, T>
+    where V: VectorViewMut<T>
+{
+    pub fn borrow<'b: 'a>(&'b mut self) -> Vector<&'b mut V, T> {
+        Vector::new(&mut *self.data)
+    }
+}
+
+impl<'a, T> Vector<&'a mut [T], T>
+{
+    pub fn split(self, mid: usize) -> (Self, Self) {
+        let (l, r) = self.data.split_at_mut(mid);
+        (Vector::new(l), Vector::new(r))
+    }
+    
+    pub fn borrow<'b>(&'b mut self) -> Vector<&'b mut [T], T>
+        where 'a: 'b
+    {
+        Vector::new(&mut *self.data)
     }
 }
 
@@ -204,14 +281,15 @@ impl<V, T> Vector<V, T>
     }
 }
 
+impl<T, const N: usize> Vector<VectorArray<T, N>, T> {
+    
+    pub fn from_array(data: [T; N]) -> Self {
+        Vector::new(VectorArray::new(data))
+    }
+}
+
 impl<T> Vector<VectorOwned<T>, T> {
     
-    pub fn from_array<const L: usize>(data: [T; L]) -> Self {
-        Vector::new(
-            <[T; L] as std::iter::IntoIterator>::into_iter(data).collect::<Vec<_>>()
-        )
-    }
-
     pub fn from_fn<F>(len: usize, f: F) -> Self
         where F: FnMut(usize) -> T
     {
@@ -299,24 +377,24 @@ impl<V, T> MulAssign<T> for Vector<V, T>
     }
 }
 
-impl<T> Vector<VectorConstant<T>, T>
+impl<T> Vector<ConstantVectorView<T>, T>
     where T: std::fmt::Debug + Clone
 {
     pub fn zero_ring<R>(len: usize, ring: &R) -> Self 
         where R: Ring<El = T>
     {
-        Vector::new(VectorConstant::new(len, ring.zero()))
+        Vector::new(ConstantVectorView::new(len, ring.zero()))
     }
 }
 
-impl<T> Vector<VectorConstant<T>, T> {
+impl<T> Vector<ConstantVectorView<T>, T> {
 
     pub fn constant(len: usize, c: T) -> Self {
-        Vector::new(VectorConstant::new(len, c))
+        Vector::new(ConstantVectorView::new(len, c))
     }
 }
 
-impl<T> Vector<VectorConstant<T>, T>
+impl<T> Vector<ConstantVectorView<T>, T>
     where T: Zero
 {
     pub fn zero(len: usize) -> Self {
@@ -324,11 +402,11 @@ impl<T> Vector<VectorConstant<T>, T>
     }
 }
 
-impl<T> Vector<VectorUnit<T>, T>
+impl<T> Vector<UnitVectorView<T>, T>
     where T: Zero + One
 {
     pub fn unit_vector(i: usize, len: usize) -> Self {
-        Vector::new(VectorUnit::new(len, i, T::zero(), T::one()))
+        Vector::new(UnitVectorView::new(len, i, T::zero(), T::one()))
     }
 }
 
@@ -344,4 +422,11 @@ impl<V, T> std::fmt::Display for Vector<V, T>
         write!(f, "]")?;
         return Ok(());
     }
+}
+
+#[test]
+fn test_subvector_subvector_same() {
+    let v = Vector::from_array([1, 2]);
+    let a: Vector<Subvector<&VectorArray<i64, 2>, i64>, i64> = v.subvector(..);
+    let b: Vector<Subvector<&VectorArray<i64, 2>, i64>, i64> = a.into_subvector(..);
 }

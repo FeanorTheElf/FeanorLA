@@ -2,7 +2,7 @@
 mod internal_definitions{
     pub use super::super::super::super::prelude::*;
     pub use super::super::super::super::la::vec::*;
-    pub use super::super::super::super::la::const_vector::*;
+    pub use super::super::super::super::la::vector_view_const::*;
     pub use super::super::super::ring_ext::*;
     pub use super::super::zn_small::*;
 

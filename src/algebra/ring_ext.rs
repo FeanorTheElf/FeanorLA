@@ -1,5 +1,4 @@
 use super::super::prelude::*;
-use super::super::wrapper::*;
 use super::poly::*;
 use super::super::la::mat::*;
 use super::super::la::algorithms::*;
@@ -10,11 +9,6 @@ use super::super::combinatorics::iters::*;
 use std::marker::PhantomData;
 use std::iter::FromIterator;
 
-///
-/// Represents a simple extension ring, i.e. a ring that is the result of adjoining
-/// one integral element to a base ring. The most notable special case is the one of
-/// an algebraic field extension. Some functionality is only available in this case.
-///
 #[derive(Clone)]
 pub struct SimpleRingExtension<R, V, W = VectorOwned<<R as RingBase>::El>>
     where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El>
@@ -125,10 +119,6 @@ impl<R, V, W> SimpleRingExtension<R, V, W>
 
     pub fn base_ring(&self) -> &R {
         &self.base_ring
-    }
-
-    pub fn is_field_extension(&self) -> RingPropValue {
-        self.base_ring.is_field() & self.is_field()
     }
 }
 

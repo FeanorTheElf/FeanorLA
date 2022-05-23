@@ -38,6 +38,8 @@ impl<T, M> Clone for MatrixRow<T, M>
 impl<T, M> VectorView<T> for MatrixRow<T, M> 
     where M: MatrixView<T>
 {
+    type Subvector = Subvector<Self, T>;
+
     fn len(&self) -> usize {
         self.matrix.col_count()
     }
@@ -46,11 +48,17 @@ impl<T, M> VectorView<T> for MatrixRow<T, M>
         self.assert_in_range(i);
         self.matrix.at(self.row, i)
     }
+
+    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+        Subvector::new(from, to, self)
+    }
 }
 
 impl<T, M> VectorViewMut<T> for MatrixRow<T, M> 
     where M: MatrixViewMut<T>
 {
+    type SubvectorMut = Subvector<Self, T>;
+
     fn at_mut(&mut self, i: usize) -> &mut T {
         self.assert_in_range(i);
         self.matrix.at_mut(self.row, i)
@@ -60,6 +68,10 @@ impl<T, M> VectorViewMut<T> for MatrixRow<T, M>
         self.assert_in_range(fst);
         self.assert_in_range(snd);
         self.matrix.swap((self.row, fst), (self.row, snd));
+    }
+    
+    fn cast_subvector(subvector: Self::Subvector) -> Self::SubvectorMut {
+        subvector
     }
 }
 
@@ -144,6 +156,8 @@ impl<T, M> Clone for MatrixCol<T, M>
 impl<T, M> VectorView<T> for MatrixCol<T, M> 
     where M: MatrixView<T>
 {
+    type Subvector = Subvector<Self, T>;
+
     fn len(&self) -> usize {
         self.matrix.row_count()
     }
@@ -152,11 +166,17 @@ impl<T, M> VectorView<T> for MatrixCol<T, M>
         self.assert_in_range(i);
         self.matrix.at(i, self.col)
     }
+
+    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+        Subvector::new(from, to, self)
+    }
 }
 
 impl<T, M> VectorViewMut<T> for MatrixCol<T, M> 
     where M: MatrixViewMut<T>
 {
+    type SubvectorMut = Subvector<Self, T>;
+
     fn at_mut(&mut self, i: usize) -> &mut T {
         self.assert_in_range(i);
         self.matrix.at_mut(i, self.col)
@@ -166,6 +186,10 @@ impl<T, M> VectorViewMut<T> for MatrixCol<T, M>
         self.assert_in_range(fst);
         self.assert_in_range(snd);
         self.matrix.swap((fst, self.col), (snd, self.col));
+    }
+
+    fn cast_subvector(subvector: Self::Subvector) -> Self::SubvectorMut {
+        subvector
     }
 }
 

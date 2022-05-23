@@ -38,7 +38,7 @@ const OBJECTIVE_ROW: usize = 0;
 /// to a certain column means something different.
 ///
 fn simplex<M, T>(mut table: Matrix<M, T>, basic_vars: &mut BasicVars) -> Result<(), SystemUnbounded> 
-    where M: MatrixMutRowIter<T>, T: FieldEl + PartialOrd + Clone + 'static
+    where M: MatrixViewMut<T>, T: FieldEl + PartialOrd + Clone + 'static
 {
     assert_eq!(table.row_count(), basic_vars.len() + 1);
     while let Some(pivot_col) = find_pivot_col(table.row(OBJECTIVE_ROW)) {
@@ -83,7 +83,7 @@ fn pivot<M, T>(
     pivot_col_index: usize,
     basic_vars: &mut BasicVars,
 ) -> Result<(), SystemUnbounded> 
-    where M: MatrixMutRowIter<T>, T: FieldEl + PartialOrd + Clone
+    where M: MatrixViewMut<T>, T: FieldEl + PartialOrd + Clone
 {
     // the variable with pivot column index replaces another
     // basic variable, i.e. we set the variable with index pivot
@@ -102,11 +102,11 @@ fn pivot<M, T>(
 /// Obviously requires that the entry at row_index, col_index is nonzero.
 /// 
 fn eliminate<M, T>(mut table: Matrix<M, T>, row_index: usize, col_index: usize) 
-    where M: MatrixMutRowIter<T>, T: FieldEl + PartialOrd + Clone
+    where M: MatrixViewMut<T>, T: FieldEl + PartialOrd + Clone
 {
     let pivot_value: T = table.at(row_index, col_index).clone();
     assert!(pivot_value != T::zero());
-    table.row_mut(row_index).mul_assign(T::one() / pivot_value);
+    table.as_mut().into_row(row_index).mul_assign(T::one() / pivot_value);
     for target_row_index in 0..table.row_count() {
         if target_row_index < row_index {
             let factor = table.at(target_row_index, col_index).clone();
@@ -181,7 +181,7 @@ fn add_artificials<M, T>(table: Matrix<M, T>) -> (Matrix<MatrixOwned<T>, T>, Bas
             *result.at_mut(row_index, col_index) = table.at(row_index - 1, col_index).clone();
         }
         if *result.at(row_index, 0) < T::zero() {
-            result.row_mut(row_index).mul_assign(-T::one());
+            result.as_mut().into_row(row_index).mul_assign(-T::one());
         }
         result.transform_two_dims_left(0, row_index, &[T::one(), T::one(), T::zero(), T::one()], &T::RING);
     }

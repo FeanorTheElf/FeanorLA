@@ -1,3 +1,4 @@
+pub mod karatsuba;
 pub mod eea;
 pub mod rat;
 pub mod fq;
