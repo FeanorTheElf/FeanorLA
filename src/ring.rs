@@ -1,7 +1,9 @@
 use super::bigint::*;
 use super::embedding::*;
+use super::primitive::*;
 use super::wrapper::*;
 use super::ring_property::*;
+use super::integer::*;
 
 use vector_map::VecMap;
 
@@ -124,40 +126,30 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
         self.add(lhs, self.neg(rhs))
     }
 
-    fn pow(&self, basis: &Self::El, exp: u32) -> Self::El 
-        where Self::El: Clone
+    fn pow(&self, basis: &Self::El, exp: u32) -> Self::El {
+        self.pow_generic(basis, &(exp as i64), &i64::RING)
+    }
+
+    fn pow_big(&self, basis: &Self::El, exp: &BigInt) -> Self::El {
+        self.pow_generic(basis, exp, &BigInt::RING)
+    }
+
+    fn pow_generic<R>(&self, basis: &Self::El, exp: &El<R>, exp_ring: &R) -> Self::El 
+        where Self::El: Clone, R: IntegerRing
     {
-        if exp == 0 {
+        assert!(exp_ring.cmp(&exp, &exp_ring.zero()) != std::cmp::Ordering::Less);
+        if exp_ring.is_zero(&exp) {
             return self.one();
         // cases 1 and 2 are not necessary for correctness, but will speed up the whole thing
-        } else if exp == 1 {
+        } else if exp_ring.is_one(&exp) {
             return basis.clone();
-        } else if exp == 2 {
+        } else if exp_ring.is_two(&exp) {
             return self.mul_ref(basis, basis);
         }
         let mut result = self.one();
-        for i in (0..=(31 - exp.leading_zeros())).rev() {
-            if (exp >> i) & 1 == 1 {
+        for i in (0..=exp_ring.abs_log2_floor(&exp)).rev() {
+            if exp_ring.abs_is_bit_set(&exp, i as u32) {
                 result = self.mul(self.mul_ref(basis, &result), result);
-            } else {
-                result = self.mul_ref(&result, &result);
-            }
-        }
-        return result;
-    }
-
-    fn pow_big(&self, basis: &Self::El, exp: &BigInt) -> Self::El 
-        where Self::El: Clone
-    {
-        assert!(*exp >= 0);
-        if exp.is_zero() {
-            return self.one();
-        }
-
-        let mut result = self.one();
-        for i in (0..(exp.abs_log2_floor() + 1)).rev() {
-            if exp.is_bit_set(i) {
-                result = self.mul(self.mul_ref(&result, &basis), result);
             } else {
                 result = self.mul_ref(&result, &result);
             }
@@ -168,6 +160,7 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     fn is_zero(&self, val: &Self::El) -> bool { self.eq(val, &self.zero()) }
     fn is_one(&self, val: &Self::El) -> bool { self.eq(val, &self.one()) }
     fn is_neg_one(&self, val: &Self::El) -> bool { self.eq(val, &self.neg(self.one())) }
+    fn is_two(&self, val: &Self::El) -> bool { self.eq(val, &self.from_z(2)) }
 
     fn characteristic(&self) -> BigInt;
     ///
@@ -190,19 +183,21 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     /// 
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El;
 
-    fn from_z_big(&self, x: &BigInt) -> Self::El {
-        if *x == 0 {
+    fn from_z_generic<R>(&self, x: &El<R>, ring: &R) -> Self::El
+        where R: IntegerRing
+    {
+        if ring.is_zero(x) {
             return self.zero();
         }
         let mut result = self.zero();
-        for i in (0..(x.abs_log2_floor() + 1)).rev() {
-            if x.is_bit_set(i) {
+        for i in (0..(ring.abs_log2_floor(x) + 1)).rev() {
+            if ring.abs_is_bit_set(x, i) {
                 result = self.add(self.add_ref(self.one(), &result), result);
             } else {
                 result = self.add_ref(result.clone(), &result);
             }
         }
-        if *x < 0 {
+        if ring.cmp(x, &ring.zero()) == std::cmp::Ordering::Less {
             return self.neg(result);
         } else {
             return result;
@@ -210,22 +205,11 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     }
 
     fn from_z(&self, x: i64) -> Self::El {
-        if x == 0 {
-            return self.zero();
-        }
-        let mut result = self.zero();
-        for i in (0..=(63 - x.abs().leading_zeros())).rev() {
-            if (x.abs() >> i) & 1 == 1 {
-                result = self.add(self.add_ref(self.one(), &result), result);
-            } else {
-                result = self.add_ref(result.clone(), &result);
-            }
-        }
-        if x < 0 {
-            return self.neg(result);
-        } else {
-            return result;
-        }
+        self.from_z_generic(&x, &i64::RING)
+    }
+
+    fn from_z_big(&self, x: &BigInt) -> Self::El {
+        self.from_z_generic(x, &BigInt::RING)
     }
 
     ///
@@ -510,9 +494,6 @@ impl<'a, R> OrderedRing for &'a R
 {
     fn cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering { (**self).cmp(lhs, rhs) }
 }
-
-#[cfg(test)]
-use super::primitive::*;
 
 #[test]
 fn test_pow() {

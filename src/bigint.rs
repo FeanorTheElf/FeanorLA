@@ -544,16 +544,6 @@ impl BigInt {
         }
     }
 
-    pub fn abs_log2_floor(&self) -> usize {
-        if let Some(d) = self.highest_set_block() {
-            return Self::BLOCK_BITS - self.data[d].leading_zeros() as usize - 1 + 
-                d * Self::BLOCK_BITS;
-        } else {
-            // the number is zero, so the result would be -inf
-            panic!("log2 is undefined for 0");
-        }
-    }
-
     ///
     /// Returns the float that is closest to the integer. Note that 
     /// if for very big numbers (with abs() in the order of magnitude 
@@ -617,63 +607,6 @@ impl BigInt {
     pub fn abs(mut self) -> BigInt {
         self.negative = false;
         return self;
-    }
-
-    pub fn log_floor(self, base: BigInt) -> BigInt {
-        let log_approx = self.to_float_approx().log(base.to_float_approx());
-        return BigInt::RING.find_zero_floor(
-            |x| base.clone().pow_big(x), 
-            BigInt::from_float_approx(log_approx).unwrap_or(BigInt::ZERO)
-        );
-    }
-
-    ///
-    /// Generates a uniformly random number from the range 0 to end_exclusive, using
-    /// entropy from the given rng.
-    /// 
-    /// The distribution may not be perfectly uniform, but within 
-    /// l1-statistical distance 2^(-statistical_distance_bound) of a true 
-    /// uniformly random distribution
-    /// 
-    pub fn get_uniformly_random_oorandom(
-        rng: &mut oorandom::Rand32,
-        end_exclusive: &BigInt,
-        statistical_distance_bound: usize
-    ) -> BigInt {
-        Self::get_uniformly_random(|| ((rng.rand_u32() as u64) << 32) | (rng.rand_u32() as u64), end_exclusive, statistical_distance_bound)
-    }
-
-    ///
-    /// Generates a uniformly random number from the range 0 to end_exclusive, using
-    /// entropy from the given rng.
-    /// 
-    /// The distribution may not be perfectly uniform, but within 
-    /// l1-statistical distance 2^(-statistical_distance_bound) of a true 
-    /// uniformly random distribution
-    /// 
-    pub fn get_uniformly_random<G>(
-        mut rng: G, 
-        end_exclusive: &BigInt, 
-        statistical_distance_bound: usize
-    ) -> BigInt 
-        where G: FnMut() -> u64
-    {
-        assert!(*end_exclusive > 0);
-        let k = statistical_distance_bound + end_exclusive.abs_log2_floor();
-        let random_blocks = k / Self::BLOCK_BITS + 1;
-        // generate a uniform random number in the range from 0 to 2^k 
-        // and take it modulo end_exclusive the number of bigints 
-        // between 0 and 2^k that give a fixed x differs at most by one. 
-        // Therefore the probability difference to get any to distinct 
-        // numbers is at most 1/2^k. The l1-distance
-        // between the distributions is therefore bounded 
-        // by n/2^k <= 2^(-statistical_distance_bound)
-        let mut result = BigInt {
-            data: (0..random_blocks).map(|_| rng()).collect(),
-            negative: false
-        };
-        result.abs_division(&end_exclusive);
-        return result;
     }
 
     pub fn highest_dividing_power_of_two(&self) -> usize {

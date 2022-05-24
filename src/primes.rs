@@ -41,14 +41,11 @@ pub fn miller_rabin(n: &BigInt, k: usize) -> bool {
     let n_minus_one = n.clone() - 1;
     let s = n_minus_one.highest_dividing_power_of_two();
     let d = n_minus_one.clone() >> s;
-    let Z_nZ = Zn::new(n.clone());
-
-    // Admitted, there is no calculation behind this choice
-    const STATISTICAL_DISTANCE_ERROR_BOUND: usize = 5;
+    let Z_nZ = Zn::new(n.clone(), &BigInt::RING);
 
     for _i in 0..k {
-        let a = Z_nZ.project(BigInt::get_uniformly_random_oorandom(
-            &mut rng, &n_minus_one, STATISTICAL_DISTANCE_ERROR_BOUND
+        let a = Z_nZ.project(BigInt::RING.get_uniformly_random_oorandom(
+            &mut rng, &n_minus_one
         ) + 1);
         let mut current = Z_nZ.pow_big(&a, &d);
         let mut miller_rabin_condition = Z_nZ.is_one(&current);
@@ -88,7 +85,7 @@ pub fn calc_factor(el: &BigInt) -> Option<BigInt> {
         if miller_rabin(&n, IS_PRIME_ERROR_BOUND) {
             return None;
         } else {
-            for i in 2..n.abs_log2_floor() {
+            for i in 2..BigInt::RING.abs_log2_floor(&n) {
                 if BigInt::RING.root_floor(&n, i).pow(i as u32) == n {
                     let root = BigInt::RING.root_floor(&n, i);
                     return Some(root);

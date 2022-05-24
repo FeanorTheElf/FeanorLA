@@ -5,6 +5,7 @@ pub mod rational_torsion_group;
 use super::ring::*;
 use super::bigint::*;
 use super::embedding::*;
+use super::integer::*;
 use super::wrapper::*;
 use super::la::mat::*;
 use super::fq::*;
@@ -255,8 +256,8 @@ impl<K> EllipticCurve<K>
         }
 
         let mut result = EllipticCurvePoint::Infinity;
-        for i in (0..(n.abs_log2_floor() + 1)).rev() {
-            if n.is_bit_set(i) {
+        for i in (0..(BigInt::RING.abs_log2_floor(n) + 1)).rev() {
+            if BigInt::RING.abs_is_bit_set(n, i) {
                 result = self.point_add(self.point_add(result.clone(), point.clone(), field), result, field);
             } else {
                 result = self.point_add(result.clone(), result, field);

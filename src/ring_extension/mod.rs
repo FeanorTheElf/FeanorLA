@@ -397,7 +397,7 @@ impl<R, V, W> FiniteRing for SimpleRingExtension<R, V, W>
     }
     
     fn random_element<G>(&self, mut rng: G) -> El<Self> 
-        where G: FnMut() -> u64
+        where G: FnMut() -> u32
     {
         Vector::new((0..self.degree()).map(|_| self.base_ring().random_element(&mut rng)).collect())
     }

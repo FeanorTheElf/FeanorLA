@@ -244,10 +244,10 @@ impl<const N: u64> FiniteRing for StaticRing<ZnElImpl<N, true>> {
     }
 
     fn random_element<G>(&self, mut rng: G) -> El<Self> 
-        where G: FnMut() -> u64
+        where G: FnMut() -> u32
     {
         let mut result = N;
-        let mask = (1u64 << (usize::BITS - N.leading_zeros())).wrapping_sub(1);
+        let mask = (1u32 << (1u32::BITS - N.leading_zeros())).wrapping_sub(1);
         while result >= N {
             result = rng() & mask;
         }
@@ -290,10 +290,10 @@ impl<const N: u64> FiniteRing for StaticRing<ZnElImpl<N, false>> {
     }
     
     fn random_element<G>(&self, mut rng: G) -> El<Self> 
-        where G: FnMut() -> u64
+        where G: FnMut() -> u32
     {
         let mut result = N;
-        let mask = (1u64 << (32 - N.leading_zeros())).wrapping_sub(1);
+        let mask = (1u32 << (u32::BITS - N.leading_zeros())).wrapping_sub(1);
         while result >= N {
             result = rng() & mask;
         }

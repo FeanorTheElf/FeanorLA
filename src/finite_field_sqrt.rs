@@ -19,7 +19,7 @@ pub fn sqrt<F: FiniteRing + HashableElRing>(x: El<F>, field: F) -> Option<El<F>>
     }
     let ring: SimpleRingExtension<_, _, VectorArray<_, 2>> = SimpleRingExtension::new(&field, Vector::from_array([x, field.zero()]));
     loop {
-        let g = ring.random_element(|| ((rng.rand_u32() as u64) << 32) | (rng.rand_u32() as u64));
+        let g = ring.random_element(|| rng.rand_u32());
         let h = ring.pow_big(&g, &n);
         if !ring.is_one(&h) && !ring.is_neg_one(&h) {
             let factor = ring.sub(h, ring.one());

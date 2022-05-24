@@ -556,7 +556,7 @@ fn test_factor() {
 
 #[test]
 fn test_is_prime() {
-    let coeff_ring = Zn::new(BigInt::from(3));
+    let coeff_ring = Zn::new(BigInt::from(3), &BigInt::RING);
     let ring = PolyRing::adjoint(coeff_ring, "X");
     let x = ring.bind(ring.unknown());
 

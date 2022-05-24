@@ -1,6 +1,7 @@
 use super::super::prelude::*;
 use super::super::eea::*;
 use super::super::fq::*;
+use super::super::integer::*;
 use super::uni_var::*;
 use super::ops::*;
 
@@ -16,8 +17,8 @@ fn pow_mod_f<F>(poly_ring: &PolyRing<F>, g: &El<PolyRing<F>>, f: &El<PolyRing<F>
         return poly_ring.one();
     }
     let mut result = poly_ring.one();
-    for i in (0..(pow.abs_log2_floor() + 1)).rev() {
-        if pow.is_bit_set(i) {
+    for i in (0..(BigInt::RING.abs_log2_floor(pow) + 1)).rev() {
+        if BigInt::RING.abs_is_bit_set(pow, i) {
             result = poly_ring.mul(poly_ring.mul_ref(&result, g), result);
         } else {
             result = poly_ring.mul_ref(&result, &result);
@@ -99,7 +100,7 @@ pub fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<El
         let mut power_x = poly_ring.one();
         for _ in 0..(2 * d - 1) {
             T = poly_ring.add(T, poly_ring.mul(
-                poly_ring.from_z_big(&BigInt::get_uniformly_random_oorandom(&mut rng, p, 5)),
+                poly_ring.from_z_big(&BigInt::RING.get_uniformly_random_oorandom(&mut rng, p)),
                 power_x.clone()
             ));
             power_x = poly_ring.mul(power_x, poly_ring.unknown());

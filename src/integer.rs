@@ -5,10 +5,23 @@ use super::bigint::*;
 use super::wrapper::*;
 use std::cmp::Ordering;
 
-pub trait IntegerRing: OrderedRing + CanonicalIsomorphismInfo<StaticRing<i64>> + CanonicalIsomorphismInfo<BigIntRing> {
+pub trait IntegerRing: OrderedRing + EuclideanInfoRing + CanonicalIsomorphismInfo<StaticRing<i64>> + CanonicalIsomorphismInfo<BigIntRing> {
 
-    fn to_float_approx(&self, el: &Self::El) -> f64;
-    fn from_float_approx(&self, el: f64) -> Option<Self::El>;
+    fn to_float_approx(&self, el: &Self::El) -> f64 {
+        0.
+    }
+
+    fn from_float_approx(&self, el: f64) -> Option<Self::El> {
+        None
+    }
+
+    fn mul_pow_2(&self, el: El<Self>, power: u32) -> El<Self> {
+        self.mul(el, self.pow(&self.from_z(2), power))
+    }
+
+    fn floor_div_pow_2(&self, el: El<Self>, power: u32) -> El<Self> {
+        self.floor_div(el, &self.pow(&self.from_z(2), power))
+    }
     
     ///
     /// Given an increasing, continuous function f: R -> R that is negative for some x1 and 
@@ -29,7 +42,7 @@ pub trait IntegerRing: OrderedRing + CanonicalIsomorphismInfo<StaticRing<i64>> +
     /// time required for computing f on a value between x - d and x + d.
     /// 
     fn find_zero_floor<F>(&self, mut f: F, approx: Self::El) -> Self::El
-        where F: FnMut(&Self::El) -> Self::El, Self: OrderedRing + EuclideanInfoRing
+        where F: FnMut(&Self::El) -> Self::El
     {
         let mut begin = approx.clone();
         let mut step = self.one();
@@ -47,9 +60,7 @@ pub trait IntegerRing: OrderedRing + CanonicalIsomorphismInfo<StaticRing<i64>> +
         return self.bisect(f, begin, end);
     }
 
-    fn floor_div(&self, a: Self::El, b: &Self::El) -> Self::El 
-        where Self: OrderedRing + EuclideanInfoRing
-    {
+    fn floor_div(&self, a: Self::El, b: &Self::El) -> Self::El {
         let (q, r) = self.euclidean_div_rem(a.clone(), b);
         if self.cmp(&r, &self.zero()) == Ordering::Less {
             self.sub(q, self.one())
@@ -71,8 +82,7 @@ pub trait IntegerRing: OrderedRing + CanonicalIsomorphismInfo<StaticRing<i64>> +
     /// begin and end. 
     /// 
     fn bisect<F>(&self, mut f: F, mut start: Self::El, mut end: Self::El) -> Self::El
-        where F: FnMut(&Self::El) -> Self::El,
-            Self: OrderedRing + EuclideanInfoRing
+        where F: FnMut(&Self::El) -> Self::El
     {
         assert!(self.cmp(&f(&start), &self.zero()) != Ordering::Greater);
         assert!(self.cmp(&f(&end), &self.zero()) != Ordering::Less);
@@ -120,9 +130,7 @@ pub trait IntegerRing: OrderedRing + CanonicalIsomorphismInfo<StaticRing<i64>> +
         }
     }
 
-    fn abs(&self, el: Self::El) -> Self::El
-        where Self: OrderedRing
-    {
+    fn abs(&self, el: Self::El) -> Self::El {
         if self.cmp(&el, &self.zero()) == Ordering::Less {
             self.neg(el)
         } else {
@@ -139,22 +147,74 @@ pub trait IntegerRing: OrderedRing + CanonicalIsomorphismInfo<StaticRing<i64>> +
     /// will be quite fast on most inputs due to internal use of floating
     /// point approximations.
     /// 
-    fn root_floor(&self, el: &Self::El, n: usize) -> Self::El
-        where Self: OrderedRing + EuclideanInfoRing
-    {
+    fn root_floor(&self, el: &Self::El, n: u32) -> Self::El {
         assert!(n > 0);
         let root_approx = self.to_float_approx(el).powf(1. / n as f64);
         if n % 2 == 0 {
             return self.find_zero_floor(
-                |x| self.sub_ref_snd(self.mul(self.abs(x.clone()), self.pow(x, (n - 1) as u32)), el), 
+                |x| self.sub_ref_snd(self.mul(self.abs(x.clone()), self.pow(x, n - 1)), el), 
                 self.from_float_approx(root_approx).unwrap_or(self.zero())
             );
         } else {
             return self.find_zero_floor(
-                |x| self.sub_ref_snd(self.pow(x, n as u32), el), 
+                |x| self.sub_ref_snd(self.pow(x, n), el), 
                 self.from_float_approx(root_approx).unwrap_or(self.zero())
             );
         }
+    }
+    
+    fn log_floor(&self, x: El<Self>, base: El<Self>) -> El<Self> {
+        let log_approx = self.to_float_approx(&x).log(self.to_float_approx(&base));
+        return self.find_zero_floor(
+            |x| self.pow_big(&base, &self.preimage(&BigInt::RING, *x)), 
+            self.from_float_approx(log_approx).unwrap_or(self.zero())
+        );
+    }
+
+    ///
+    /// Generates a uniformly random number from the range 0 to end_exclusive, using
+    /// entropy from the given rng.
+    /// 
+    fn get_uniformly_random_oorandom(
+        &self,
+        rng: &mut oorandom::Rand32,
+        end_exclusive: &El<Self>
+    ) -> El<Self> {
+        self.get_uniformly_random(|| rng.rand_u32(), end_exclusive)
+    }
+
+    ///
+    /// Generates a uniformly random number from the range 0 to end_exclusive, using
+    /// entropy from the given rng.
+    /// 
+    fn get_uniformly_random<G>(
+        &self,
+        mut rng: G, 
+        end_exclusive: &El<Self>
+    ) -> El<Self> 
+        where G: FnMut() -> u32
+    {
+        assert!(self.cmp(&end_exclusive, &self.zero()) == Ordering::Greater);
+        let bits = self.abs_log2_floor(end_exclusive) + 1;
+        loop {
+            let top_bits = bits % u32::BITS;
+            let mut element = self.from_z((rng() & ((1 << top_bits) - 1)) as i64);
+            for _ in 0..(bits / u32::BITS) {
+                element = self.mul_pow_2(element, u32::BITS);
+                element = self.add(element, self.from_z(rng() as i64));
+            }
+            if self.cmp(&element, end_exclusive) == Ordering::Less {
+                return element;
+            }
+        }
+    }
+
+    fn abs_log2_floor(&self, x: &El<Self>) -> u32 {
+        self.preimage(&i64::RING, self.log_floor(self.abs(x.clone()), self.from_z(2))) as u32
+    }
+
+    fn abs_is_bit_set(&self, x: &El<Self>, index: u32) -> bool {
+        self.is_one(&self.euclidean_rem(self.floor_div_pow_2(self.abs(x.clone()), index), &self.from_z(2)))
     }
 }
 
@@ -162,7 +222,10 @@ impl<'a, R: IntegerRing> IntegerRing for &'a R {
 
     fn to_float_approx(&self, el: &Self::El) -> f64 { (**self).to_float_approx(el) }
     fn from_float_approx(&self, el: f64) -> Option<Self::El>  { (**self).from_float_approx(el) }
-
+    fn abs_log2_floor(&self, x: &El<Self>) -> u32 { (**self).abs_log2_floor(x) }
+    fn abs_is_bit_set(&self, x: &El<Self>, index: u32) -> bool { (**self).abs_is_bit_set(x, index) }
+    fn mul_pow_2(&self, el: El<Self>, power: u32) -> El<Self> { (**self).mul_pow_2(el, power) }
+    fn floor_div_pow_2(&self, el: El<Self>, power: u32) -> El<Self> { (**self).floor_div_pow_2(el, power) }
 }
 
 impl IntegerRing for StaticRing<i64> {
@@ -173,6 +236,11 @@ impl IntegerRing for StaticRing<i64> {
 
     fn from_float_approx(&self, el: f64) -> Option<Self::El>  {
         Some(el as i64)
+    }
+
+    fn abs_log2_floor(&self, x: &El<Self>) -> u32 {
+        assert!(*x != 0);
+        u64::BITS - (x.abs() - 1).leading_zeros()
     }
 }
 
@@ -198,6 +266,9 @@ impl<R: IntegerRing> IntegerRing for WrappingRing<R> {
     }
 }
 
+#[cfg(test)]
+use std::collections::HashSet;
+
 #[test]
 fn test_find_zero_floor() {
     let f = |x: &BigInt| BigInt::RING.mul_ref(x, x) - 234867;
@@ -211,4 +282,31 @@ fn test_find_zero_floor() {
 fn test_root_floor() {
     let n = BigInt::from(7681).pow(32);
     assert_eq!(BigInt::from(7681), BigInt::RING.root_floor(&n, 32));
+}
+
+#[test]
+fn test_i64_abs_log2_floor() {
+    assert_eq!(0, i64::RING.abs_log2_floor(&1));
+    assert_eq!(1, i64::RING.abs_log2_floor(&2));
+    assert_eq!(1, i64::RING.abs_log2_floor(&3));
+    assert_eq!(2, i64::RING.abs_log2_floor(&4));
+}
+
+#[test]
+fn test_i64_abs_is_bit_set() {
+    assert_eq!(true, i64::RING.abs_is_bit_set(&5, 0));
+    assert_eq!(false, i64::RING.abs_is_bit_set(&5, 1));
+    assert_eq!(true, i64::RING.abs_is_bit_set(&5, 2));
+    assert_eq!(false, i64::RING.abs_is_bit_set(&5, 3));
+}
+
+#[test]
+fn test_get_uniformly_random() {
+    let mut counter = 10128842;
+    let mut rng = || {
+        counter += 1;
+        return counter;
+    };
+    let random_elements = (0..30).map(|_| i64::RING.get_uniformly_random(&mut rng, &5)).collect::<HashSet<_>>();
+    assert_eq!([0, 1, 2, 3, 4].iter().copied().collect::<HashSet<_>>(), random_elements);
 }
