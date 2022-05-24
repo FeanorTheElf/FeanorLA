@@ -20,6 +20,8 @@ pub trait FiniteRing : Ring {
 
     fn size(&self) -> BigInt;
     fn iter_fn(&self) -> Self::IterFn;
+    fn random_element<G>(&self, rng: G) -> El<Self> 
+        where G: FnMut() -> u64;
 }
 
 impl<'a, R> FiniteRing for &'a R
@@ -29,6 +31,11 @@ impl<'a, R> FiniteRing for &'a R
 
     fn size(&self) -> BigInt { (**self).size() }
     fn iter_fn(&self) -> Self::IterFn { (**self).iter_fn() }
+
+    fn random_element<G>(&self, rng: G) -> El<Self> 
+        where G: FnMut() -> u64 {
+            (**self).random_element(rng)
+        }
 }
 
 pub struct WrappingRingIterFn<R: FiniteRing> {
@@ -65,6 +72,12 @@ impl<R> FiniteRing for WrappingRing<R>
         WrappingRingIterFn {
             base_fn: self.wrapped_ring().iter_fn()
         }
+    }
+
+    fn random_element<G>(&self, rng: G) -> El<Self> 
+        where G: FnMut() -> u64
+    {
+        self.wrapped_ring().clone().bind_by_value(self.wrapped_ring().random_element(rng))
     }
 }
 

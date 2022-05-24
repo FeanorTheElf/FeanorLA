@@ -38,6 +38,7 @@ pub mod ring_extension;
 pub mod primes;
 pub mod diophantine;
 pub mod elliptic_curve;
+pub mod finite_field_sqrt;
 
 #[cfg(test)]
 pub mod benchmarks;

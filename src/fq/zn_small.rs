@@ -4,7 +4,7 @@ use super::super::primitive::*;
 
 use std::ops::{AddAssign, MulAssign, SubAssign, DivAssign, Add, Mul, Sub, Div, Neg};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ZnElImpl<const N: u64, const IS_FIELD: bool> {
     repr: u64
 }
@@ -241,6 +241,17 @@ impl<const N: u64> FiniteRing for StaticRing<ZnElImpl<N, true>> {
             current: -1
         }
     }
+
+    fn random_element<G>(&self, mut rng: G) -> El<Self> 
+        where G: FnMut() -> u64
+    {
+        let mut result = N;
+        let mask = (1u64 << (usize::BITS - N.leading_zeros())).wrapping_sub(1);
+        while result >= N {
+            result = rng() & mask;
+        }
+        return ZnElImpl::project(result as i64);
+    }
 }
 
 impl<const N: u64> DivisibilityInfoRing for StaticRing<ZnElImpl<N, false>> {
@@ -275,6 +286,17 @@ impl<const N: u64> FiniteRing for StaticRing<ZnElImpl<N, false>> {
         StaticZnIterFn {
             current: -1
         }
+    }
+    
+    fn random_element<G>(&self, mut rng: G) -> El<Self> 
+        where G: FnMut() -> u64
+    {
+        let mut result = N;
+        let mask = (1u64 << (32 - N.leading_zeros())).wrapping_sub(1);
+        while result >= N {
+            result = rng() & mask;
+        }
+        return ZnElImpl::project(result as i64);
     }
 }
 

@@ -1,5 +1,4 @@
 use super::super::prelude::*;
-use super::super::la::mat::*;
 use super::super::eea::*;
 use super::super::fq::*;
 use super::uni_var::*;

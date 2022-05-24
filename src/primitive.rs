@@ -461,14 +461,6 @@ impl<T: std::fmt::Display + std::fmt::Debug> DisplayOrDebug for T {
     }
 }
 
-impl<T> PartialEq for StaticRingImpl<T::Axioms, T> 
-    where T: RingEl
-{
-    fn eq(&self, _rhs: &Self) -> bool {
-        true
-    }
-}
-
 impl<T> RingBase for StaticRingImpl<T::Axioms, T>
     where T: RingEl
 {
@@ -516,6 +508,14 @@ impl<T> EuclideanInfoRing for StaticRingImpl<RingAxiomsEuclidean, T>
 
     fn euclidean_deg(&self, el: Self::El) -> BigInt {
         el.euclidean_deg()
+    }
+}
+
+impl<T> HashableElRing for StaticRingImpl<T::Axioms, T> 
+    where T: RingEl + std::hash::Hash
+{
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H, el: &Self::El) {
+        el.hash(h)
     }
 }
 

@@ -396,6 +396,22 @@ impl<R, V, W> FiniteRing for SimpleRingExtension<R, V, W>
             vector_type: PhantomData
         }
     }
+    
+    fn random_element<G>(&self, mut rng: G) -> El<Self> 
+        where G: FnMut() -> u64
+    {
+        Vector::new((0..self.degree()).map(|_| self.base_ring().random_element(&mut rng)).collect())
+    }
+}
+
+impl<R, V, W> HashableElRing for SimpleRingExtension<R, V, W>
+    where  R: HashableElRing, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
+{
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H, el: &Self::El) {
+        for x in el.iter() {
+            self.base_ring().hash(h, x);
+        }
+    }
 }
 
 #[cfg(test)]

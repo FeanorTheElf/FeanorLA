@@ -106,6 +106,12 @@ impl FiniteRing for Zn {
             current: BigInt::from(-1)
         }
     }
+
+    fn random_element<G>(&self, rng: G) -> El<Self> 
+        where G: FnMut() -> u64
+    {
+        FactorRingZEl(BigInt::get_uniformly_random(rng, &self.modulus, 5))
+    }
 }
 
 #[derive(Debug, Clone)]
