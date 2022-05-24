@@ -89,7 +89,7 @@ impl<R> FieldOfFractions<R>
     where R: DivisibilityInfoRing
 {
     pub fn in_base_ring(&self, (num, den): &El<Self>) -> Option<R::El> {
-        assert!(self.base_ring.is_divisibility_computable());
+        assert!(self.base_ring.is_divisibility_computable().can_use());
         self.base_ring.quotient(num, den)
     }
 }
@@ -303,8 +303,8 @@ impl<R: IntegerRing> RationalField for FieldOfFractions<R> {
 impl<R> DivisibilityInfoRing for FieldOfFractions<R>
     where R: Ring
 {
-    fn is_divisibility_computable(&self) -> bool {
-        true
+    fn is_divisibility_computable(&self) -> RingPropValue {
+        RingPropValue::True
     }
 
     fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {

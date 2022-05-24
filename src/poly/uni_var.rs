@@ -257,12 +257,12 @@ impl<R> RingBase for PolyRing<R>
 impl<R> DivisibilityInfoRing for PolyRing<R> 
     where R: DivisibilityInfoRing + CanonicalIsomorphismInfo<R>
 {
-    fn is_divisibility_computable(&self) -> bool {
+    fn is_divisibility_computable(&self) -> RingPropValue {
         self.base_ring.is_divisibility_computable()
     }
 
     fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
-        assert!(self.is_divisibility_computable());
+        assert!(self.is_divisibility_computable().can_use());
         assert!(!self.is_zero(rhs));
         let lc = self.lc(rhs).unwrap();
         let mut p = lhs.clone();
@@ -279,7 +279,7 @@ impl<R> DivisibilityInfoRing for PolyRing<R>
     }
 
     fn is_unit(&self, el: &Self::El) -> bool {
-        assert!(self.is_divisibility_computable());
+        assert!(self.is_divisibility_computable().can_use());
         self.deg(el).map(|d| d == 0).unwrap_or(false) && self.base_ring.is_unit(&el[0])
     }
 }

@@ -1,5 +1,4 @@
 use super::super::prelude::*;
-use super::super::la::mat::*;
 use super::uni_var::*;
 
 use std::ops::Index;
@@ -429,7 +428,7 @@ impl<R> RingBase for MultivariatePolyRing<R>
 impl<R> DivisibilityInfoRing for MultivariatePolyRing<R> 
     where R: DivisibilityInfoRing
 {
-    fn is_divisibility_computable(&self) -> bool {
+    fn is_divisibility_computable(&self) -> RingPropValue {
         self.base_ring.is_divisibility_computable()
     }
 

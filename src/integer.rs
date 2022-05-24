@@ -5,7 +5,7 @@ use super::bigint::*;
 use super::wrapper::*;
 use std::cmp::Ordering;
 
-pub trait IntegerRing: Ring + CanonicalIsomorphismInfo<StaticRing<i64>> + CanonicalIsomorphismInfo<BigIntRing> {
+pub trait IntegerRing: OrderedRing + CanonicalIsomorphismInfo<StaticRing<i64>> + CanonicalIsomorphismInfo<BigIntRing> {
 
     fn to_float_approx(&self, el: &Self::El) -> f64;
     fn from_float_approx(&self, el: f64) -> Option<Self::El>;
@@ -99,9 +99,7 @@ pub trait IntegerRing: Ring + CanonicalIsomorphismInfo<StaticRing<i64>> + Canoni
         }
     }
 
-    fn abs_cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering
-        where Self: OrderedRing
-    {
+    fn abs_cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering {
         let zero = self.zero();
         match (self.cmp(&lhs, &zero), self.cmp(&rhs, &zero)) {
             (Ordering::Equal, Ordering::Equal) => Ordering::Equal,

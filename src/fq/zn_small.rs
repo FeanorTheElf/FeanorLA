@@ -1,6 +1,7 @@
-use super::super::eea::*;
 use super::*;
+use super::super::eea::*;
 use super::super::primitive::*;
+use super::super::prelude::*;
 
 use std::ops::{AddAssign, MulAssign, SubAssign, DivAssign, Add, Mul, Sub, Div, Neg};
 
@@ -256,8 +257,8 @@ impl<const N: u64> FiniteRing for StaticRing<ZnElImpl<N, true>> {
 
 impl<const N: u64> DivisibilityInfoRing for StaticRing<ZnElImpl<N, false>> {
     
-    fn is_divisibility_computable(&self) -> bool {
-        true
+    fn is_divisibility_computable(&self) -> RingPropValue {
+        RingPropValue::True
     }
 
     fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {

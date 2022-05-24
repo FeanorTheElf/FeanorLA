@@ -211,8 +211,8 @@ impl RingBase for Zn {
 
 impl DivisibilityInfoRing for Zn {
     
-    fn is_divisibility_computable(&self) -> bool {
-        true
+    fn is_divisibility_computable(&self) -> RingPropValue {
+        RingPropValue::True
     }
     
     fn quotient(&self, FactorRingZEl(lhs): &Self::El, FactorRingZEl(rhs): &Self::El) -> Option<Self::El> {

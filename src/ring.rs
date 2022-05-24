@@ -26,6 +26,15 @@ impl<'a, R> std::fmt::Display for RingElDisplay<'a, R>
 /// is not provided, this is mainly an interface that can be used for algorithms 
 /// that deal with ring elements.
 /// 
+/// # Further properties
+/// 
+/// Further properties a ring can have are represented by subtraits, e.g.
+/// `EuclideanInfoRing` or `DivisibilityInfoRing`. Note that implementing such a
+/// trait means that objects of that type can have the property, not that they
+/// necessarily have to. Each of those subtraits provides a function to check
+/// whether a ring object has the property at runtime. This is necessary, as
+/// the check might require information only available at runtime.
+/// 
 /// # Value vs Reference design rationale
 /// 
 /// Types that are cheap to copy can be used with the dd/sub()-functions, 
@@ -69,7 +78,7 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     /// mutable reference, then call add_ref and fill the result in again. However,
     /// if the underlying add-call panics, there is no value to fill in again.
     /// Usually, this is irrelevant, as the variable on which add_assign is called
-    /// goes out of scope by the panic, if however the panic is caught (might requrie
+    /// goes out of scope by the panic, if however the panic is caught (might require
     /// unsafe code due to UnwindSafe ???), this is not the case and the value can
     /// be accessed later. In this case, it will be filled with invalid().
     /// 
@@ -351,7 +360,7 @@ pub trait DivisibilityInfoRing : Ring {
     ///
     /// Returns whether this ring supports computing divisibility information.
     /// 
-    fn is_divisibility_computable(&self) -> bool;
+    fn is_divisibility_computable(&self) -> RingPropValue;
 
     ///
     /// Checks whether one element divides another.
@@ -387,7 +396,7 @@ pub trait DivisibilityInfoRing : Ring {
 impl<'a, R> DivisibilityInfoRing for &'a R
     where R: DivisibilityInfoRing
 {
-    fn is_divisibility_computable(&self) -> bool { (**self).is_divisibility_computable() }
+    fn is_divisibility_computable(&self) -> RingPropValue { (**self).is_divisibility_computable() }
     fn is_divisible_by(&self, lhs: &Self::El, rhs: &Self::El) -> bool { (**self).is_divisible_by(lhs, rhs) }
     fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> { (**self).quotient(lhs, rhs) }
     fn is_unit(&self, el: &Self::El) -> bool { (**self).is_unit(el) }

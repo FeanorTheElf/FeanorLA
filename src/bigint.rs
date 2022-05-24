@@ -1171,8 +1171,8 @@ impl DivisibilityInfoRing for BigIntRing {
         }
     }
 
-    fn is_divisibility_computable(&self) -> bool {
-        true
+    fn is_divisibility_computable(&self) -> RingPropValue {
+        RingPropValue::True
     }
 
     fn is_unit(&self, el: &Self::El) -> bool {

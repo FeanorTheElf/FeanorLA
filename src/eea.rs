@@ -1,6 +1,7 @@
 use super::ring::*;
 
 use std::mem::swap;
+use std::cmp::Ordering;
 
 ///
 /// For a, b computes s, t, d such that `s*a + t*b == d` is a greatest 
@@ -55,24 +56,22 @@ pub fn eea<R>(ring: &R, fst: R::El, snd: R::El) -> (R::El, R::El, R::El)
 /// `signed_eea(0, 0) == (0, 0, 0)`
 /// 
 pub fn signed_eea<R>(fst: R::El, snd: R::El, ring: &R) -> (R::El, R::El, R::El)
-    where R: EuclideanInfoRing, R::El: Ord
+    where R: OrderedRing + EuclideanInfoRing
 {
-    if fst == ring.zero() {
-        if snd == ring.zero() {
-            return (ring.zero(), ring.zero(), ring.zero());
-        } else if snd < ring.zero() {
-            return (ring.zero(), ring.neg(ring.one()), ring.neg(snd));
-        } else {
-            return (ring.zero(), ring.one(), snd);
-        }
+    if ring.is_zero(&fst) {
+        return match ring.cmp(&snd, &ring.zero()) {
+            Ordering::Equal => (ring.zero(), ring.zero(), ring.zero()),
+            Ordering::Less => (ring.zero(), ring.neg(ring.one()), ring.neg(snd)),
+            Ordering::Greater => (ring.zero(), ring.one(), snd)
+        };
     }
-    let fst_negative = fst < ring.zero();
+    let fst_negative = ring.cmp(&fst, &ring.zero());
 
     let (s, t, d) = eea(ring, fst, snd);
     
     // the sign is not consistent (potentially toggled each iteration), 
     // so normalize here
-    if (d < ring.zero()) == fst_negative {
+    if ring.cmp(&d, &ring.zero()) == fst_negative {
         return (s, t, d);
     } else {
         return (ring.neg(s), ring.neg(t), ring.neg(d));
@@ -139,7 +138,7 @@ pub fn gcd<R>(ring: &R, a: R::El, b: R::El) -> R::El
 /// gcd(0, 0) = 0
 /// 
 pub fn signed_gcd<R>(a: R::El, b: R::El, ring: &R) -> R::El
-    where R: EuclideanInfoRing, R::El: Ord
+    where R: EuclideanInfoRing + OrderedRing
 {
     let (_, _, d) = signed_eea(a, b, ring);
     return d;

@@ -291,7 +291,7 @@ impl<R> Div<RingElWrapper<R>> for RingElWrapper<R>
     where R: DivisibilityInfoRing
 {
     fn div(self, rhs: RingElWrapper<R>) -> Self::Output {
-        assert!(self.ring.is_divisibility_computable());
+        assert!(self.ring.is_divisibility_computable().can_use());
         assert!(!self.ring.is_zero(rhs.val()));
         RingElWrapper {
             el: self.ring.quotient(&self.el, &rhs.el).unwrap(),
@@ -329,7 +329,7 @@ impl<'a, R> Div<&'a RingElWrapper<R>> for RingElWrapper<R>
     where R: DivisibilityInfoRing
 {
     fn div(self, rhs: &'a RingElWrapper<R>) -> Self::Output {
-        assert!(self.ring.is_divisibility_computable());
+        assert!(self.ring.is_divisibility_computable().can_use());
         RingElWrapper {
             el: self.ring.quotient(&self.el, &rhs.el).unwrap(),
             ring: self.ring
@@ -467,7 +467,7 @@ impl<R> Div<i64> for RingElWrapper<R>
     where R: DivisibilityInfoRing
 {
     fn div(self, rhs: i64) -> Self::Output {
-        assert!(self.ring.is_divisibility_computable());
+        assert!(self.ring.is_divisibility_computable().can_use());
         assert!(rhs != 0);
         RingElWrapper {
             el: self.ring.quotient(&self.el, &(&self.ring).from_z(rhs)).unwrap(),
@@ -487,6 +487,22 @@ impl<R> Rem<RingElWrapper<R>> for RingElWrapper<R>
             el: self.ring.euclidean_rem(self.el, &rhs.el),
             ring: self.ring
         }
+    }
+}
+
+impl<R> std::cmp::PartialOrd for RingElWrapper<R>
+    where R: OrderedRing
+{
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<R> std::cmp::Ord for RingElWrapper<R>
+    where R: OrderedRing
+{
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.ring.cmp(&self.el, &other.el)
     }
 }
 
@@ -782,7 +798,7 @@ impl<R> OrderedRing for WrappingRing<R>
 impl<R> DivisibilityInfoRing for WrappingRing<R>
     where R: DivisibilityInfoRing
 {
-    fn is_divisibility_computable(&self) -> bool {
+    fn is_divisibility_computable(&self) -> RingPropValue {
         self.ring.is_divisibility_computable()
     }
 

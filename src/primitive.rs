@@ -522,8 +522,8 @@ impl<T> HashableElRing for StaticRingImpl<T::Axioms, T>
 impl<T> DivisibilityInfoRing for StaticRingImpl<RingAxiomsEuclidean, T> 
     where T: EuclideanEl
 {
-    fn is_divisibility_computable(&self) -> bool {
-        true
+    fn is_divisibility_computable(&self) -> RingPropValue {
+        RingPropValue::True
     }
 
     fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
@@ -586,8 +586,8 @@ impl<T> RingBase for StaticRingImpl<RingAxiomsField, T>
 impl<T> DivisibilityInfoRing for StaticRingImpl<RingAxiomsField, T> 
     where T: FieldEl
 {
-    fn is_divisibility_computable(&self) -> bool {
-        true
+    fn is_divisibility_computable(&self) -> RingPropValue {
+        RingPropValue::True
     }
 
     fn is_divisible_by(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
@@ -606,6 +606,14 @@ impl<T> DivisibilityInfoRing for StaticRingImpl<RingAxiomsField, T>
 
     fn is_unit(&self, el: &Self::El) -> bool {
         !self.is_zero(el)
+    }
+}
+
+impl<T> OrderedRing for StaticRingImpl<T::Axioms, T> 
+    where T: RingEl + Ord
+{
+    fn cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering {
+        lhs.cmp(rhs)
     }
 }
 

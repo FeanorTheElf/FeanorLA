@@ -1,6 +1,5 @@
 use super::prelude::*;
 use super::poly::*;
-use super::la::mat::*;
 use super::la::inversion::*;
 use super::poly::ops::poly_format;
 use super::fq::*;
@@ -331,9 +330,9 @@ impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
 impl<R, V, W> DivisibilityInfoRing for SimpleRingExtension<R, V, W>
     where R: Ring, for<'a> PolyRing<&'a R>: UfdInfoRing, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
-    fn is_divisibility_computable(&self) -> bool {
+    fn is_divisibility_computable(&self) -> RingPropValue {
         // currently only implemented in case we have a field
-        self.is_field().can_use()
+        self.is_field()
     }
 
     fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
