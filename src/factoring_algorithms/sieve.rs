@@ -1,7 +1,7 @@
 use super::super::ring::*;
 use super::super::la::mat::*;
 use super::super::la::inversion::*;
-use super::super::bigint::*;
+use super::super::integer::*;
 use super::super::primitive::*;
 use super::super::fq::zn_small::*;
 use super::super::eea::*;

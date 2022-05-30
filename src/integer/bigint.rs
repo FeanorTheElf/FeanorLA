@@ -1,10 +1,10 @@
-use super::ring::*;
-use super::embedding::*;
-use super::primitive::*;
-use super::ring_property::*;
+use super::super::ring::*;
+use super::super::embedding::*;
+use super::super::primitive::*;
+use super::super::ring_property::*;
 
-use super::primes;
-use super::integer::*;
+use super::super::primes;
+use super::super::integer::*;
 
 use std::cmp::Ordering;
 use std::ops::*;
@@ -1220,7 +1220,7 @@ impl CanonicalIsomorphismInfo<StaticRing<i64>> for BigIntRing {
 #[cfg(test)]
 use std::str::FromStr;
 #[cfg(test)]
-use super::wrapper::*;
+use super::super::wrapper::*;
 #[cfg(test)]
 use vector_map::VecMap;
 

@@ -1,5 +1,5 @@
 use super::ring::*;
-use super::bigint::*;
+use super::integer::*;
 use super::embedding::*;
 use super::ring_property::*;
 use std::ops::{ 

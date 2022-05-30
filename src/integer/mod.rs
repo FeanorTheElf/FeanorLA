@@ -1,7 +1,9 @@
+pub mod bigint;
+
+pub use bigint::*;
 use super::ring::*;
 use super::embedding::*;
 use super::primitive::*;
-use super::bigint::*;
 use super::wrapper::*;
 use std::cmp::Ordering;
 
@@ -205,6 +207,12 @@ fn test_find_zero_floor() {
 
     let f = |x: &BigInt| x.clone();
     assert_eq!(BigInt::ZERO, BigInt::RING.find_zero_floor(f, BigInt::ZERO));
+}
+
+#[test]
+fn test_find_zero_floor_i64() {
+    let f = |x: &i64| x.pow(3) - *x + 478;
+    assert_eq!(-8, i64::RING.find_zero_floor(f, 0));
 }
 
 #[test]

@@ -1,5 +1,5 @@
 use super::ring::*;
-use super::bigint::*;
+use super::integer::*;
 use super::wrapper::*;
 
 pub trait FiniteRingIterFn<R: FiniteRing>: Clone {

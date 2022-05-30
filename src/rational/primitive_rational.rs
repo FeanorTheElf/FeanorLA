@@ -1,12 +1,11 @@
 #![allow(non_camel_case_types)]
-use super::prelude::*;
+use super::super::prelude::*;
+use super::super::eea::signed_gcd;
 
 use std::cmp::{Ord, Ordering, PartialEq, PartialOrd};
 use std::convert::From;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
-
-use super::eea::signed_gcd;
 
 ///
 /// Overflow contract: r64 may overflow, if the naive formulas for the

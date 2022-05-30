@@ -40,7 +40,7 @@ pub fn sumation_operator<R>(ring: &MultivariatePolyRing<R>, f: El<MultivariatePo
 #[cfg(test)]
 use super::super::prelude::*;
 #[cfg(test)]
-use super::super::rat::*;
+use super::super::rational::*;
 #[cfg(test)]
 use super::super::wrapper::*;
 

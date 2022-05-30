@@ -1,6 +1,6 @@
 use super::ring::*;
 use super::primitive::*;
-use super::bigint::*;
+use super::integer::*;
 use super::ring_property::*;
 
 use std::marker::PhantomData;
@@ -33,17 +33,9 @@ use std::marker::PhantomData;
 ///  - we can still make blanket implementations for somewhat concrete types (that
 ///    do not contain references for sure); up to now, these are `StaticRing` and
 ///    `BigIntRing`, as they are required for the definition of the Integers.
-/// 
-/// New ring implentations are strongly encouraged to implement
-/// ```text
-///     impl CanonicalEmbeddingInfo<R> for R
-/// ```
-/// However, be careful not to violate the constraints of CanonicalEmbedding.
-/// Strictly speaking, rings with nontrivial automorphisms are not canonically
-/// isomorphic in the strict sense.
-/// However, it might still be possible to choose compatible isomorphisms for
-/// all ring implementations in the isomorphism class, and therefore implement
-/// `CanonicalEmbedding` resp. `CanonicalIsomorphism` correctly.
+///  - we require `CanonicalIsomorphismInfo<R> for R` for each ring. However, we 
+///    do not provide a blanket implementation, so each ring implementation must
+///    implement this in the standard way
 ///
 /// The same holds for `CanonicalIsomorphismInfo`.
 /// 

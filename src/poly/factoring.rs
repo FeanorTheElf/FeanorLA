@@ -125,7 +125,7 @@ pub fn poly_squarefree_part<R>(ring: &R, poly: Vector<VectorOwned<R::El>, R::El>
 }
 
 #[cfg(test)]
-use super::super::rat::*;
+use super::super::rational::*;
 #[cfg(test)]
 use super::super::fq::zn_small::*;
 #[cfg(test)]

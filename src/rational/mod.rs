@@ -1,8 +1,10 @@
+pub mod primitive_rational;
+
+pub use primitive_rational::r64;
 use super::ring::*;
 use super::embedding::*;
 use super::primitive::*;
 use super::wrapper::*;
-use super::rat::*;
 use super::integer::*;
 
 pub trait RationalField: Ring + CanonicalIsomorphismInfo<StaticRing<r64>> + CanonicalEmbeddingInfo<Self::UnderlyingIntegers> {

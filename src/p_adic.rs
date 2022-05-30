@@ -1,6 +1,6 @@
 use super::ring::*;
 use super::primitive::*;
-use super::rat::*;
+use super::rational::*;
 
 ///
 /// Returns an integer n such that p^n divides x and p^(n + 1) does not.

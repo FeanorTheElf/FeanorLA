@@ -1,6 +1,6 @@
 use super::*;
 use super::super::eea::*;
-use super::super::rationals::*;
+use super::super::rational::*;
 use super::super::integer::*;
 
 use std::collections::HashSet;

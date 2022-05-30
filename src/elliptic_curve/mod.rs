@@ -1,9 +1,11 @@
 #![allow(non_snake_case)]
 
 pub mod rational_torsion_group;
+pub mod point_count;
+pub mod division_polynomials;
 
 use super::ring::*;
-use super::bigint::*;
+use super::integer::*;
 use super::embedding::*;
 use super::wrapper::*;
 use super::la::mat::*;

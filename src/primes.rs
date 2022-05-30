@@ -1,7 +1,6 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
-use super::bigint::*;
 use super::fq::zn_big::*;
 use super::ring::*;
 use super::combinatorics::iters::*;

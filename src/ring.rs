@@ -1,4 +1,4 @@
-use super::bigint::*;
+use super::integer::*;
 use super::embedding::*;
 use super::wrapper::*;
 use super::ring_property::*;

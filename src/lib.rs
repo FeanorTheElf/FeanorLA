@@ -14,7 +14,6 @@ extern crate oorandom;
 extern crate vector_map;
 
 pub mod ring_property;
-pub mod bigint;
 pub mod ring;
 pub mod primitive;
 pub mod embedding;
@@ -26,10 +25,9 @@ pub mod eea;
 
 #[macro_use]
 pub mod la;
-pub mod rat;
 pub mod fq;
 pub mod integer;
-pub mod rationals;
+pub mod rational;
 pub mod factoring_algorithms;
 pub mod p_adic;
 pub mod fraction_field;
