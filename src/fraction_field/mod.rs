@@ -1,7 +1,6 @@
 use super::prelude::*;
 use super::rational::*;
 use super::eea::*;
-use super::integer::*;
 
 #[derive(Debug, Clone, Copy)]
 pub struct FieldOfFractions<R>

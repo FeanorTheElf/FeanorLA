@@ -1,10 +1,14 @@
 
-mod internal_definitions{
-    pub use super::super::super::prelude::*;
-    pub use super::super::super::la::vec::*;
-    pub use super::super::super::la::vector_view::compile_time_vector::*;
-    pub use super::super::super::ring_extension::*;
-    pub use super::super::zn_small::*;
+pub mod define_fq {
+    pub use crate::ring_extension::*;
+    pub use crate::fq::zn_small::*;
+    pub use crate::la::vector_view::compile_time_vector::*;
+    pub use crate::la::vec::*;
+    pub use crate::prelude::*;
+}
+
+mod internal_definitions {
+    use super::define_fq::*;
 
     // because of a (probable) compiler bug, `ZnEl<2>` does not work here
     type F2El = ZnElImpl<2, true>;
@@ -25,6 +29,7 @@ mod internal_definitions{
 }
 
 use internal_definitions::*;
+use define_fq::*;
 
 pub type F2Type = StaticRing::<ZnEl<2>>;
 pub type F3Type = StaticRing::<ZnEl<3>>;

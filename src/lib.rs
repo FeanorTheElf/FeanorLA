@@ -38,8 +38,5 @@ pub mod diophantine;
 pub mod elliptic_curve;
 pub mod finite_field_sqrt;
 
-#[cfg(test)]
-pub mod benchmarks;
-
 pub mod numerics;
 pub mod combinatorics;

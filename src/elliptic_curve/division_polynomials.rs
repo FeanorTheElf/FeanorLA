@@ -1,6 +1,5 @@
 use super::super::eea::*;
 use super::super::prelude::*;
-use super::super::fraction_field::*;
 use super::super::wrapper::*;
 use super::super::poly::*;
 use super::*;
@@ -22,7 +21,6 @@ pub fn division_polynomials<K: Ring>(E: &EllipticCurve<WrappingRing<K>>, n: usiz
     assert!(n > 0);
     let F = E.base_field();
     let P: P<K> = PolyRing::adjoint(F.wrapped_ring().clone(), "X").bind_ring_by_value();
-    let K = FieldOfFractions::new(P.wrapped_ring().clone()).bind_ring_by_value();
     let incl = embedding(F, &P);
     let x = P.wrapped_ring().bind_by_value(P.wrapped_ring().unknown());
     let A = incl(E.a4().clone());
@@ -37,7 +35,7 @@ pub fn division_polynomials<K: Ring>(E: &EllipticCurve<WrappingRing<K>>, n: usiz
     let mut y1_y = -x.pow(6) * 27 - &A * x.pow(4) * 27 + x.pow(3) * &f * 28 - A.pow(2) * x.pow(2) * 9 + &A * &x * &f * 4 - A.pow(3) - &B * &f * 8;
     let mut z1 = &f * 8;
 
-    for i in 2..n {
+    for _ in 2..n {
         let y1_squared = x1.pow(3) + &A * &x1 * z1.pow(2) + &B * z1.pow(3);
         let x3 = (y1_squared - &y1_y * z1.pow(2) * 2 + z1.pow(3) * &f) - (&x1 - &z1 * &x).pow(2) * (&z1 * &x + &x1);
         let z3 = (&x1 - &z1 * &x).pow(2) * &z1;
@@ -49,17 +47,38 @@ pub fn division_polynomials<K: Ring>(E: &EllipticCurve<WrappingRing<K>>, n: usiz
         let d = gcd(&P, x1.clone(), gcd(&P, y1_y.clone(), z1.clone()));
         (x1, y1_y, z1) = (x1 / &d, y1_y / &d, z1 / &d);
     }
-    return (x1, y1_y, z1)
+    return (&x1 / incl(x1.lc().clone_ring()), y1_y / incl(x1.lc().clone_ring()), z1 / incl(x1.lc().clone_ring()));
 }
 
 #[cfg(test)]
 use super::super::rational::*;
+#[cfg(test)]
+use test::Bencher;
+#[cfg(test)]
+use super::super::fq::fq_small::*;
 
 #[test]
 fn test_division_polynomials() {
     let ring = r64::RING.bind_ring();
     let E = EllipticCurve::new(ring, ring.zero(), ring.one());
-    let (f, g_y, h) = division_polynomials(&E, 2);
+    let (f, _, h) = division_polynomials(&E, 2);
     let poly_ring = PolyRing::adjoint(ring.wrapped_ring().clone(), "X").bind_ring_by_value();
     let x = poly_ring.from(poly_ring.wrapped_ring().unknown());
+    let f_expected = x.pow(4) - &x * 8;
+    let h_expected = x.pow(3) * 4 + 4;
+    assert_eq!(f_expected, f);
+    assert_eq!(h_expected, h);
+}
+
+#[bench]
+fn bench_division_poly(b: &mut Bencher) {
+    let ring = F49.bind_ring_by_value();
+    let E = EllipticCurve::new(ring.clone(), ring.zero(), ring.one());
+    let mut rng = oorandom::Rand32::new(2);
+    let n: i64 = 10;
+    b.iter(|| {
+        let (f, _, h) = division_polynomials(&E, n as usize);
+        let P = E.random_affine_point(|| rng.rand_u32());
+        assert_eq!(f(P.x().unwrap().clone()) / h(P.x().unwrap().clone()), *E.mul_point(&P, &BigInt::from(n), E.base_field()).x().unwrap());
+    });
 }

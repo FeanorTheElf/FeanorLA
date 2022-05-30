@@ -523,7 +523,7 @@ impl BigInt {
     /// # Example
     /// 
     /// ```
-    /// # use feanor_la::bigint::BigInt;
+    /// # use feanor_la::integer::BigInt;
     /// assert_eq!(BigInt::from(-1), BigInt::from(-1).floor_div_small(2));
     /// ```
     /// 
@@ -640,7 +640,7 @@ impl BigInt {
         end_exclusive: &BigInt,
         statistical_distance_bound: usize
     ) -> BigInt {
-        Self::get_uniformly_random(|| ((rng.rand_u32() as u64) << 32) | (rng.rand_u32() as u64), end_exclusive, statistical_distance_bound)
+        Self::get_uniformly_random(|| rng.rand_u32(), end_exclusive, statistical_distance_bound)
     }
 
     ///
@@ -656,7 +656,7 @@ impl BigInt {
         end_exclusive: &BigInt, 
         statistical_distance_bound: usize
     ) -> BigInt 
-        where G: FnMut() -> u64
+        where G: FnMut() -> u32
     {
         assert!(*end_exclusive > 0);
         let k = statistical_distance_bound + end_exclusive.abs_log2_floor();
@@ -669,7 +669,7 @@ impl BigInt {
         // between the distributions is therefore bounded 
         // by n/2^k <= 2^(-statistical_distance_bound)
         let mut result = BigInt {
-            data: (0..random_blocks).map(|_| rng()).collect(),
+            data: (0..random_blocks).map(|_| ((rng() as u64) << u32::BITS) | (rng() as u64)).collect(),
             negative: false
         };
         result.abs_division(&end_exclusive);

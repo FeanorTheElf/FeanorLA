@@ -85,8 +85,8 @@ impl<'a, R: IntegerRing + OrderedRing + EuclideanInfoRing> IntegralCubic<'a, R> 
 }
 
 impl<QType> EllipticCurve<WrappingRing<QType>>
-    where QType: RationalField + HashableElRing + SingletonRing + CanonicalIsomorphismInfo<QType>, 
-        QType::UnderlyingIntegers: SingletonRing + UfdInfoRing + EuclideanInfoRing + OrderedRing
+    where QType: RationalField + HashableElRing + SingletonRing, 
+        QType::UnderlyingIntegers: SingletonRing + UfdInfoRing + EuclideanInfoRing
 {
 
     ///

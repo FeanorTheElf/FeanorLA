@@ -52,6 +52,17 @@ impl<R> RingElWrapper<R>
     }
 }
 
+impl<R> RingElWrapper<&R>
+    where R: Ring
+{
+    pub fn clone_ring(self) -> RingElWrapper<R> {
+        RingElWrapper {
+            ring: self.ring.clone(),
+            el: self.el
+        }
+    }
+}
+
 impl<R> Clone for RingElWrapper<R>
     where R: Ring
 {
@@ -327,6 +338,33 @@ impl<'a, R> Div<&'a RingElWrapper<R>> for RingElWrapper<R>
         RingElWrapper {
             el: self.ring.quotient(&self.el, &rhs.el).unwrap(),
             ring: self.ring
+        }
+    }
+}
+
+impl<'a, R> Div<RingElWrapper<R>> for &'a RingElWrapper<R>
+    where R: Ring
+{
+    type Output = RingElWrapper<R>;
+
+    default fn div(self, rhs: RingElWrapper<R>) -> Self::Output {
+        assert!(self.ring.is_field().can_use());
+        assert!(!self.ring.is_zero(rhs.val()));
+        RingElWrapper {
+            el: self.ring.div(self.el.clone(), &rhs.el),
+            ring: self.ring.clone()
+        }
+    }
+}
+
+impl<'a, R> Div<RingElWrapper<R>> for &'a RingElWrapper<R>
+    where R: DivisibilityInfoRing
+{
+    fn div(self, rhs: RingElWrapper<R>) -> Self::Output {
+        assert!(self.ring.is_divisibility_computable().can_use());
+        RingElWrapper {
+            el: self.ring.quotient(&self.el, &rhs.el).unwrap(),
+            ring: self.ring.clone()
         }
     }
 }

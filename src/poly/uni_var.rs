@@ -481,6 +481,8 @@ impl<R> UfdInfoRing for PolyRing<R>
 
 #[cfg(test)]
 use super::super::fq::zn_big::*;
+#[cfg(test)]
+use test::Bencher;
 
 #[test]
 fn test_poly_arithmetic() {
@@ -582,4 +584,33 @@ fn test_evaluate() {
     let x = poly_ring.bind(poly_ring.unknown());
     let f = x.pow(4) + x.pow(2) * 3 - x + 7;
     assert_eq!(f(i(2)), 16 + 12 - 2 + 7);
+}
+
+#[cfg(test)]
+mod f1369 {
+    use super::super::super::fq::fq_small::define_fq::*;
+
+    type F37El = ZnElImpl<37, true>;
+    gen_const_vector!(ConstVector2F37; F37El; V0, V1);
+    type F1369MipoType = ConstVector2F37<{F37El::project(2)}, {F37El::project(33)}>;
+    const F1369_MIPO: Vector<F1369MipoType, F37El> = Vector::new(F1369MipoType::INSTANCE);
+    type F1369Type = SimpleRingExtension<StaticRing<F37El>, F1369MipoType, VectorArray<F37El, 2>>;
+    pub static F1369: F1369Type = F1369Type::new(F37El::RING, F1369_MIPO);
+}
+
+#[cfg(test)]
+use f1369::F1369;
+
+#[bench]
+fn bench_poly_multiplication(b: &mut Bencher) {
+    let poly_ring = PolyRing::adjoint(F1369.clone(), "x");
+    let a = poly_ring.bind(poly_ring.from(poly_ring.base_ring().generator()));
+    let x = poly_ring.bind(poly_ring.unknown());
+    let f = (0..=100).map(|i| x.pow(i) * i as i64).sum::<RingElWrapper<&_>>();
+    let g = (0..=100).map(|i| x.pow(i) * (100 - i) as i64 * &a).sum::<RingElWrapper<&_>>();
+    let h = (0..=100).map(|n| x.pow(n) * &a * ((100 - n) * n * (n + 1) / 2 + n * (n + 1) * (2 * n + 1) / 6) as i64).sum::<RingElWrapper<&_>>()
+         + (0..100).map(|n| x.pow(200 - n) * &a * ((100 - n) * n * (n + 1) / 2 + n * (n + 1) * (2 * n + 1) / 6) as i64).sum::<RingElWrapper<&_>>();
+    b.iter(|| {
+        assert_eq!(h, &f * &g);
+    });
 }

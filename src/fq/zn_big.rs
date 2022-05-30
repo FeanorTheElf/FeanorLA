@@ -108,7 +108,7 @@ impl FiniteRing for Zn {
     }
 
     fn random_element<G>(&self, rng: G) -> El<Self> 
-        where G: FnMut() -> u64
+        where G: FnMut() -> u32
     {
         FactorRingZEl(BigInt::get_uniformly_random(rng, &self.modulus, 5))
     }

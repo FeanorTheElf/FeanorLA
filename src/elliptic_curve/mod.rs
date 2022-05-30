@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 
+pub mod finite_field_curve;
 pub mod rational_torsion_group;
 pub mod point_count;
 pub mod division_polynomials;
@@ -25,7 +26,6 @@ pub struct EllipticCurve<K: Ring> {
 impl<K> PartialEq for EllipticCurve<K> 
     where K: CanonicalIsomorphismInfo<K>
 {
-
     fn eq(&self, rhs: &EllipticCurve<K>) -> bool {
         self.base_field().eq(&self.A, &rhs.A) && self.base_field().eq(&self.B, &rhs.B)
     }
@@ -52,6 +52,24 @@ pub enum EllipticCurvePoint<K>
     where K: Ring
 {
     Affine(K::El, K::El), Infinity
+}
+
+impl<K> EllipticCurvePoint<WrappingRing<K>>
+    where K: Ring
+{
+    pub fn x(&self) -> Option<&El<WrappingRing<K>>> {
+        match self {
+            EllipticCurvePoint::Affine(x, y) => Some(x),
+            EllipticCurvePoint::Infinity => None
+        }
+    }
+
+    pub fn y(&self) -> Option<&El<WrappingRing<K>>> {
+        match self {
+            EllipticCurvePoint::Affine(x, y) => Some(y),
+            EllipticCurvePoint::Infinity => None
+        }
+    }
 }
 
 impl<K> PartialEq for EllipticCurvePoint<WrappingRing<K>>
