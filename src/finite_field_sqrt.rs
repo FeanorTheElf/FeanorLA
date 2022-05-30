@@ -1,6 +1,6 @@
 use super::prelude::*;
 use super::fq::*;
-use super::ring_extension::*;
+use super::ring_extension::simple_extension::*;
 
 use std::hash::Hasher;
 use std::collections::hash_map::DefaultHasher;

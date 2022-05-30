@@ -54,11 +54,15 @@ impl<const N: u64, const IS_FIELD: bool> From<i8> for ZnElImpl<N, IS_FIELD> {
     }
 }
 
+use std::sync::atomic::{AtomicU64, Ordering};
+pub static operations: AtomicU64 = AtomicU64::new(0);
+
 impl<const N: u64, const IS_FIELD: bool> AddAssign for ZnElImpl<N, IS_FIELD> {
 
     fn add_assign(&mut self, rhs: ZnElImpl<N, IS_FIELD>) {
         assert!(self.repr < N);
         assert!(rhs.repr < N);
+        operations.fetch_add(1, Ordering::Relaxed);
         self.repr += rhs.repr;
         if self.repr >= N {
             self.repr -= N;

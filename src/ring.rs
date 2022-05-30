@@ -276,16 +276,8 @@ impl<'a, R: RingBase> RingBase for &'a R {
     fn add(&self, lhs: Self::El, rhs: Self::El) -> Self::El { (**self).add(lhs, rhs) }
     fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El { (**self).mul(lhs, rhs) }
     fn sub(&self, lhs: Self::El, rhs: Self::El) -> Self::El { (**self).sub(lhs, rhs) }
-    fn pow(&self, basis: &Self::El, exp: u32) -> Self::El 
-        where Self::El: Clone
-    {
-        (**self).pow(basis, exp)
-    }
-    fn pow_big(&self, basis: &Self::El, exp: &BigInt) -> Self::El 
-        where Self::El: Clone
-    {
-        (**self).pow_big(basis, exp)
-    }
+    fn pow(&self, basis: &Self::El, exp: u32) -> Self::El { (**self).pow(basis, exp) }
+    fn pow_big(&self, basis: &Self::El, exp: &BigInt) -> Self::El { (**self).pow_big(basis, exp) }
     fn from_z(&self, x: i64) -> Self::El { (**self).from_z(x) }
     fn from_z_big(&self, x: &BigInt) -> Self::El { (**self).from_z_big(x) }
     fn is_zero(&self, val: &Self::El) -> bool { (**self).is_zero(val) }

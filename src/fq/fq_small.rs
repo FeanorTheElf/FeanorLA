@@ -1,6 +1,6 @@
 
 pub mod define_fq {
-    pub use crate::ring_extension::*;
+    pub use crate::ring_extension::simple_extension::*;
     pub use crate::fq::zn_small::*;
     pub use crate::la::vector_view::compile_time_vector::*;
     pub use crate::la::vec::*;

@@ -231,22 +231,24 @@ impl DivisibilityInfoRing for Zn {
 
 impl CanonicalEmbeddingInfo<Zn> for Zn {
 
-    fn has_embedding(&self, _from: &Zn) -> RingPropValue {
-        RingPropValue::True
+    fn has_embedding(&self, from: &Zn) -> RingPropValue {
+        RingPropValue::True & (self.modulus == from.modulus)
     }
 
-    fn embed(&self, _from: &Zn, el: Self::El) -> Self::El {
+    fn embed(&self, from: &Zn, el: Self::El) -> Self::El {
+        assert!(self.has_embedding(from).can_use());
         el
     }
 }
 
 impl CanonicalIsomorphismInfo<Zn> for Zn {
 
-    fn has_isomorphism(&self, _from: &Zn) -> RingPropValue {
-        RingPropValue::True
+    fn has_isomorphism(&self, from: &Zn) -> RingPropValue {
+        RingPropValue::True & (self.modulus == from.modulus)
     }
 
-    fn preimage(&self, _from: &Zn, el: Self::El) -> Self::El {
+    fn preimage(&self, from: &Zn, el: Self::El) -> Self::El {
+        assert!(self.has_isomorphism(from).can_use());
         el
     }
 }

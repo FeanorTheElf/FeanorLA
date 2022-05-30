@@ -1,5 +1,4 @@
 use super::super::prelude::*;
-use super::super::la::vec::*;
 use super::super::wrapper::*;
 use super::ops::*;
 use super::factoring;
@@ -103,13 +102,13 @@ impl<R> PolyRing<R>
 impl<R> CanonicalEmbeddingInfo<R> for PolyRing<R> 
     where R: CanonicalIsomorphismInfo<R>
 {
-
-    fn has_embedding(&self, _from: &R) -> RingPropValue {
-        RingPropValue::True
+    fn has_embedding(&self, from: &R) -> RingPropValue {
+        self.base_ring().has_embedding(from)
     }
 
-    fn embed(&self, _from: &R, el: R::El) -> Self::El {
-        self.from(el)
+    fn embed(&self, from: &R, el: R::El) -> Self::El {
+        assert!(self.has_embedding(from).can_use());
+        self.from(self.base_ring().embed(from, el))
     }
 }
 
@@ -117,12 +116,13 @@ impl<R> CanonicalEmbeddingInfo<R> for PolyRing<&R>
     where R: CanonicalIsomorphismInfo<R>
 {
 
-    fn has_embedding(&self, _from: &R) -> RingPropValue {
-        RingPropValue::True
+    fn has_embedding(&self, from: &R) -> RingPropValue {
+        self.base_ring().has_embedding(&from)
     }
 
-    fn embed(&self, _from: &R, el: R::El) -> Self::El {
-        self.from(el)
+    fn embed(&self, from: &R, el: R::El) -> Self::El {
+        assert!(self.has_embedding(from).can_use());
+        self.from(self.base_ring().embed(&from, el))
     }
 }
 
@@ -130,36 +130,39 @@ impl<R> CanonicalEmbeddingInfo<&R> for PolyRing<R>
     where R: CanonicalIsomorphismInfo<R>
 {
 
-    fn has_embedding(&self, _from: &&R) -> RingPropValue {
-        RingPropValue::True
+    fn has_embedding(&self, from: &&R) -> RingPropValue {
+        self.base_ring().has_embedding(*from)
     }
 
-    fn embed(&self, _from: &&R, el: R::El) -> Self::El {
-        self.from(el)
+    fn embed(&self, from: &&R, el: R::El) -> Self::El {
+        assert!(self.has_embedding(from).can_use());
+        self.from(self.base_ring().embed(*from, el))
     }
 }
 
 impl<R> CanonicalEmbeddingInfo<PolyRing<R>> for PolyRing<R>
     where R: CanonicalIsomorphismInfo<R>
 {
-    fn has_embedding(&self, _from: &PolyRing<R>) -> RingPropValue {
-        RingPropValue::True
+    fn has_embedding(&self, from: &PolyRing<R>) -> RingPropValue {
+        self.base_ring().has_embedding(from.base_ring())
     }
 
-    fn embed(&self, _from: &PolyRing<R>, el: Self::El) -> Self::El {
-        el
+    fn embed(&self, from: &PolyRing<R>, el: Self::El) -> Self::El {
+        assert!(self.has_embedding(from).can_use());
+        Vector::new(el.raw_data().into_iter().map(|x| self.base_ring().embed(from.base_ring(), x)).collect())
     }
 }
 
 impl<R> CanonicalIsomorphismInfo<PolyRing<R>> for PolyRing<R>
     where R: CanonicalIsomorphismInfo<R>
 {
-    fn has_isomorphism(&self, _from: &PolyRing<R>) -> RingPropValue {
-        RingPropValue::True
+    fn has_isomorphism(&self, from: &PolyRing<R>) -> RingPropValue {
+        self.base_ring().has_isomorphism(from.base_ring())
     }
 
-    fn preimage(&self, _from: &PolyRing<R>, el: Self::El) -> Self::El {
-        el
+    fn preimage(&self, from: &PolyRing<R>, el: Self::El) -> Self::El {
+        assert!(self.has_isomorphism(from).can_use());
+        Vector::new(el.raw_data().into_iter().map(|x| self.base_ring().preimage(from.base_ring(), x)).collect())
     }
 }
 

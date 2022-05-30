@@ -1,0 +1,22 @@
+s = "void feanor_la::la::ops::impl$2::sub_assign_matrix<feanor_la::ring_extension::SimpleRingExtension<feanor_la::primitive::StaticRingImpl<feanor_la::primitive::RingAxiomsField,feanor_la::fq::zn_small::ZnElImpl<7,true> >,feanor_la::fq::fq_small::internal_definitions::ConstVector2F7<CONST$f9110fe7e49a0360,CONST$33ab2702a7c2fcec>,feanor_la::la::vector_view::VectorArray<feanor_la::fq::zn_small::ZnElImpl<7,true>,2> >,feanor_la::la::matrix_view::matrix_vector::ColumnVector<ref_mut$<feanor_la::la::vector_view::Subvector<ref_mut$<feanor_la::la::vector_view::Subvector<ref_mut$<feanor_la::la::vector_view::Subvector<ref_mut$<slice$<feanor_la::la::vec::Vector<feanor_la::la::vector_view::VectorArray<feanor_la::fq::zn_small::ZnElImpl<7,true>,2>,feanor_la::fq::zn_small::ZnElImpl<7,true> > > >,feanor_la::la::vec::Vector<feanor_la::la::vector_view::VectorArray<feanor_la::fq::zn_small::ZnElImpl<7,true>,2>,feanor_la::fq::zn_small::ZnElImpl<7,true> > > >,feanor_la::la::vec::Vector<feanor_la::la::vector_view::VectorArray<feanor_la::fq::zn_small::ZnElImpl<7,true>,2>,feanor_la::fq::zn_small::ZnElImpl<7,true> > > >,feanor_la::la::vec::Vector<feanor_la::la::vector_view::VectorArray<feanor_la::fq::zn_small::ZnElImpl<7,true>,2>,feanor_la::fq::zn_small::ZnElImpl<7,true> > > >,feanor_la::la::vec::Vector<feanor_la::la::vector_view::VectorArray<feanor_la::fq::zn_small::ZnElImpl<7,true>,2>,feanor_la::fq::zn_small::ZnElImpl<7,true> > >,feanor_la::la::matrix_view::matrix_vector::ColumnVector<ref$<feanor_la::la::vector_view::Subvector<ref$<ref$<slice$<feanor_la::la::vec::Vector<feanor_la::la::vector_view::VectorArray<feanor_la::fq::zn_small::ZnElImpl<7,true>,2>,feanor_la::fq::zn_small::ZnElImpl<7,true> > > > >,feanor_la::la::vec::Vector<feanor_la::la::vector_view::VectorArray<feanor_la::fq::zn_small::ZnElImpl<7,true>,2>,feanor_la::fq::zn_small::ZnElImpl<7,true> > > >,feanor_la::la::vec::Vector<feanor_la::la::vector_view::VectorArray<feanor_la::fq::zn_small::ZnElImpl<7,true>,2>,feanor_la::fq::zn_small::ZnElImpl<7,true> > > >(struct feanor_la::ring_extension::SimpleRingExtension<feanor_la::primitive::StaticRingImpl<feanor_la::primitive::RingAxiomsField,feanor_la::fq::zn_small::ZnElImpl<7,true> >,feanor_la::fq::fq_small::internal_definitions::ConstVector2F7<CONST$f9110fe7e49a0360,CONST$33ab2702a7c2fcec>,feanor_la::la::vector_view::VectorArray<feanor_la::fq::zn_small::ZnElImpl<7,true>,2> > *, struct feanor_la::la::matrix_view::matrix_vector::ColumnVector<ref_mut$<feanor_la::la::vector_view::Subvector<ref_mut$<feanor_la::la::vector_view::Subvector<ref_mut$<feanor_la::la::vector_view::Subvector<ref_mut$<slice$<feanor_la::la::vec::Vector<feanor_la::la::vector_view::VectorArray<feanor_la::fq::zn_small::ZnElImpl<7,true>,2>,feanor_la::fq::zn_small::ZnElImpl<7,true> > > >,feanor_la::la::vec::Vector<feanor_la::la::vector_view::VectorArray<feanor_la::fq::zn_small::ZnElImpl<7,true>,2>,feanor_la::fq::zn_small::ZnElImpl<7,true> > > >,feanor_la::la::vec::Vector<feanor_la::la::vector_view::VectorArray<feanor_la::fq::zn_small::ZnElImpl<7,true>,2>,feanor_la::fq::zn_small::ZnElImpl<7,true> > > >,feanor_la::la::vec::Vector<feanor_la::la::vector_view::VectorArray<feanor_la::fq::zn_small::ZnElImpl<7,true>,2>,feanor_la::fq::zn_small::ZnElImpl<7,true> > > >,feanor_la::la::vec::Vector<feanor_la::la::vector_view::VectorArray<feanor_la::fq::zn_small::ZnElImpl<7,true>,2>,feanor_la::fq::zn_small::ZnElImpl<7,true> > > *, struct feanor_la::la::matrix_view::matrix_vector::ColumnVector<ref$<feanor_la::la::vector_view::Subvector<ref$<ref$<slice$<feanor_la::la::vec::Vector<feanor_la::la::vector_view::VectorArray<feanor_la::fq::zn_small::ZnElImpl<7,true>,2>,feanor_la::fq::zn_small::ZnElImpl<7,true> > > > >,feanor_la::la::vec::Vector<feanor_la::la::vector_view::VectorArray<feanor_la::fq::zn_small::ZnElImpl<7,true>,2>,feanor_la::fq::zn_small::ZnElImpl<7,true> > > >,feanor_la::la::vec::Vector<feanor_la::la::vector_view::VectorArray<feanor_la::fq::zn_small::ZnElImpl<7,true>,2>,feanor_la::fq::zn_small::ZnElImpl<7,true> > >)"
+current = ""
+indent = 0
+for c in s:
+    if c == "<" or c == "(":
+        current += c
+        print("    " * indent + current)
+        indent += 1
+        current = ""
+    elif c == ">" or c == ")":
+        print("    " * indent + current)
+        indent -= 1
+        print("    " * indent + c)
+        current = ""
+    elif c == ",":
+        current += c
+        print("    " * indent + current)
+        current = ""
+    else:
+        current += c
+
+

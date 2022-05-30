@@ -3,7 +3,7 @@
 pub mod finite_field_curve;
 pub mod rational_torsion_group;
 pub mod point_count;
-pub mod division_polynomials;
+// pub mod division_polynomials;
 
 use super::ring::*;
 use super::integer::*;
@@ -12,7 +12,7 @@ use super::wrapper::*;
 use super::la::mat::*;
 use super::fq::*;
 use super::combinatorics::iters::*;
-use super::ring_extension::*;
+use super::ring_extension::simple_extension::*;
 use super::poly::*;
 use super::fraction_field::*;
 
@@ -27,7 +27,7 @@ impl<K> PartialEq for EllipticCurve<K>
     where K: CanonicalIsomorphismInfo<K>
 {
     fn eq(&self, rhs: &EllipticCurve<K>) -> bool {
-        self.base_field().eq(&self.A, &rhs.A) && self.base_field().eq(&self.B, &rhs.B)
+        self.base_field.eq(&self.A, &rhs.A) && self.base_field.eq(&self.B, &rhs.B)
     }
 }
 
@@ -38,14 +38,13 @@ impl<K> Eq for EllipticCurve<K>
 impl<K> std::fmt::Display for EllipticCurve<K>
     where K: CanonicalIsomorphismInfo<K>
 {
-
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Elliptic curve defined by Y^2 = X^3 + {} X + {}", self.base_field().display(&self.A), self.base_field().display(&self.B))
+        write!(f, "Elliptic curve defined by Y^2 = X^3 + {} X + {}", self.base_field.display(&self.A), self.base_field.display(&self.B))
     }
 }
 
-pub type CoordRing<K: Ring> = SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>;
-pub type FunctionField<K: Ring> = FieldOfFractions<CoordRing<K>>;
+pub type CoordRing<K: Ring> = WrappingRing<SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>>;
+pub type FunctionField<K: Ring> = WrappingRing<FieldOfFractions<SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>>>;
 
 #[derive(Clone)]
 pub enum EllipticCurvePoint<K> 
@@ -118,10 +117,10 @@ impl<K> Eq for EllipticCurvePoint<WrappingRing<K>>
     where K: Ring
 {}
 
-impl<K> EllipticCurve<K> 
-    where K: Ring + CanonicalIsomorphismInfo<K>
+impl<K> EllipticCurve<WrappingRing<K>> 
+    where K: Ring
 {
-    pub fn new(base_field: K, A: K::El, B: K::El) -> Self {
+    pub fn new(base_field: WrappingRing<K>, A: El<WrappingRing<K>>, B: El<WrappingRing<K>>) -> Self {
         assert!(base_field.is_field().can_use());
         let result = EllipticCurve {
             base_field, A, B
@@ -130,8 +129,8 @@ impl<K> EllipticCurve<K>
         return result;
     }
 
-    pub fn lift_homomorphism<L, F>(&self, _other: &EllipticCurve<L>, f: F) -> impl Fn(EllipticCurvePoint<K>) -> EllipticCurvePoint<L>
-        where L: Ring, F: Fn(K::El) -> L::El
+    pub fn lift_homomorphism<L, F>(&self, _other: &EllipticCurve<WrappingRing<L>>, f: F) -> impl Fn(EllipticCurvePoint<WrappingRing<K>>) -> EllipticCurvePoint<WrappingRing<L>>
+        where L: Ring, F: Fn(El<WrappingRing<K>>) -> El<WrappingRing<L>>
     {
         move |x| match x {
             EllipticCurvePoint::Infinity => EllipticCurvePoint::Infinity,
@@ -144,27 +143,27 @@ impl<K> EllipticCurve<K>
     /// this elliptic curve.
     /// 
     pub fn coordinate_ring(&self) -> (CoordRing<K>, El<CoordRing<K>>, El<CoordRing<K>>) {
-        let poly_ring = PolyRing::adjoint(self.base_field().clone(), "X");
+        let poly_ring = PolyRing::adjoint(self.base_field().wrapped_ring().clone(), "X");
         let mipo = Vector::new(VectorArray::new([poly_ring.zero(), 
             poly_ring.add(
                 poly_ring.pow(&poly_ring.unknown(), 3),
                 poly_ring.add(
-                    poly_ring.mul(poly_ring.from(self.A.clone()), poly_ring.unknown()),
-                    poly_ring.from(self.B.clone())
+                    poly_ring.mul(poly_ring.from(self.A.clone().into_val()), poly_ring.unknown()),
+                    poly_ring.from(self.B.clone().into_val())
                 )
             )
         ]));
         let poly_ring_x = poly_ring.unknown();
-        let result = SimpleRingExtension::new(poly_ring, mipo);
-        let X = result.from(poly_ring_x);
-        let Y = result.generator();
+        let result = SimpleRingExtension::new(poly_ring, mipo).bind_ring_by_value();
+        let X = result.from(result.wrapped_ring().from(poly_ring_x));
+        let Y = result.from(result.wrapped_ring().generator());
         return (result, X, Y);
     }
 
     pub fn function_field(&self) -> (FunctionField<K>, El<FunctionField<K>>, El<FunctionField<K>>) {
         assert!(self.base_field().is_field().can_use());
         let (ring, x, y) = self.coordinate_ring();
-        let field = FieldOfFractions::new(ring.clone());
+        let field = FieldOfFractions::new(ring.wrapped_ring().clone()).bind_ring_by_value();
         let (x, y) = {
             let incl = embedding(&ring, &field);
             (incl(x), incl(y))
@@ -172,34 +171,19 @@ impl<K> EllipticCurve<K>
         return (field, x, y);
     }
 
-    pub fn discriminant(&self) -> K::El {
-        self.base_field().add(
-            self.base_field().mul(self.base_field().from_z(27), self.base_field().pow(&self.B, 2)),
-            self.base_field().mul(self.base_field().from_z(4), self.base_field().pow(&self.A, 3))
-        )
+    pub fn discriminant(&self) -> El<WrappingRing<K>> {
+        self.B.pow(2) * 27 + self.A.pow(3) * 4
     }
 
-    pub fn j_invariant(&self) -> K::El {
+    pub fn j_invariant(&self) -> El<WrappingRing<K>> {
         assert!(self.base_field().is_field().can_use());
-        let A_cubed = self.base_field().pow(&self.A, 3);
-        return self.base_field().div(
-            self.base_field().mul(self.base_field().from_z(1728 * 4), A_cubed.clone()), 
-            &self.discriminant()
-        );
+        self.A.pow(3) * 1728 * 4 / self.discriminant()
     }
 
-    pub fn is_on_curve(&self, point: &EllipticCurvePoint<K>) -> bool {
+    pub fn is_on_curve(&self, point: &EllipticCurvePoint<WrappingRing<K>>) -> bool {
         match point {
             EllipticCurvePoint::Infinity => true,
-            EllipticCurvePoint::Affine(x, y) => self.base_field().eq(
-                &self.base_field().pow(y, 2),
-                &self.base_field().add(
-                    self.base_field().pow(x, 3), 
-                    self.base_field().add(
-                        self.base_field().mul_ref(&self.A, x),
-                        self.B.clone()
-                    ))
-            )
+            EllipticCurvePoint::Affine(x, y) => y.pow(2) == x.pow(3) + x * &self.A + &self.B
         }
     }
 
@@ -207,11 +191,11 @@ impl<K> EllipticCurve<K>
     /// Checks whether this curve is isomorphic to rhs over an algebraic extension of the
     /// base field. Note that this does not imply that they are isomorphic over the base field.
     /// 
-    pub fn is_isomorphic(&self, rhs: &EllipticCurve<K>) -> bool {
-        self.base_field().eq(&self.j_invariant(), &rhs.j_invariant())
+    pub fn is_isomorphic(&self, rhs: &EllipticCurve<WrappingRing<K>>) -> bool {
+        self.j_invariant() == rhs.j_invariant()
     }
 
-    pub fn point_add<F>(&self, a: EllipticCurvePoint<F>, b: EllipticCurvePoint<F>, field: &F) -> EllipticCurvePoint<F>
+    pub fn point_add<F>(&self, a: EllipticCurvePoint<WrappingRing<F>>, b: EllipticCurvePoint<WrappingRing<F>>, field: &WrappingRing<F>) -> EllipticCurvePoint<WrappingRing<F>>
         where F: Ring + CanonicalEmbeddingInfo<K>
     {
         assert!(field.is_field().can_use());
@@ -220,51 +204,30 @@ impl<K> EllipticCurve<K>
             (EllipticCurvePoint::Infinity, EllipticCurvePoint::Infinity) => EllipticCurvePoint::Infinity,
             (EllipticCurvePoint::Affine(x, y), EllipticCurvePoint::Infinity) => EllipticCurvePoint::Affine(x, y),
             (EllipticCurvePoint::Infinity, EllipticCurvePoint::Affine(x, y)) => EllipticCurvePoint::Affine(x, y),
-            (EllipticCurvePoint::Affine(x1, y1), EllipticCurvePoint::Affine(x2, y2)) if field.eq(&x1, &x2) && field.eq(&y1, &field.neg(y2.clone())) => {
+            (EllipticCurvePoint::Affine(x1, y1), EllipticCurvePoint::Affine(x2, y2)) if x1 == x2 && y1 == -y2.clone() => {
                 EllipticCurvePoint::Infinity
             },
-            (EllipticCurvePoint::Affine(x1, y1), EllipticCurvePoint::Affine(x2, y2)) if field.eq(&x1, &x2) => {
-                let lambda = field.div(
-                    field.add(
-                        field.mul(field.from_z(3), field.mul_ref(&x1, &x1)),
-                        field.embed(self.base_field(), self.A.clone())
-                    ),
-                    &field.mul(field.from_z(2), y1)
-                );
-                let x = field.add(
-                    field.neg(field.add_ref(x1, &x2)), 
-                    field.mul_ref(&lambda, &lambda)
-                );
+            (EllipticCurvePoint::Affine(x1, y1), EllipticCurvePoint::Affine(x2, y2)) if x1 == x2 => {
+                let lambda = (x1.pow(2) * 3 + field.embed(self.base_field(), self.A.clone())) / 2 / y1;
+                let x = lambda.pow(2) - x1 - &x2;
                 EllipticCurvePoint::Affine(
                     x.clone(),
-                    field.add(
-                        field.neg(y2), 
-                        field.mul(lambda, field.sub(x2, x))
-                    )
+                    (x2 - x) * lambda - y2
                 )
             },
             (EllipticCurvePoint::Affine(x1, y1), EllipticCurvePoint::Affine(x2, y2)) if !field.eq(&x1, &x2) => {
-                let lambda = field.div(
-                    field.sub_ref_fst(&y1, y2),
-                    &field.sub_ref_fst(&x1, x2.clone())
-                );
-                let x = field.add(
-                    field.neg(field.add_ref(x2, &x1)), 
-                    field.mul_ref(&lambda, &lambda)
-                );
+                let lambda = (y1 - &y2) / (&x1 - &x2);
+                let x = lambda.pow(2) - x1 - &x2;
                 EllipticCurvePoint::Affine(
                     x.clone(),
-                    field.add(
-                        field.neg(y1), 
-                        field.mul(lambda, field.sub(x1, x))
-                    )
+                    (x2 - x) * lambda - y2
                 )
             },
             (EllipticCurvePoint::Affine(_, _), EllipticCurvePoint::Affine(_, _)) => EllipticCurvePoint::Infinity
         }
     }
 
-    pub fn mul_point<F>(&self, point: &EllipticCurvePoint<F>, n: &BigInt, field: &F) -> EllipticCurvePoint<F> 
+    pub fn mul_point<F>(&self, point: &EllipticCurvePoint<WrappingRing<F>>, n: &BigInt, field: &WrappingRing<F>) -> EllipticCurvePoint<WrappingRing<F>> 
         where F: Ring + CanonicalEmbeddingInfo<K>
     {
         assert!(field.is_field().can_use());
@@ -285,15 +248,15 @@ impl<K> EllipticCurve<K>
         return result;
     }
 
-    pub fn inv_point(&self, point: EllipticCurvePoint<K>) -> EllipticCurvePoint<K> {
+    pub fn inv_point(&self, point: EllipticCurvePoint<WrappingRing<K>>) -> EllipticCurvePoint<WrappingRing<K>> {
         match point {
             EllipticCurvePoint::Infinity => EllipticCurvePoint::Infinity,
-            EllipticCurvePoint::Affine(x, y) => EllipticCurvePoint::Affine(x, self.base_field().neg(y))
+            EllipticCurvePoint::Affine(x, y) => EllipticCurvePoint::Affine(x, -y)
         }
     }
 
-    pub fn extend_ring<'a, S, F>(self, new_ring: S, incl: F) -> (EllipticCurve<S>, impl Fn(EllipticCurvePoint<K>) -> EllipticCurvePoint<S>)
-        where S: Ring, F: Fn(K::El) -> S::El
+    pub fn extend_ring<'a, S, F>(self, new_ring: WrappingRing<S>, incl: F) -> (EllipticCurve<WrappingRing<S>>, impl Fn(EllipticCurvePoint<WrappingRing<K>>) -> EllipticCurvePoint<WrappingRing<S>>)
+        where S: Ring, F: Fn(El<WrappingRing<K>>) -> El<WrappingRing<S>>
     {
         (EllipticCurve {
             base_field: new_ring,
@@ -306,32 +269,32 @@ impl<K> EllipticCurve<K>
         })
     }
 
-    pub fn points_eq(&self, P: &EllipticCurvePoint<K>, Q: &EllipticCurvePoint<K>) -> bool {
+    pub fn points_eq(&self, P: &EllipticCurvePoint<WrappingRing<K>>, Q: &EllipticCurvePoint<WrappingRing<K>>) -> bool {
         match (P, Q) {
             (EllipticCurvePoint::Infinity, EllipticCurvePoint::Infinity) => true,
-            (EllipticCurvePoint::Affine(x1, y1), EllipticCurvePoint::Affine(x2, y2)) => self.base_field().eq(x1, x2) && self.base_field().eq(y1, y2),
+            (EllipticCurvePoint::Affine(x1, y1), EllipticCurvePoint::Affine(x2, y2)) => x1 == x2 && y1 == y2,
             _ => false
         }
     }
 
-    pub fn base_field(&self) -> &K {
+    pub fn base_field(&self) -> &WrappingRing<K> {
         &self.base_field
     }
 
-    pub fn a4(&self) -> &K::El {
+    pub fn a4(&self) -> &El<WrappingRing<K>> {
         &self.A
     }
 
-    pub fn a6(&self) -> &K::El {
+    pub fn a6(&self) -> &El<WrappingRing<K>> {
         &self.B
     }
 }
 
-impl<K> EllipticCurve<K>
+impl<K> EllipticCurve<WrappingRing<K>>
     where K: FiniteRing + CanonicalIsomorphismInfo<K>
 {
 
-    pub fn points<'a>(&'a self) -> impl 'a + Iterator<Item = EllipticCurvePoint<K>> {
+    pub fn points<'a>(&'a self) -> impl 'a + Iterator<Item = EllipticCurvePoint<WrappingRing<K>>> {
         cartesian_product(elements(self.base_field()), elements(self.base_field()))
             .map(|(x, y)| EllipticCurvePoint::Affine(x, y))
             .filter(move |p| self.is_on_curve(p))
@@ -339,20 +302,18 @@ impl<K> EllipticCurve<K>
     }
 }
 
-impl<QType> std::hash::Hash for EllipticCurvePoint<QType> 
-    where QType: HashableElRing + SingletonRing
+impl<K> std::hash::Hash for EllipticCurvePoint<WrappingRing<K>> 
+    where K: HashableElRing
 {
-
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         match self {
             EllipticCurvePoint::Infinity => {
                 true.hash(state);
             },
             EllipticCurvePoint::Affine(x, y) => {
-                let Q = QType::singleton();
                 false.hash(state);
-                Q.hash(state, x);
-                Q.hash(state, y);
+                x.hash(state);
+                y.hash(state);
             }
         }
     }

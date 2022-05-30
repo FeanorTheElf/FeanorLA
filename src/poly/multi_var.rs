@@ -461,12 +461,13 @@ impl<R> DivisibilityInfoRing for MultivariatePolyRing<R>
 impl<R> CanonicalEmbeddingInfo<R> for MultivariatePolyRing<R>
     where R: Ring
 {
-    fn has_embedding(&self, _from: &R) -> RingPropValue {
-        RingPropValue::True
+    fn has_embedding(&self, from: &R) -> RingPropValue {
+        self.base_ring.has_embedding(from)
     }
 
-    fn embed(&self, _from: &R, el: R::El) -> Self::El {
-        self.from(el)
+    fn embed(&self, from: &R, el: R::El) -> Self::El {
+        assert!(self.has_embedding(from).can_use());
+        self.from(self.base_ring.embed(from, el))
     }
 }
 
@@ -474,12 +475,13 @@ impl<R> CanonicalEmbeddingInfo<R> for MultivariatePolyRing<&R>
     where R: Ring
 {
 
-    fn has_embedding(&self, _from: &R) -> RingPropValue {
-        RingPropValue::True
+    fn has_embedding(&self, from: &R) -> RingPropValue {
+        self.base_ring.has_embedding(&from)
     }
 
-    fn embed(&self, _from: &R, el: R::El) -> Self::El {
-        self.from(el)
+    fn embed(&self, from: &R, el: R::El) -> Self::El {
+        assert!(self.has_embedding(from).can_use());
+        self.from(self.base_ring.embed(&from, el))
     }
 }
 
@@ -487,12 +489,13 @@ impl<R> CanonicalEmbeddingInfo<&R> for MultivariatePolyRing<R>
     where R: Ring
 {
 
-    fn has_embedding(&self, _from: &&R) -> RingPropValue {
-        RingPropValue::True
+    fn has_embedding(&self, from: &&R) -> RingPropValue {
+        self.base_ring.has_embedding(*from)
     }
 
-    fn embed(&self, _from: &&R, el: R::El) -> Self::El {
-        self.from(el)
+    fn embed(&self, from: &&R, el: R::El) -> Self::El {
+        assert!(self.has_embedding(from).can_use());
+        self.from(self.base_ring.embed(*from, el))
     }
 }
 
@@ -517,30 +520,33 @@ impl<R> CanonicalEmbeddingInfo<MultivariatePolyRing<R>> for MultivariatePolyRing
     where R: Ring
 {
     fn has_embedding(&self, from: &MultivariatePolyRing<R>) -> RingPropValue {
-        if from.var_names.iter().all(|name| self.var_names.contains(name)) {
+        self.base_ring.has_embedding(&from.base_ring) & if from.var_names.iter().all(|name| self.var_names.contains(name)) {
             RingPropValue::True
         } else {
             RingPropValue::False
         }
     }
 
-    fn embed(&self, from: &MultivariatePolyRing<R>, el: Self::El) -> Self::El {
+    fn embed(&self, from: &MultivariatePolyRing<R>, el: El<Self>) -> El<Self> {
+        assert!(self.has_embedding(from).can_use());
         let var_mapping = from.var_names.iter().map(|v| 
             self.var_names.iter().enumerate().find(|(_, v2)| v == *v2).unwrap().0
         ).collect::<Vec<_>>();
         let mut key_recycling = Vec::new();
-        let result = el.into_iter().map(|(mut key, val)| {
-            if key.len() == 0 {
-                return (Vec::new(), val);
-            }
-            key_recycling.clear();
-            key_recycling.resize((0..key.len()).map(|i| var_mapping[i] + 1).max().unwrap(), 0);
-            for (i, power) in key.iter().enumerate() {
-                key_recycling[var_mapping[i]] = *power;
-            }
-            std::mem::swap(&mut key_recycling, &mut key);
-            return (key, val);
-        }).collect();
+        let result = el.into_iter()
+            .map(|(key, val)| (key, self.base_ring.embed(&from.base_ring, val)))
+            .map(|(mut key, val)| {
+                if key.len() == 0 {
+                    return (Vec::new(), val);
+                }
+                key_recycling.clear();
+                key_recycling.resize((0..key.len()).map(|i| var_mapping[i] + 1).max().unwrap(), 0);
+                for (i, power) in key.iter().enumerate() {
+                    key_recycling[var_mapping[i]] = *power;
+                }
+                std::mem::swap(&mut key_recycling, &mut key);
+                return (key, val);
+            }).collect();
         self.assert_valid(&result);
         return result;
     }
