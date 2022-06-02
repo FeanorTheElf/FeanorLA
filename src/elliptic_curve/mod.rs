@@ -3,7 +3,7 @@
 pub mod finite_field_curve;
 pub mod rational_torsion_group;
 pub mod point_count;
-// pub mod division_polynomials;
+pub mod division_polynomials;
 
 use super::ring::*;
 use super::integer::*;
@@ -13,6 +13,7 @@ use super::la::mat::*;
 use super::fq::*;
 use super::combinatorics::iters::*;
 use super::ring_extension::simple_extension::*;
+use super::ring_extension::extension_wrapper::*;
 use super::poly::*;
 use super::fraction_field::*;
 
@@ -27,7 +28,7 @@ impl<K> PartialEq for EllipticCurve<K>
     where K: CanonicalIsomorphismInfo<K>
 {
     fn eq(&self, rhs: &EllipticCurve<K>) -> bool {
-        self.base_field.eq(&self.A, &rhs.A) && self.base_field.eq(&self.B, &rhs.B)
+        self.base_field.is_eq(&self.A, &rhs.A) && self.base_field.is_eq(&self.B, &rhs.B)
     }
 }
 
@@ -44,7 +45,28 @@ impl<K> std::fmt::Display for EllipticCurve<K>
 }
 
 pub type CoordRing<K: Ring> = WrappingRing<SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>>;
-pub type FunctionField<K: Ring> = WrappingRing<FieldOfFractions<SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>>>;
+pub type FunctionField<K: Ring> = WrappingRing<ExtensionWrapper<
+    K, 
+    FieldOfFractions<SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>>,
+    ComposedEmbedding<
+        ComposedEmbedding<
+            StandardEmbedding<K, PolyRing<K>>,
+            StandardEmbedding<
+                PolyRing<K>,
+                SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>,
+            >,
+            K,
+            PolyRing<K>,
+            SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>
+        >,
+        StandardEmbedding<
+            SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>,
+            FieldOfFractions<SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>>
+        >,
+        K, 
+        SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>,
+        FieldOfFractions<SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>>,
+    >>>;
 
 #[derive(Clone)]
 pub enum EllipticCurvePoint<K> 
@@ -144,31 +166,50 @@ impl<K> EllipticCurve<WrappingRing<K>>
     /// 
     pub fn coordinate_ring(&self) -> (CoordRing<K>, El<CoordRing<K>>, El<CoordRing<K>>) {
         let poly_ring = PolyRing::adjoint(self.base_field().wrapped_ring().clone(), "X");
-        let mipo = Vector::new(VectorArray::new([poly_ring.zero(), 
+        let mipo = Vector::new(VectorArray::new([
             poly_ring.add(
                 poly_ring.pow(&poly_ring.unknown(), 3),
                 poly_ring.add(
                     poly_ring.mul(poly_ring.from(self.A.clone().into_val()), poly_ring.unknown()),
                     poly_ring.from(self.B.clone().into_val())
                 )
-            )
+            ),
+            poly_ring.zero()
         ]));
         let poly_ring_x = poly_ring.unknown();
-        let result = SimpleRingExtension::new(poly_ring, mipo).bind_ring_by_value();
+        let result = SimpleRingExtension::new(poly_ring, mipo, "Y").bind_ring_by_value();
         let X = result.from(result.wrapped_ring().from(poly_ring_x));
         let Y = result.from(result.wrapped_ring().generator());
         return (result, X, Y);
     }
 
-    pub fn function_field(&self) -> (FunctionField<K>, El<FunctionField<K>>, El<FunctionField<K>>) {
+    pub fn function_field(&self) -> (FunctionField<K>, El<FunctionField<K>>, El<FunctionField<K>>) 
+        where K: PartialEq
+    {
         assert!(self.base_field().is_field().can_use());
-        let (ring, x, y) = self.coordinate_ring();
-        let field = FieldOfFractions::new(ring.wrapped_ring().clone()).bind_ring_by_value();
+        let base_field = self.base_field().wrapped_ring().clone();
+        let poly_ring = PolyRing::adjoint(base_field.clone(), "X");
+        let (coord_ring, x, y) = self.coordinate_ring();
+        let coord_ring = coord_ring.wrapped_ring().clone();
+        let func_field = FieldOfFractions::new_no_check(coord_ring.clone());
         let (x, y) = {
-            let incl = embedding(&ring, &field);
-            (incl(x), incl(y))
+            let incl = embedding(&coord_ring, &func_field);
+            (incl(x.into_val()), incl(y.into_val()))
         };
-        return (field, x, y);
+        let result = ExtensionWrapper::new(
+            base_field.clone(), 
+            func_field.clone(), 
+            compose(
+                embedding(coord_ring.clone(), func_field),
+                compose(
+                    embedding(poly_ring.clone(), coord_ring.clone()),
+                    embedding(base_field.clone(), poly_ring.clone())
+                )
+            )
+        ).bind_ring_by_value();
+        let x = result.from(x);
+        let y = result.from(y);
+        return (result, x, y);
     }
 
     pub fn discriminant(&self) -> El<WrappingRing<K>> {
@@ -215,7 +256,7 @@ impl<K> EllipticCurve<WrappingRing<K>>
                     (x2 - x) * lambda - y2
                 )
             },
-            (EllipticCurvePoint::Affine(x1, y1), EllipticCurvePoint::Affine(x2, y2)) if !field.eq(&x1, &x2) => {
+            (EllipticCurvePoint::Affine(x1, y1), EllipticCurvePoint::Affine(x2, y2)) if !field.is_eq(&x1, &x2) => {
                 let lambda = (y1 - &y2) / (&x1 - &x2);
                 let x = lambda.pow(2) - x1 - &x2;
                 EllipticCurvePoint::Affine(
@@ -239,6 +280,7 @@ impl<K> EllipticCurve<WrappingRing<K>>
 
         let mut result = EllipticCurvePoint::Infinity;
         for i in (0..(n.abs_log2_floor() + 1)).rev() {
+            println!("{}, {:?}", i, result);
             if n.is_bit_set(i) {
                 result = self.point_add(self.point_add(result.clone(), point.clone(), field), result, field);
             } else {

@@ -1,5 +1,6 @@
 use super::prelude::*;
 use super::rational::*;
+use super::wrapper::*;
 use super::eea::*;
 
 #[derive(Debug, Clone, Copy)]
@@ -14,6 +15,14 @@ impl<R> FieldOfFractions<R>
 {
     pub fn new(base_ring: R) -> Self {
         assert!(base_ring.is_integral().can_use());
+        FieldOfFractions { base_ring }
+    }
+
+    ///
+    /// Creates the fraction field of the given ring, but skips the check
+    /// that the base ring is integral. Use with care!
+    /// 
+    pub fn new_no_check(base_ring: R) -> Self {
         FieldOfFractions { base_ring }
     }
 
@@ -37,6 +46,20 @@ impl<R> FieldOfFractions<R>
 
     pub fn base_ring(&self) -> &R {
         &self.base_ring
+    }
+}
+
+impl<R> RingElWrapper<FieldOfFractions<R>>
+    where R: Ring
+{
+    pub fn num(self) -> RingElWrapper<R> {
+        let ((num, den), ring) = self.destruct();
+        return ring.base_ring.bind_by_value(num);
+    }
+
+    pub fn den(self) -> RingElWrapper<R> {
+        let ((num, den), ring) = self.destruct();
+        return ring.base_ring.bind_by_value(den);
     }
 }
 
@@ -127,8 +150,8 @@ impl<R> RingBase for FieldOfFractions<R>
         (self.base_ring.one(), self.base_ring.one())
     }
 
-    fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
-        self.base_ring.eq(&self.base_ring.mul_ref(&lhs.0, &rhs.1), &self.base_ring.mul_ref(&lhs.1, &rhs.0))
+    fn is_eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+        self.base_ring.is_eq(&self.base_ring.mul_ref(&lhs.0, &rhs.1), &self.base_ring.mul_ref(&lhs.1, &rhs.0))
     }
 
     fn is_zero(&self, val: &Self::El) -> bool {
@@ -136,7 +159,7 @@ impl<R> RingBase for FieldOfFractions<R>
     }
 
     fn is_one(&self, val: &Self::El) -> bool {
-        self.base_ring.eq(&val.0, &val.1)
+        self.base_ring.is_eq(&val.0, &val.1)
     }
 
     fn unspecified_element(&self) -> Self::El {
@@ -316,6 +339,14 @@ impl<R> DivisibilityInfoRing for FieldOfFractions<R>
         } else {
             Some(self.div(lhs.clone(), rhs))
         }
+    }
+}
+
+impl<R> PartialEq for FieldOfFractions<R>
+    where R: Ring + PartialEq
+{
+    fn eq(&self, rhs: &Self) -> bool {
+        self.base_ring() == rhs.base_ring()
     }
 }
 

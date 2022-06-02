@@ -328,14 +328,14 @@ impl<R> RingBase for MultivariatePolyRing<R>
         return result;
     }
 
-    fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+    fn is_eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
         self.assert_valid(&lhs);
         self.assert_valid(&rhs);
 
         let cmp = |a: &Self::El, b: &Self::El| {
             for (key, lhs_coeff) in a.iter() {
                 if let Some(rhs_coeff) = b.get(key) {
-                    if !self.base_ring.eq(lhs_coeff, rhs_coeff) {
+                    if !self.base_ring.is_eq(lhs_coeff, rhs_coeff) {
                         return false;
                     }
                 } else {
@@ -589,7 +589,7 @@ fn test_eq() {
     let one = ring.from(1);
     let _x = ring.adjoint("x");
     let one_prime = ring.from(1);
-    assert!(ring.eq(&one, &one_prime));
+    assert!(ring.is_eq(&one, &one_prime));
 }
 
 #[test]
@@ -722,7 +722,7 @@ fn test_poly_ring_embedding() {
     let x2 = ring2.adjoint("X");
 
     let (f, fi) = isomorphism(&ring1, &ring2);
-    assert!(!ring1.eq(&x1, &x2));
-    assert!(ring2.eq(&x2, &f(x1)));
-    assert!(ring1.eq(&y1, &fi(y2)));
+    assert!(!ring1.is_eq(&x1, &x2));
+    assert!(ring2.is_eq(&x2, &f(x1)));
+    assert!(ring1.is_eq(&y1, &fi(y2)));
 }

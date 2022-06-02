@@ -84,7 +84,7 @@ pub trait IntegerRing: OrderedRing + CanonicalIsomorphismInfo<StaticRing<i64>> +
         let two = self.from_z(2);
         loop {
             let mid = self.floor_div(self.add_ref(start.clone(), &end), &two);
-            if self.eq(&mid, &start) {
+            if self.is_eq(&mid, &start) {
                 return start;
             }
             match self.cmp(&f(&mid), &self.zero()) {

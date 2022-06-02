@@ -43,9 +43,9 @@ pub const F7: F7Type = ZnEl::<7>::RING;
 pub type F4Type = SimpleRingExtension<StaticRing::<ZnEl<2>>, F4MipoType, VectorArray<ZnEl<2>, 2>>;
 pub type F49Type = SimpleRingExtension<StaticRing::<ZnEl<7>>, F49MipoType, VectorArray<ZnEl<7>, 2>>;
 pub type F1369Type = SimpleRingExtension<StaticRing<ZnEl<37>>, F1369MipoType, VectorArray<ZnEl<37>, 2>>;
-pub const F4: F4Type = SimpleRingExtension::new(F2, F4_MIPO);
-pub const F49: F49Type = SimpleRingExtension::new(F7, F49_MIPO);
-pub const F1369: F1369Type = F1369Type::new(ZnEl::<37>::RING, F1369_MIPO);
+pub const F4: F4Type = SimpleRingExtension::new(F2, F4_MIPO, "α");
+pub const F49: F49Type = SimpleRingExtension::new(F7, F49_MIPO, "α");
+pub const F1369: F1369Type = F1369Type::new(ZnEl::<37>::RING, F1369_MIPO, "α");
 
 #[cfg(test)]
 use super::FiniteRing;
@@ -53,9 +53,9 @@ use super::FiniteRing;
 #[test]
 fn test_arithmetic() {
     let a = F4.generator();
-    assert!(!F4.eq(&a, &F4.one()));
-    assert!(F4.eq(&F4.pow(&a, 3), &F4.one()));
-    assert!(F4.eq(&F4.pow(&F4.add(a, F4.one()), 3), &F4.one()));
+    assert!(!F4.is_eq(&a, &F4.one()));
+    assert!(F4.is_eq(&F4.pow(&a, 3), &F4.one()));
+    assert!(F4.is_eq(&F4.pow(&F4.add(a, F4.one()), 3), &F4.one()));
 }
 
 #[test]
@@ -63,7 +63,7 @@ fn test_division() {
     let a = F4.generator();
     let b = F4.add_ref(F4.one(), &a);
     let c = F4.div(F4.one(), &a);
-    assert!(F4.eq(&b, &c));
+    assert!(F4.is_eq(&b, &c));
 }
 
 #[test]

@@ -93,7 +93,7 @@ impl<R: Ring, M: MatrixView<Self::El>, N: MatrixView<Self::El>> MatrixEq<M, N> f
         assert_eq!(a.col_count(), b.col_count());
         for row in 0..a.row_count() {
             for col in 0..a.col_count() {
-                if !self.eq(a.at(row, col), b.at(row, col)) {
+                if !self.is_eq(a.at(row, col), b.at(row, col)) {
                     return false;
                 }
             }

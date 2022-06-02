@@ -76,6 +76,13 @@ impl Zn {
     }
 }
 
+impl PartialEq for Zn {
+
+    fn eq(&self, rhs: &Zn) -> bool {
+        self.modulus == rhs.modulus
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ZnIterFn {
     current: BigInt
@@ -166,7 +173,7 @@ impl RingBase for Zn {
         FactorRingZEl(BigInt::RING.one())
     }
 
-    fn eq(&self, FactorRingZEl(lhs): &Self::El, FactorRingZEl(rhs): &Self::El) -> bool {
+    fn is_eq(&self, FactorRingZEl(lhs): &Self::El, FactorRingZEl(rhs): &Self::El) -> bool {
         assert!(lhs < &self.modulus);
         assert!(rhs < &self.modulus);
         lhs == rhs
@@ -257,5 +264,5 @@ impl CanonicalIsomorphismInfo<Zn> for Zn {
 fn test_mul() {
     let z257 = Zn::new(BigInt::from_str_radix("257", 10).unwrap());
     let x = BigInt::from_str_radix("256", 10).unwrap();
-    assert!(z257.eq(&z257.one(), &z257.mul(z257.project(x.clone()), z257.project(x))));
+    assert!(z257.is_eq(&z257.one(), &z257.mul(z257.project(x.clone()), z257.project(x))));
 }

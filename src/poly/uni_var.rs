@@ -30,7 +30,7 @@ impl<R> PolyRing<R>
     }
 
     pub fn evaluate<S>(&self, poly: &El<Self>, value: S::El, ring: &S) -> S::El 
-        where S: CanonicalEmbeddingInfo<R>
+        where S: Ring + CanonicalEmbeddingInfo<R>
     {
         poly_evaluate(&self.base_ring, value, poly.as_ref(), ring)
     }
@@ -96,6 +96,11 @@ impl<R> PolyRing<R>
         let lc = self.lc(&f).unwrap().clone();
         let lc_inv = self.base_ring().div(self.base_ring().one(), &lc);
         return (self.mul(f, self.from(lc_inv)), lc);
+    }
+
+    pub fn scale(&self, mut f: El<Self>, factor: &El<R>) -> El<Self> {
+        f.scale(factor, self.base_ring());
+        return f;
     }
 }
 
@@ -197,14 +202,14 @@ impl<R> RingBase for PolyRing<R>
         return result;
     }
 
-    fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+    fn is_eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
         let (shorter, longer) = if lhs.len() <= rhs.len() {
             (lhs, rhs)
         } else {
             (rhs, lhs)
         };
         for i in 0..shorter.len() {
-            if !self.base_ring.eq(&shorter[i], &longer[i]) {
+            if !self.base_ring.is_eq(&shorter[i], &longer[i]) {
                 return false;
             }
         }
@@ -318,11 +323,32 @@ impl<R> EuclideanInfoRing for PolyRing<R>
     }
 }
 
+impl<R> PartialEq for PolyRing<R> 
+    where R: Ring + PartialEq
+{
+    fn eq(&self, rhs: &Self) -> bool {
+        self.base_ring() == rhs.base_ring()
+    }
+}
+
 impl<R> RingElWrapper<PolyRing<R>>
     where R: Ring
 {
-    pub fn lc(&self) -> El<WrappingRing<&R>> {
-        self.parent_ring().base_ring().bind(self.parent_ring().lc(self.val()).unwrap().clone())
+    pub fn lc(&self) -> Option<El<WrappingRing<R>>> {
+        self.parent_ring().lc(self.val()).map(|x| self.parent_ring().base_ring().clone().bind_by_value(x.clone()))
+    }
+
+    pub fn deg(&self) -> Option<usize> {
+        self.parent_ring().deg(self.val())
+    }
+
+    pub fn coefficient_at(&self, i: usize) -> RingElWrapper<R> {
+        self.parent_ring().base_ring().clone().bind_by_value(self.val()[i].clone())
+    }
+
+    pub fn scaled(self, factor: &RingElWrapper<R>) -> Self {
+        let (el, ring) = self.destruct();
+        ring.bind_by_value(ring.scale(el, factor.val()))
     }
 }
 
@@ -598,7 +624,7 @@ mod f1369 {
     type F1369MipoType = ConstVector2F37<{F37El::project(2)}, {F37El::project(33)}>;
     const F1369_MIPO: Vector<F1369MipoType, F37El> = Vector::new(F1369MipoType::INSTANCE);
     type F1369Type = SimpleRingExtension<StaticRing<F37El>, F1369MipoType, VectorArray<F37El, 2>>;
-    pub static F1369: F1369Type = F1369Type::new(F37El::RING, F1369_MIPO);
+    pub static F1369: F1369Type = F1369Type::new(F37El::RING, F1369_MIPO, "α");
 }
 
 #[cfg(test)]

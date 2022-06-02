@@ -137,11 +137,11 @@ impl<'b, R> CanonicalIsomorphismInfo<BigIntRing> for &'b R
     }
 }
 
-pub fn embedding<R, S>(from: R, to: S) -> impl Fn(R::El) -> S::El 
-    where R: Ring, S: CanonicalEmbeddingInfo<R>
+pub fn embedding<R, S>(from: R, to: S) -> StandardEmbedding<R, S> 
+    where R: Ring, S: Ring + CanonicalEmbeddingInfo<R>
 {
     assert!(to.has_embedding(&from).can_use());
-    move |x| to.embed(&from, x)
+    StandardEmbedding { base: from, ring: to }
 }
 
 pub fn isomorphism<R, S>(from: R, to: S) -> (impl Fn(R::El) -> S::El, impl Fn(S::El) -> R::El)
@@ -159,6 +159,60 @@ pub fn z_hom<'a, R>(to: &'a R) -> impl 'a + Fn(i64) -> R::El
     move |x| to.from_z(x)
 }
 
+#[derive(Clone, Copy)]
+pub struct StandardEmbedding<R, S>
+    where R: Ring, S: Ring + CanonicalEmbeddingInfo<R>
+{
+    base: R,
+    ring: S
+}
+
+impl<R, S> PartialEq for StandardEmbedding<R, S>
+    where R: Ring + PartialEq, S: Ring + CanonicalEmbeddingInfo<R> + PartialEq
+{
+    fn eq(&self, rhs: &Self) -> bool {
+        assert_eq!(self.base, rhs.base);
+        assert_eq!(self.ring, rhs.ring);
+        true
+    }
+}
+
+impl<R, S> FnOnce<(El<R>,)> for StandardEmbedding<R, S>
+    where R: Ring, S: Ring + CanonicalEmbeddingInfo<R>
+{
+    type Output = El<S>;
+
+    extern "rust-call" fn call_once(
+        mut self, 
+        (x, ): (R::El, )
+    ) -> Self::Output {
+        self.call_mut((x, ))
+    }
+}
+
+impl<R, S> FnMut<(El<R>,)> for StandardEmbedding<R, S>
+    where R: Ring, S: Ring + CanonicalEmbeddingInfo<R>
+{
+    extern "rust-call" fn call_mut(
+        &mut self, 
+        (x, ): (R::El, )
+    ) -> Self::Output {
+        self.call((x, ))
+    }
+}
+
+impl<R, S> Fn<(El<R>,)> for StandardEmbedding<R, S>
+    where R: Ring, S: Ring + CanonicalEmbeddingInfo<R>
+{
+    extern "rust-call" fn call(
+        &self, 
+        (x, ): (R::El, )
+    ) -> Self::Output {
+        self.ring.embed(&self.base, x)
+    }
+}
+
+#[derive(Clone, Copy)]
 pub struct ComposedEmbedding<F, G, R, S, T>
     where R: Ring, S: Ring, T: Ring, F: Fn(R::El) -> S::El, G: Fn(S::El) -> T::El
 {
@@ -167,6 +221,17 @@ pub struct ComposedEmbedding<F, G, R, S, T>
     r: PhantomData<R>,
     s: PhantomData<S>,
     t: PhantomData<T>
+}
+
+impl<F, G, R, S, T> PartialEq for ComposedEmbedding<F, G, R, S, T>
+    where R: Ring + PartialEq, S: Ring + PartialEq, T: Ring + PartialEq, F: Fn(R::El) -> S::El + PartialEq, G: Fn(S::El) -> T::El + PartialEq
+{
+    fn eq(&self, rhs: &Self) -> bool {
+        assert_eq!(self.r, rhs.r);
+        assert_eq!(self.s, rhs.s);
+        assert_eq!(self.t, rhs.t);
+        self.f == rhs.f && self.g == rhs.g
+    }
 }
 
 impl<F, G, R, S, T> FnOnce<(R::El, )> for ComposedEmbedding<F, G, R, S, T>

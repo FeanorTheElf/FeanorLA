@@ -17,7 +17,7 @@ pub fn sqrt<F: FiniteRing + HashableElRing>(x: El<F>, field: F) -> Option<El<F>>
     if !field.is_one(&field.pow_big(&x, &n)) {
         return None;
     }
-    let ring: SimpleRingExtension<_, _, VectorArray<_, 2>> = SimpleRingExtension::new(&field, Vector::from_array([x, field.zero()]));
+    let ring: SimpleRingExtension<_, _, VectorArray<_, 2>> = SimpleRingExtension::new(&field, Vector::from_array([x, field.zero()]), "α");
     loop {
         let g = ring.random_element(|| rng.rand_u32());
         let h = ring.pow_big(&g, &n);
@@ -38,7 +38,7 @@ fn test_zn_sqrt() {
     let field = ZnEl::<73>::RING;
     let a = field.from_z(42);
     let root_a2 = sqrt(field.pow(&a, 2), &field).unwrap();
-    assert!(field.eq(&a, &root_a2) || field.eq(&field.neg(a), &root_a2));
+    assert!(field.is_eq(&a, &root_a2) || field.is_eq(&field.neg(a), &root_a2));
 }
 
 #[test]
@@ -46,5 +46,5 @@ fn test_fq_sqrt() {
     let field = F49;
     let a = field.from_z(11);
     let root_a2 = sqrt(field.pow(&a, 2), &field).unwrap();
-    assert!(field.eq(&a, &root_a2) || field.eq(&field.neg(a), &root_a2));
+    assert!(field.is_eq(&a, &root_a2) || field.is_eq(&field.neg(a), &root_a2));
 }

@@ -125,7 +125,7 @@ pub fn poly_format<R, V>(coeff_ring: &R, el: Vector<V, R::El>, f: &mut std::fmt:
 }
 
 pub fn poly_evaluate<R, S, V>(coeff_ring: &R, value: S::El, poly: Vector<V, R::El>, ring: &S) -> S::El
-    where S: CanonicalEmbeddingInfo<R>, R: Ring, V: VectorView<R::El>
+    where S: Ring + CanonicalEmbeddingInfo<R>, R: Ring, V: VectorView<R::El>
 {
     let incl = embedding(coeff_ring, ring);
     let mut result = incl(poly.at(0).clone());

@@ -747,7 +747,7 @@ impl From<i64> for BigInt {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BigIntRing;
 
 impl BigInt {
@@ -799,7 +799,7 @@ impl RingBase for BigIntRing {
         };
     }
 
-    fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+    fn is_eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
         if self.is_zero(lhs) && self.is_zero(rhs) {
             return true;
         } else if lhs.negative != rhs.negative {
@@ -942,7 +942,7 @@ impl PartialEq<i64> for BigInt {
 impl PartialEq<BigInt> for BigInt {
 
     fn eq(&self, rhs: &BigInt) -> bool {
-        BigInt::RING.eq(self, rhs)
+        BigInt::RING.is_eq(self, rhs)
     }
 }
 

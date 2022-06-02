@@ -61,7 +61,7 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     fn neg(&self, val: Self::El) -> Self::El;
     fn zero(&self) -> Self::El;
     fn one(&self) -> Self::El;
-    fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool;
+    fn is_eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool;
 
     ///
     /// Returns any element of the ring.
@@ -165,9 +165,9 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
         return result;
     }
 
-    fn is_zero(&self, val: &Self::El) -> bool { self.eq(val, &self.zero()) }
-    fn is_one(&self, val: &Self::El) -> bool { self.eq(val, &self.one()) }
-    fn is_neg_one(&self, val: &Self::El) -> bool { self.eq(val, &self.neg(self.one())) }
+    fn is_zero(&self, val: &Self::El) -> bool { self.is_eq(val, &self.zero()) }
+    fn is_one(&self, val: &Self::El) -> bool { self.is_eq(val, &self.one()) }
+    fn is_neg_one(&self, val: &Self::El) -> bool { self.is_eq(val, &self.neg(self.one())) }
 
     fn characteristic(&self) -> BigInt;
     ///
@@ -269,7 +269,7 @@ impl<'a, R: RingBase> RingBase for &'a R {
     fn neg(&self, val: Self::El) -> Self::El { (**self).neg(val) }
     fn zero(&self) -> Self::El { (**self).zero() }
     fn one(&self) -> Self::El { (**self).one() }
-    fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool { (**self).eq(lhs, rhs) }
+    fn is_eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool { (**self).is_eq(lhs, rhs) }
     fn unspecified_element(&self) -> Self::El { (**self).unspecified_element() }
     fn sub_ref_fst(&self, lhs: &Self::El, rhs: Self::El) -> Self::El { (**self).sub_ref_fst(lhs, rhs) }
     fn sub_ref_snd(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).sub_ref_snd(lhs, rhs) }
@@ -473,7 +473,7 @@ pub trait SingletonRing: Ring {
 ///
 /// Trait for rings whose elements are hashable. Note that the hashing contract
 /// of this function is as usual, but relative to the equality notion given by
-/// `ring.eq(el1, el2)`.
+/// `ring.is_eq(el1, el2)`.
 /// 
 pub trait HashableElRing: Ring {
     fn hash<H: std::hash::Hasher>(&self, h: &mut H, el: &Self::El);

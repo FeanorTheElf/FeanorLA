@@ -421,6 +421,14 @@ impl<Axioms, T> Copy for StaticRingImpl<Axioms, T>
     where Axioms: RingAxioms, T: RingEl<Axioms = Axioms>
 {}
 
+impl<Axioms, T> PartialEq for StaticRingImpl<Axioms, T> 
+    where Axioms: RingAxioms, T: RingEl<Axioms = Axioms>
+{
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
+
 impl<Axioms, T> Clone for StaticRingImpl<Axioms, T> 
     where Axioms: RingAxioms, T: RingEl<Axioms = Axioms>
 {
@@ -473,7 +481,7 @@ impl<T> RingBase for StaticRingImpl<T::Axioms, T>
     fn neg(&self, val: Self::El) -> Self::El { -val }
     fn zero(&self) -> Self::El { T::zero() }
     fn one(&self) -> Self::El { T::one() }
-    fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool { lhs == rhs }
+    fn is_eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool { lhs == rhs }
 
     fn characteristic(&self) -> BigInt { T::characteristic() }
     fn is_noetherian(&self) -> bool { true }

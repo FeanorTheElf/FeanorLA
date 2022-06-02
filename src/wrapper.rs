@@ -50,6 +50,35 @@ impl<R> RingElWrapper<R>
     pub fn destruct(self) -> (R::El, R) {
         (self.el, self.ring)
     }
+
+    pub fn borrow_ring<'a>(&'a self) -> RingElWrapper<&'a R> {
+        RingElWrapper {
+            ring: &self.ring,
+            el: self.el.clone()
+        }
+    }
+}
+
+pub trait Invertible {
+    fn inv(self) -> Self;
+}
+
+impl<R> Invertible for RingElWrapper<R> 
+    where R: Ring
+{
+    default fn inv(self) -> Self {
+        assert!(self.parent_ring().is_field().can_use());
+        self.parent_ring().bind_by_value(self.parent_ring().div(self.parent_ring().one(), self.val()))
+    }
+}
+
+impl<R> Invertible for RingElWrapper<R> 
+    where R: DivisibilityInfoRing
+{
+    fn inv(self) -> Self {
+        assert!(self.parent_ring().is_unit(self.val()));
+        self.parent_ring().bind_by_value(self.parent_ring().quotient(&self.ring.one(), self.val()).unwrap())
+    }
 }
 
 impl<R> RingElWrapper<&R>
@@ -79,7 +108,7 @@ impl<R> PartialEq<RingElWrapper<R>> for RingElWrapper<R>
     where R: Ring
 {
     fn eq(&self, rhs: &RingElWrapper<R>) -> bool {
-        self.ring.eq(&self.el, &rhs.el)
+        self.ring.is_eq(&self.el, &rhs.el)
     }
 }
 
@@ -91,7 +120,7 @@ impl<R> PartialEq<i64> for RingElWrapper<R>
     where R: Ring
 {
     fn eq(&self, rhs: &i64) -> bool {
-        self.ring.eq(&self.el, &self.ring.from_z(*rhs))
+        self.ring.is_eq(&self.el, &self.ring.from_z(*rhs))
     }
 }
 
@@ -369,13 +398,49 @@ impl<'a, R> Div<RingElWrapper<R>> for &'a RingElWrapper<R>
     }
 }
 
+impl<'a, R> Div<&'a RingElWrapper<R>> for &'a RingElWrapper<R>
+    where R: Ring
+{
+    type Output = RingElWrapper<R>;
+
+    default fn div(self, rhs: &'a RingElWrapper<R>) -> Self::Output {
+        assert!(self.ring.is_field().can_use());
+        assert!(!self.ring.is_zero(rhs.val()));
+        RingElWrapper {
+            el: self.ring.div(self.el.clone(), &rhs.el),
+            ring: self.ring.clone()
+        }
+    }
+}
+
+impl<'a, R> Div<&'a RingElWrapper<R>> for &'a RingElWrapper<R>
+    where R: DivisibilityInfoRing
+{
+    fn div(self, rhs: &'a RingElWrapper<R>) -> Self::Output {
+        assert!(self.ring.is_divisibility_computable().can_use());
+        RingElWrapper {
+            el: self.ring.quotient(&self.el, &rhs.el).unwrap(),
+            ring: self.ring.clone()
+        }
+    }
+}
+
 impl<'a, R> DivAssign<&'a RingElWrapper<R>> for RingElWrapper<R>
     where R: Ring
 {
-    fn div_assign(&mut self, rhs: &'a RingElWrapper<R>) {
+    default fn div_assign(&mut self, rhs: &'a RingElWrapper<R>) {
         assert!(self.ring.is_field().can_use());
         let value = std::mem::replace(&mut self.el, self.ring.unspecified_element());
         self.el = self.ring.div(value, &rhs.el);
+    }
+}
+
+impl<'a, R> DivAssign<&'a RingElWrapper<R>> for RingElWrapper<R>
+    where R: DivisibilityInfoRing
+{
+    fn div_assign(&mut self, rhs: &'a RingElWrapper<R>) {
+        let value = std::mem::replace(&mut self.el, self.ring.unspecified_element());
+        self.el = self.ring.quotient(&value, &rhs.el).unwrap();
     }
 }
 
@@ -599,6 +664,22 @@ impl<R> WrappingRing<R>
             el: x
         }
     }
+
+    pub fn borrow_ring<'a>(&'a self) -> WrappingRing<&'a R> {
+        WrappingRing {
+            ring: &self.ring
+        }
+    }
+}
+
+impl<'a, R> WrappingRing<&'a R>
+    where R: Ring
+{
+    pub fn clone_ring(&self) -> WrappingRing<R> {
+        WrappingRing {
+            ring: self.ring.clone()
+        }
+    }
 }
 
 impl<R> RingBase for WrappingRing<R> 
@@ -626,8 +707,8 @@ impl<R> RingBase for WrappingRing<R>
         self.from(self.ring.one())
     }
 
-    fn eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
-        self.ring.eq(&lhs.el, &rhs.el)
+    fn is_eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+        self.ring.is_eq(&lhs.el, &rhs.el)
     }
 
     fn unspecified_element(&self) -> Self::El {
