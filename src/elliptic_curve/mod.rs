@@ -280,7 +280,6 @@ impl<K> EllipticCurve<WrappingRing<K>>
 
         let mut result = EllipticCurvePoint::Infinity;
         for i in (0..(n.abs_log2_floor() + 1)).rev() {
-            println!("{}, {:?}", i, result);
             if n.is_bit_set(i) {
                 result = self.point_add(self.point_add(result.clone(), point.clone(), field), result, field);
             } else {

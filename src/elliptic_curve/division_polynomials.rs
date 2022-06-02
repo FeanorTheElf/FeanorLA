@@ -39,11 +39,8 @@ pub fn division_polynomials<K: Ring + PartialEq>(E: &EllipticCurve<WrappingRing<
     let x = P.from(P.wrapped_ring().unknown());
     let incl = embedding(E.base_field(), &P);
     let f = x.pow(3) + incl(E.a4().clone()) * &x + incl(E.a6().clone());
-    let y_y = f.clone();
-    let z = P.one();
 
     let reduce = |mut x1: El<WrappingRing<PolyRing<K>>>, mut y1_y: El<WrappingRing<PolyRing<K>>>, mut z1: El<WrappingRing<PolyRing<K>>>| {
-        println!("{}, {}, {}", x1, y1_y, z1);
         let d1 = gcd(&x1.ring(), x1.clone(), z1.clone());
         let d = gcd(&y1_y.ring(), d1, y1_y.clone());
         x1 /= &d;
@@ -64,6 +61,7 @@ pub fn division_polynomials<K: Ring + PartialEq>(E: &EllipticCurve<WrappingRing<
             (x1, y1_y, z1) = xy1_addition(&P, x1, y1_y, z1, f.clone());
         }
     }
+    (x1, y1_y, z1) = reduce(x1, y1_y, z1);
 
     return (x1, y1_y, z1);
 }
@@ -133,16 +131,17 @@ fn test_division_polynomials() {
     assert_eq!(*point_3.x().unwrap(), f(i(2)) / h(i(2)));
 }
 
-// #[bench]
-// fn bench_division_poly(b: &mut Bencher) {
-//     let ring = F49.bind_ring_by_value();
-//     let E = EllipticCurve::new(ring.clone(), ring.zero(), ring.one());
-//     let mut rng = oorandom::Rand32::new(2);
-//     let n: i64 = 30;
-//     b.iter(|| {
-//         let (f, _, h) = division_polynomials(&E, n as usize);
-//         let P = E.random_affine_point(|| rng.rand_u32());
-//         assert_eq!(f(P.x().unwrap().clone()) / h(P.x().unwrap().clone()), *E.mul_point(&P, &BigInt::from(n), E.base_field()).x().unwrap());
-//     });
-//     println!("{}", super::super::fq::zn_small::operations.load(std::sync::atomic::Ordering::SeqCst));
-// }
+#[bench]
+fn bench_division_poly(b: &mut Bencher) {
+    let ring = F49.bind_ring_by_value();
+    let E = EllipticCurve::new(ring.clone(), ring.zero(), ring.one());
+    let mut rng = oorandom::Rand32::new(3);
+    let n: i64 = 53;
+    b.iter(|| {
+        let (f, _, h) = division_polynomials(&E, n as usize);
+        let d = gcd(&f.ring(), f.clone(), h.clone());
+        let P = E.random_affine_point(|| rng.rand_u32());
+        assert_eq!(f(P.x().unwrap().clone()) / h(P.x().unwrap().clone()), *E.mul_point(&P, &BigInt::from(n), E.base_field()).x().unwrap());
+    });
+    println!("{}", super::super::fq::zn_small::operations.load(std::sync::atomic::Ordering::SeqCst));
+}

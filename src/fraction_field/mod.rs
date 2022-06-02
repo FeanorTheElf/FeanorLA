@@ -53,12 +53,12 @@ impl<R> RingElWrapper<FieldOfFractions<R>>
     where R: Ring
 {
     pub fn num(self) -> RingElWrapper<R> {
-        let ((num, den), ring) = self.destruct();
+        let ((num, _), ring) = self.destruct();
         return ring.base_ring.bind_by_value(num);
     }
 
     pub fn den(self) -> RingElWrapper<R> {
-        let ((num, den), ring) = self.destruct();
+        let ((_, den), ring) = self.destruct();
         return ring.base_ring.bind_by_value(den);
     }
 }

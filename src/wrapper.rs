@@ -339,6 +339,7 @@ impl<R> DivAssign<RingElWrapper<R>> for RingElWrapper<R>
 {
     fn div_assign(&mut self, rhs: RingElWrapper<R>) {
         assert!(self.ring.is_field().can_use());
+        assert!(!self.ring.is_zero(rhs.val()));
         let value = std::mem::replace(&mut self.el, self.ring.unspecified_element());
         self.el = self.ring.div(value, &rhs.el);
     }
@@ -364,6 +365,7 @@ impl<'a, R> Div<&'a RingElWrapper<R>> for RingElWrapper<R>
 {
     fn div(self, rhs: &'a RingElWrapper<R>) -> Self::Output {
         assert!(self.ring.is_divisibility_computable().can_use());
+        assert!(!self.ring.is_zero(rhs.val()));
         RingElWrapper {
             el: self.ring.quotient(&self.el, &rhs.el).unwrap(),
             ring: self.ring
@@ -391,6 +393,7 @@ impl<'a, R> Div<RingElWrapper<R>> for &'a RingElWrapper<R>
 {
     fn div(self, rhs: RingElWrapper<R>) -> Self::Output {
         assert!(self.ring.is_divisibility_computable().can_use());
+        assert!(!self.ring.is_zero(rhs.val()));
         RingElWrapper {
             el: self.ring.quotient(&self.el, &rhs.el).unwrap(),
             ring: self.ring.clone()
@@ -418,6 +421,7 @@ impl<'a, R> Div<&'a RingElWrapper<R>> for &'a RingElWrapper<R>
 {
     fn div(self, rhs: &'a RingElWrapper<R>) -> Self::Output {
         assert!(self.ring.is_divisibility_computable().can_use());
+        assert!(!self.ring.is_zero(rhs.val()));
         RingElWrapper {
             el: self.ring.quotient(&self.el, &rhs.el).unwrap(),
             ring: self.ring.clone()
@@ -430,6 +434,7 @@ impl<'a, R> DivAssign<&'a RingElWrapper<R>> for RingElWrapper<R>
 {
     default fn div_assign(&mut self, rhs: &'a RingElWrapper<R>) {
         assert!(self.ring.is_field().can_use());
+        assert!(!self.ring.is_zero(rhs.val()));
         let value = std::mem::replace(&mut self.el, self.ring.unspecified_element());
         self.el = self.ring.div(value, &rhs.el);
     }
@@ -439,6 +444,8 @@ impl<'a, R> DivAssign<&'a RingElWrapper<R>> for RingElWrapper<R>
     where R: DivisibilityInfoRing
 {
     fn div_assign(&mut self, rhs: &'a RingElWrapper<R>) {
+        assert!(self.ring.is_divisibility_computable().can_use());
+        assert!(!self.ring.is_zero(rhs.val()));
         let value = std::mem::replace(&mut self.el, self.ring.unspecified_element());
         self.el = self.ring.quotient(&value, &rhs.el).unwrap();
     }
