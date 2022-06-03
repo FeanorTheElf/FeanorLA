@@ -350,9 +350,6 @@ impl<R> PartialEq for FieldOfFractions<R>
     }
 }
 
-#[cfg(test)]
-use super::wrapper::*;
-
 #[test]
 fn test_add() {
     let rats = FieldOfFractions::new(BigInt::RING);

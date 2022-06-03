@@ -431,5 +431,5 @@ impl<V, T> std::fmt::Display for Vector<V, T>
 fn test_subvector_subvector_same_type() {
     let v = Vector::from_array([1, 2]);
     let a: Vector<Subvector<&VectorArray<i64, 2>, i64>, i64> = v.subvector(..);
-    let b: Vector<Subvector<&VectorArray<i64, 2>, i64>, i64> = a.into_subvector(..);
+    let _: Vector<Subvector<&VectorArray<i64, 2>, i64>, i64> = a.into_subvector(..);
 }

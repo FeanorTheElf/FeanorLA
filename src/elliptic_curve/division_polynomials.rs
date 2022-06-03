@@ -86,8 +86,6 @@ use super::super::rational::*;
 use test::Bencher;
 #[cfg(test)]
 use super::super::fq::fq_small::*;
-#[cfg(test)]
-use super::super::fq::zn_small::*;
 
 #[test]
 fn test_duplication() {
@@ -145,23 +143,6 @@ fn test_division_polynomials() {
     assert!(E.is_on_curve(&point));
     let point_3 = E.mul_point(&point, &BigInt::from(3), &field);
     assert_eq!(*point_3.x().unwrap(), f(i(2)) / h(i(2)));
-}
-
-#[test]
-#[ignore]
-fn exp() {
-    let ring = ZnEl::<101>::RING.bind_ring_by_value();
-    let E = EllipticCurve::new(ring.clone(), ring.zero(), ring.one());
-    let (mut f, _, h) = division_polynomials(&E, 53);
-    println!("Computed polys");
-    let d = gcd(&f.ring(), f.clone(), h.clone());
-    f /= d;
-    let ring = f.ring();
-    let factorization = ring.factor(f);
-    for (g, _) in factorization {
-        println!("{}", g);
-        println!("");
-    }
 }
 
 #[bench]

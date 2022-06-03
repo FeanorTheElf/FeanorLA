@@ -80,14 +80,14 @@ impl<K> EllipticCurvePoint<WrappingRing<K>>
 {
     pub fn x(&self) -> Option<&El<WrappingRing<K>>> {
         match self {
-            EllipticCurvePoint::Affine(x, y) => Some(x),
+            EllipticCurvePoint::Affine(x, _) => Some(x),
             EllipticCurvePoint::Infinity => None
         }
     }
 
     pub fn y(&self) -> Option<&El<WrappingRing<K>>> {
         match self {
-            EllipticCurvePoint::Affine(x, y) => Some(y),
+            EllipticCurvePoint::Affine(_, y) => Some(y),
             EllipticCurvePoint::Infinity => None
         }
     }
@@ -149,6 +149,29 @@ impl<K> EllipticCurve<WrappingRing<K>>
         };
         assert!(!result.base_field().is_zero(&result.discriminant()));
         return result;
+    }
+
+    pub fn from_j_invariant(base_field: WrappingRing<K>, j: El<WrappingRing<K>>) -> Self {
+        assert!(base_field.is_field().can_use());
+        if j != 1728 {
+            let alpha = (&j * 27) / (-(&j - 1728) * 4);
+            let result = EllipticCurve {
+                base_field: base_field,
+                A: alpha.clone(),
+                B: alpha
+            };
+            debug_assert!(!result.base_field().is_zero(&result.discriminant()));
+            debug_assert!(result.j_invariant() == j);
+            return result;
+        } else {
+            let result = EllipticCurve {
+                base_field: base_field,
+                A: j.ring().one(),
+                B: j.ring().zero()
+            };
+            debug_assert!(!result.base_field().is_zero(&result.discriminant()));
+            return result;
+        }
     }
 
     pub fn lift_homomorphism<L, F>(&self, _other: &EllipticCurve<WrappingRing<L>>, f: F) -> impl Fn(EllipticCurvePoint<WrappingRing<K>>) -> EllipticCurvePoint<WrappingRing<L>>
