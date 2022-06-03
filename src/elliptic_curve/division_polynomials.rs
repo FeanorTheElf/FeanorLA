@@ -9,19 +9,33 @@ type P<K: Ring> = WrappingRing<PolyRing<K>>;
 fn duplication<K: Ring + PartialEq>(_poly_ring: &P<K>, a4: El<P<K>>, x1: El<P<K>>, y1_y: El<P<K>>, z1: El<P<K>>, f: El<P<K>>) -> (El<P<K>>, El<P<K>>, El<P<K>>) {
     let lambda_div_y_num = x1.pow(2) * 3 + z1.pow(2) * a4;
     let lambda_den = &y1_y * &z1 * 2;
-    let x3_div_lambda_den = - &x1 * 2 * lambda_den.pow(2) + &z1 * lambda_div_y_num.pow(2) * &f;
-    let z3 = lambda_den.pow(3) * z1;
-    let y3_y = - y1_y * lambda_den.pow(3) + lambda_div_y_num * (x1 * lambda_den.pow(2) - &x3_div_lambda_den) * f;
+
+    // these are just defined to prevent repeated computation
+    let lambda_den_2 = &lambda_den * &lambda_den;
+    let lambda_den_3 = &lambda_den * &lambda_den_2;
+    let lambda_div_y_num_f = &lambda_div_y_num * f;
+    let lambda_den_2_x1 = &lambda_den_2 * &x1;
+
+    let x3_div_lambda_den = - &lambda_den_2_x1 * 2 + &z1 * lambda_div_y_num * &lambda_div_y_num_f;
+    let z3 = &lambda_den_3 * z1;
+    let y3_y = - y1_y * &lambda_den_3 + lambda_div_y_num_f * (lambda_den_2_x1 - &x3_div_lambda_den);
     return (x3_div_lambda_den * lambda_den, y3_y, z3);
 }
+
 
 fn xy1_addition<K: Ring + PartialEq>(_poly_ring: &P<K>, x1: El<P<K>>, y1_y: El<P<K>>, z1: El<P<K>>, f: El<P<K>>) -> (El<P<K>>, El<P<K>>, El<P<K>>) {
     let x = x1.ring().from(x1.ring().wrapped_ring().unknown());
     let lambda_y_num = &y1_y - &f * &z1;
     let lambda_den = &x1 - &x * &z1;
-    let x3_div_lambda_den = -&x1 * lambda_den.pow(2) - x * &z1 * lambda_den.pow(2) + &z1 * lambda_y_num.pow(2) / f;
-    let z3 = lambda_den.pow(3) * &z1;
-    let y3_y = - y1_y * lambda_den.pow(3) + lambda_y_num * (x1 * lambda_den.pow(2) - &x3_div_lambda_den);
+
+    // these are just defined to prevent repeated computation
+    let lambda_den_2 = &lambda_den * &lambda_den;
+    let lambda_den_3 = &lambda_den * &lambda_den_2;
+    let lambda_den_2_x1 = &lambda_den_2 * &x1;
+
+    let x3_div_lambda_den = -&lambda_den_2_x1 - x * &z1 * &lambda_den_2 + &z1 * lambda_y_num.pow(2) / f;
+    let z3 = &lambda_den_3 * &z1;
+    let y3_y = - y1_y * lambda_den_3 + lambda_y_num * (lambda_den_2_x1 - &x3_div_lambda_den);
     return (x3_div_lambda_den * lambda_den, y3_y, z3);
 }
 
@@ -30,7 +44,7 @@ fn xy1_addition<K: Ring + PartialEq>(_poly_ring: &P<K>, x1: El<P<K>>, y1_y: El<P
 /// for each point `P = (x : y : z)` on the curve `E`, have that
 /// the x-coordinate of `[n]P` is `f(x)/g(x)`, if `[n]P` is affine.
 /// 
-pub fn division_polynomials<K: Ring + PartialEq>(E: &EllipticCurve<WrappingRing<K>>, mut n: usize) 
+pub fn division_polynomials<K: Ring + PartialEq>(E: &EllipticCurve<WrappingRing<K>>, n: usize) 
     -> (El<WrappingRing<PolyRing<K>>>, El<WrappingRing<PolyRing<K>>>, El<WrappingRing<PolyRing<K>>>) 
 {
     assert!(n >= 2);
@@ -72,6 +86,8 @@ use super::super::rational::*;
 use test::Bencher;
 #[cfg(test)]
 use super::super::fq::fq_small::*;
+#[cfg(test)]
+use super::super::fq::zn_small::*;
 
 #[test]
 fn test_duplication() {
@@ -131,17 +147,34 @@ fn test_division_polynomials() {
     assert_eq!(*point_3.x().unwrap(), f(i(2)) / h(i(2)));
 }
 
+#[test]
+#[ignore]
+fn exp() {
+    let ring = ZnEl::<101>::RING.bind_ring_by_value();
+    let E = EllipticCurve::new(ring.clone(), ring.zero(), ring.one());
+    let (mut f, _, h) = division_polynomials(&E, 53);
+    println!("Computed polys");
+    let d = gcd(&f.ring(), f.clone(), h.clone());
+    f /= d;
+    let ring = f.ring();
+    let factorization = ring.factor(f);
+    for (g, _) in factorization {
+        println!("{}", g);
+        println!("");
+    }
+}
+
 #[bench]
 fn bench_division_poly(b: &mut Bencher) {
     let ring = F49.bind_ring_by_value();
     let E = EllipticCurve::new(ring.clone(), ring.zero(), ring.one());
     let mut rng = oorandom::Rand32::new(3);
-    let n: i64 = 53;
+    let n: i64 = 13;
     b.iter(|| {
         let (f, _, h) = division_polynomials(&E, n as usize);
-        let d = gcd(&f.ring(), f.clone(), h.clone());
         let P = E.random_affine_point(|| rng.rand_u32());
         assert_eq!(f(P.x().unwrap().clone()) / h(P.x().unwrap().clone()), *E.mul_point(&P, &BigInt::from(n), E.base_field()).x().unwrap());
+        println!("one run");
     });
     println!("{}", super::super::fq::zn_small::operations.load(std::sync::atomic::Ordering::SeqCst));
 }

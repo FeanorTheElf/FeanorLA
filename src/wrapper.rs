@@ -337,11 +337,22 @@ impl<R> Div<RingElWrapper<R>> for RingElWrapper<R>
 impl<R> DivAssign<RingElWrapper<R>> for RingElWrapper<R>
     where R: Ring
 {
-    fn div_assign(&mut self, rhs: RingElWrapper<R>) {
+    default fn div_assign(&mut self, rhs: RingElWrapper<R>) {
         assert!(self.ring.is_field().can_use());
         assert!(!self.ring.is_zero(rhs.val()));
         let value = std::mem::replace(&mut self.el, self.ring.unspecified_element());
         self.el = self.ring.div(value, &rhs.el);
+    }
+}
+
+impl<R> DivAssign<RingElWrapper<R>> for RingElWrapper<R>
+    where R: DivisibilityInfoRing
+{
+    fn div_assign(&mut self, rhs: RingElWrapper<R>) {
+        assert!(self.ring.is_divisibility_computable().can_use());
+        assert!(!self.ring.is_zero(rhs.val()));
+        let value = std::mem::replace(&mut self.el, self.ring.unspecified_element());
+        self.el = self.ring.quotient(&value, &rhs.el).unwrap();
     }
 }
 

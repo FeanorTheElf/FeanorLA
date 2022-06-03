@@ -729,6 +729,10 @@ impl BigInt {
             }
         })
     }
+
+    pub fn is_odd(&self) -> bool {
+        self.is_bit_set(0)
+    }
 }
 
 impl From<i64> for BigInt {

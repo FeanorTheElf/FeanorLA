@@ -27,12 +27,11 @@ fn pow_mod_f<F>(poly_ring: &PolyRing<F>, g: &El<PolyRing<F>>, f: &El<PolyRing<F>
     return result;
 }
 
-// we cannot really check if the given field is really a prime field, so just assume that it is.
-// furthermore, the input polynomial must be square-free
 pub fn distinct_degree_factorization<F>(prime_field: F, p: &BigInt, mut f: Vector<VectorOwned<F::El>, F::El>) -> Vec<Vector<VectorOwned<F::El>, F::El>>
     where F: FiniteRing
 {
     assert!(prime_field.size() == *p);
+    assert!(prime_field.is_field().can_use());
     let poly_ring = PolyRing::adjoint(prime_field.clone(), "X");
     assert!(!poly_ring.is_zero(&f));
     let mut result = Vec::new();
@@ -57,8 +56,6 @@ pub fn distinct_degree_factorization<F>(prime_field: F, p: &BigInt, mut f: Vecto
 /// over a finite field, that is squarefree and consists only of irreducible factors of 
 /// degree d.
 /// 
-/// 
-/// 
 /// # Algorithm
 /// 
 /// The algorithm relies on the fact that for some monic polynomial T over Fp have
@@ -76,19 +73,30 @@ pub fn distinct_degree_factorization<F>(prime_field: F, p: &BigInt, mut f: Vecto
 /// in Fq, then this works if exactly one of them maps to zero under the polynomial
 /// `T^((q - 1)/2) - 1`. Now observe that this is the case if and only if `T(a)` resp.
 /// `T(b)` is a square in Fq. Now apparently, for a polynomial chosen uniformly at random
-/// among all monic polynomials of degree ? in Fp[X], the values T(a) and T(b) are close
+/// among all monic polynomials of degree 2d in Fp[X], the values T(a) and T(b) are close
 /// to independent and uniform on Fq, and thus the probability that one is a square and
 /// the other is not is approximately 1/2.
+/// 
+/// ## Why is the degree of T equal to 2d ?
+/// 
+/// Pick an Fp-vector space basis of Fq and write a, b as dxs matrices A, B over Fp, where the
+/// i-th column is the representation of `a^i` resp. `b^i` w.r.t. that basis. Then the
+/// evaluation of `T(a)` resp. `T(b)` is the matrix-vector product `w^T A` resp. `w^T B` where
+/// w is the coefficient vector of T (a vector over Fp). We want that `w^T A` and `w^T B` are
+/// uniform and independent. Hence, we want all `w^T c` to be uniform and independent, where
+/// c runs through the columns of A resp. B. There are 2d such columns in total, thus s = 2d
+/// will do (note that all columns are different, as `1, a, ..., a^(d - 1)` is a basis of Fq
+/// and similarly for b). 
 ///
 #[allow(non_snake_case)]
 pub fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<El<F>>, El<F>>, d: usize) -> Vector<VectorOwned<El<F>>, El<F>>
     where F: FiniteRing + DivisibilityInfoRing
 {
-    assert!(*p != 2);
+    assert!(p.is_odd());
     assert!(prime_field.size() == *p);
     assert!(poly_degree(&prime_field, f.as_ref()).unwrap() % d == 0);
     assert!(poly_degree(&prime_field, f.as_ref()).unwrap() > d);
-    let poly_ring = PolyRing::adjoint(prime_field, "X");
+    let poly_ring = PolyRing::adjoint(&prime_field, "X");
 
     let mut hasher = DefaultHasher::new();
     p.hash(&mut hasher);
@@ -97,9 +105,9 @@ pub fn cantor_zassenhaus<F>(prime_field: F, p: &BigInt, f: Vector<VectorOwned<El
     loop {
         let mut T = poly_ring.zero();
         let mut power_x = poly_ring.one();
-        for _ in 0..(2 * d - 1) {
+        for _ in 0..(2 * d + 1) {
             T = poly_ring.add(T, poly_ring.mul(
-                poly_ring.from_z_big(&BigInt::get_uniformly_random_oorandom(&mut rng, p, 5)),
+                poly_ring.from(prime_field.random_element(|| rng.rand_u32())),
                 power_x.clone()
             ));
             power_x = poly_ring.mul(power_x, poly_ring.unknown());

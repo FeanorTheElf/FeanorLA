@@ -416,7 +416,7 @@ impl<R> UfdInfoRing for PolyRing<R>
     where R: FiniteRing + DivisibilityInfoRing
 {
     fn is_ufd(&self) -> RingPropValue {
-        if self.base_ring.is_field().can_use() && self.base_ring().characteristic() != 2 && self.base_ring().size() == self.base_ring().characteristic() {
+        if self.base_ring.is_field().can_use() && self.base_ring().characteristic().is_odd() {
             return RingPropValue::True;
         } else {
             return RingPropValue::Unknown;
@@ -435,7 +435,7 @@ impl<R> UfdInfoRing for PolyRing<R>
         }
         let distinct_degree_factorization = factoring::distinct_degree_factorization(
             self.base_ring(), 
-            &self.base_ring().characteristic(), 
+            &self.base_ring().size(), 
             sqrfree_part
         );
         if d >= distinct_degree_factorization.len() || self.is_unit(&distinct_degree_factorization[d]) {
@@ -467,7 +467,7 @@ impl<R> UfdInfoRing for PolyRing<R>
             let sqrfree_part = factoring::poly_squarefree_part(self.base_ring(), el.clone());
             for (d, el) in factoring::distinct_degree_factorization(
                 self.base_ring(), 
-                &self.base_ring().characteristic(), 
+                &self.base_ring().size(), 
                 sqrfree_part.clone()
             ).into_iter().enumerate() {
                 let mut stack = Vec::new();
@@ -488,7 +488,7 @@ impl<R> UfdInfoRing for PolyRing<R>
                     } else {
                         let factor = factoring::cantor_zassenhaus(
                             self.base_ring(), 
-                            &self.base_ring().characteristic(), 
+                            &self.base_ring().size(), 
                             el.clone(), 
                             d
                         );
@@ -510,6 +510,8 @@ impl<R> UfdInfoRing for PolyRing<R>
 
 #[cfg(test)]
 use super::super::fq::zn_big::*;
+#[cfg(test)]
+use super::super::fq::fq_small::*;
 #[cfg(test)]
 use test::Bencher;
 
@@ -581,6 +583,27 @@ fn test_factor() {
     expected.insert(&x * &x + &x + 2, 1);
     expected.insert(&x * &x + &x * 2 + 2, 1);
     expected.insert(&x * &x + 1, 1);
+    let factorization = ring.factor(p.into_val());
+    assert_eq!(expected, factorization);
+}
+
+#[test]
+fn test_factor_fq() {
+    let coeff_ring = F49.clone();
+    let ring = PolyRing::adjoint(&coeff_ring, "X");
+    let x = ring.bind(ring.unknown());
+
+    let f = x.pow(2) + &x * 6 + 3;
+    let factor = <_ as Iterator>::next(&mut ring.factor(f.into_val()).into_iter()).unwrap().0.clone_ring();
+    let coeff_ring_gen = -factor.coefficient_at(0) / factor.coefficient_at(1);
+    let a = ring.bind(ring.from(coeff_ring_gen.into_val())); // up to field automorphism, this is the generator picked by sage
+
+    let p = x.clone().pow(14) - &x;
+    let mut expected = VecMap::new();
+    expected.insert(x.clone(), 1);
+    expected.insert(&x + 6, 1);
+    expected.insert(x.pow(6) + (&a * 3 + 6) * x.pow(5) + x.pow(4) * 2 + (&a * 3 + 5) * x.pow(3) + x.pow(2) * 2 + (&a * 3 + 6) * &x + 1, 1);
+    expected.insert(x.pow(6) + (&a * 4 + 2) * x.pow(5) + x.pow(4) * 2 + (&a * 4 + 1) * x.pow(3) + x.pow(2) * 2 + (&a * 4 + 2) * &x + 1, 1);
     let factorization = ring.factor(p.into_val());
     assert_eq!(expected, factorization);
 }
