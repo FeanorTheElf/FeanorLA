@@ -24,9 +24,9 @@ impl<R, W> SimpleRingExtension<R, VectorOwned<R::El>, W>
     where R: Ring, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     pub fn adjoin_element<F>(base_ring: R, mipo: F, gen_name: &'static str) -> Self
-        where F: FnOnce(&PolyRing<&R>) -> El<PolyRing<R>>
+        where F: FnOnce(&PolyRing<R>) -> El<PolyRing<R>>
     {
-        let ring = PolyRing::adjoint(&base_ring, "X");
+        let ring = PolyRing::adjoint(base_ring.clone(), "X");
         let mut mipo = mipo(&ring);
         let scaling_factor = base_ring.neg(base_ring.div(base_ring.one(), ring.lc(&mipo).expect("Minimal polynomial must not be constant when creating a new ring")));
         mipo = ring.mul(mipo, ring.from(scaling_factor));
