@@ -4,7 +4,7 @@ use super::super::finite_field_sqrt;
 
 impl<K: FiniteRing + HashableElRing> EllipticCurve<WrappingRing<K>> {
 
-    pub fn random_affine_point<F>(&self, mut rng: F) -> EllipticCurvePoint<WrappingRing<K>>
+    pub fn random_affine_point<F>(&self, rng: F) -> EllipticCurvePoint<WrappingRing<K>>
         where F: FnMut() -> u32
     {
         self.random_affine_point_extension(self.base_field(), rng)
