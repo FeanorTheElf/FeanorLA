@@ -11,7 +11,7 @@ impl<K: FiniteRing + HashableElRing> EllipticCurve<WrappingRing<K>> {
     }
 
     pub fn random_affine_point_extension<L, F>(&self, ext_field: &WrappingRing<L>, mut rng: F) -> EllipticCurvePoint<WrappingRing<L>>
-        where F: FnMut() -> u32, L: FiniteRing + CanonicalEmbeddingInfo<K>
+        where F: FnMut() -> u32, L: FiniteRing + CanonicalEmbeddingInfo<K> + HashableElRing
     {
         assert!(ext_field.is_field().can_use());
         loop {
