@@ -14,14 +14,14 @@ pub const fn is_prime(n: u64) -> bool {
     assert!(n >= 2);
     const fn is_b_smooth(b: u64, n: u64) -> bool {
         if b <= 1 {
-            true
-        } else if n % b == 0 {
             false
+        } else if n % b == 0 {
+            true
         } else {
             is_b_smooth(b - 1, n)
         }
     }
-    return is_b_smooth(n - 1, n);
+    return !is_b_smooth(n - 1, n);
 }
 
 impl<const N: u64, const IS_FIELD: bool> ZnElImpl<N, IS_FIELD> {

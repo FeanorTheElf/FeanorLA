@@ -1,6 +1,7 @@
 #![feature(adt_const_params)]
 #![feature(generic_const_exprs)]
 #![feature(specialization)]
+#![feature(step_trait)]
 #![feature(generic_associated_types)]
 #![feature(fn_traits)]
 #![feature(test)]
@@ -15,6 +16,7 @@ extern crate vector_map;
 
 pub mod ring_property;
 pub mod ring;
+pub mod square_multiply;
 pub mod primitive;
 pub mod embedding;
 pub mod wrapper;
@@ -37,6 +39,7 @@ pub mod primes;
 pub mod diophantine;
 pub mod elliptic_curve;
 pub mod finite_field_sqrt;
+pub mod discrete_log;
 
 pub mod numerics;
 pub mod combinatorics;

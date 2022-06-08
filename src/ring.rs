@@ -1,7 +1,9 @@
 use super::integer::*;
 use super::embedding::*;
 use super::wrapper::*;
+use super::primitive::*;
 use super::ring_property::*;
+use super::square_multiply::abs_square_and_multiply;
 
 use vector_map::VecMap;
 
@@ -135,34 +137,14 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
         } else if exp == 2 {
             return self.mul_ref(basis, basis);
         }
-        let mut result = self.one();
-        for i in (0..=(31 - exp.leading_zeros())).rev() {
-            if (exp >> i) & 1 == 1 {
-                result = self.mul(self.mul_ref(basis, &result), result);
-            } else {
-                result = self.mul_ref(&result, &result);
-            }
-        }
-        return result;
+        return abs_square_and_multiply(basis, &(exp as i64), i64::RING, |x, y| self.mul(x, y), |x, y| self.mul_ref(x, y), self.one());
     }
 
     fn pow_big(&self, basis: &Self::El, exp: &BigInt) -> Self::El 
         where Self::El: Clone
     {
         assert!(*exp >= 0);
-        if exp.is_zero() {
-            return self.one();
-        }
-
-        let mut result = self.one();
-        for i in (0..(exp.abs_log2_floor() + 1)).rev() {
-            if exp.is_bit_set(i) {
-                result = self.mul(self.mul_ref(&result, &basis), result);
-            } else {
-                result = self.mul_ref(&result, &result);
-            }
-        }
-        return result;
+        return abs_square_and_multiply(basis, exp, BigInt::RING, |x, y| self.mul(x, y), |x, y| self.mul_ref(x, y), self.one());
     }
 
     fn is_zero(&self, val: &Self::El) -> bool { self.is_eq(val, &self.zero()) }
@@ -191,17 +173,7 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El;
 
     fn from_z_big(&self, x: &BigInt) -> Self::El {
-        if *x == 0 {
-            return self.zero();
-        }
-        let mut result = self.zero();
-        for i in (0..(x.abs_log2_floor() + 1)).rev() {
-            if x.is_bit_set(i) {
-                result = self.add(self.add_ref(self.one(), &result), result);
-            } else {
-                result = self.add_ref(result.clone(), &result);
-            }
-        }
+        let mut result = abs_square_and_multiply(&self.one(), x, BigInt::RING, |x, y| self.add(x, y), |x, y| self.add_ref(x.clone(), y), self.zero());
         if *x < 0 {
             return self.neg(result);
         } else {
@@ -210,17 +182,7 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     }
 
     fn from_z(&self, x: i64) -> Self::El {
-        if x == 0 {
-            return self.zero();
-        }
-        let mut result = self.zero();
-        for i in (0..=(63 - x.abs().leading_zeros())).rev() {
-            if (x.abs() >> i) & 1 == 1 {
-                result = self.add(self.add_ref(self.one(), &result), result);
-            } else {
-                result = self.add_ref(result.clone(), &result);
-            }
-        }
+        let mut result = abs_square_and_multiply(&self.one(), &x, i64::RING, |x, y| self.add(x, y), |x, y| self.add_ref(x.clone(), y), self.zero());
         if x < 0 {
             return self.neg(result);
         } else {
@@ -430,12 +392,12 @@ pub trait UfdInfoRing : DivisibilityInfoRing {
     /// 
     /// This may panic if `is_ufd().can_use()` returns false.
     /// 
-    fn factor<'a>(&'a self, el: Self::El) -> VecMap<RingElWrapper<&'a Self>, usize> {
+    fn factor(&self, el: Self::El) -> VecMap<RingElWrapper<Self>, usize> {
         let mut result = VecMap::new();
         let mut stack = Vec::new();
         stack.push(el);
         while let Some(el) = stack.pop() {
-            let wrapped_el = self.bind(el);
+            let wrapped_el = self.bind_by_value(el);
             if let Some(factor) = self.calc_factor(wrapped_el.val()) {
                 stack.push(self.quotient(wrapped_el.val(), &factor).unwrap());
                 stack.push(factor);
@@ -456,9 +418,9 @@ impl<'a, R> UfdInfoRing for &'a R
     fn is_prime(&self, el: &Self::El) -> bool { (**self).is_prime(el) }
     fn calc_factor(&self, el: &Self::El) -> Option<Self::El> { (**self).calc_factor(el) }
 
-    fn factor<'b>(&'b self, el: Self::El) -> VecMap<RingElWrapper<&'b Self>, usize> { 
+    fn factor(&self, el: Self::El) -> VecMap<RingElWrapper<Self>, usize> { 
         let result = (**self).factor(el);
-        return result.into_iter().map(|(el, power)| (self.bind(el.into_val()), power)).collect();
+        return result.into_iter().map(|(el, power)| (self.bind_by_value(el.into_val()), power)).collect();
     }
 }
 

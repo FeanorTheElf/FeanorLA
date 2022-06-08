@@ -8,7 +8,7 @@ use std::cell::Cell;
 pub struct Zn {
     modulus: BigInt,
     inverse_modulus: BigInt,
-    inverse_modulus_bitshift: usize,
+    inverse_modulus_bitshift: u64,
     integral: Cell<Option<bool>>
 }
 
@@ -19,8 +19,8 @@ impl Zn {
         // have k such that 2^k > modulus^2
         // then (2^k / modulus) * x >> k differs at most 1 from floor(x / modulus)
         // if x < n^2, which is the case after multiplication
-        let k = modulus.abs_log2_floor() * 2 + 2;
-        let inverse_modulus = BigInt::RING.euclidean_div(BigInt::power_of_two(k), &modulus);
+        let k = BigInt::RING.abs_log2_floor(&modulus) * 2 + 2;
+        let inverse_modulus = BigInt::RING.euclidean_div(BigInt::power_of_two(k as usize), &modulus);
         return Zn {
             modulus: modulus,
             inverse_modulus: inverse_modulus,
@@ -32,7 +32,7 @@ impl Zn {
     fn project_leq_n_square(&self, n: BigInt) -> BigInt {
         let mut subtract = n.clone();
         subtract = subtract * self.inverse_modulus.clone();
-        subtract = subtract >> self.inverse_modulus_bitshift;
+        subtract = BigInt::RING.euclidean_div_pow_2(subtract, self.inverse_modulus_bitshift);
         subtract = subtract *  self.modulus.clone();
         let mut m = n - subtract;
         if m >= self.modulus {
@@ -50,7 +50,7 @@ impl Zn {
         }
         if red_n < self.modulus {
             // already in the interval [0, self.modulus[
-        } else if red_n.abs_log2_floor() + 1 < 2 * self.modulus.abs_log2_floor() {
+        } else if BigInt::RING.abs_log2_floor(&red_n) + 1 < 2 * BigInt::RING.abs_log2_floor(&self.modulus) {
             red_n = self.project_leq_n_square(red_n);
         } else {
             red_n = red_n.clone() - BigInt::RING.euclidean_div(red_n, &self.modulus) * self.modulus.clone();

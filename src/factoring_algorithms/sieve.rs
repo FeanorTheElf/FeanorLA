@@ -160,7 +160,7 @@ fn check_congruent_square<V>(
 /// 
 pub fn quadratic_sieve(n: &BigInt) -> BigInt {
     assert!(*n >= 2);
-    let n_float = n.to_float_approx();
+    let n_float = BigInt::RING.to_float_approx(n);
     
     // we choose a factor base that consists of all primes <= B, where this
     // is B. The concrete value L_n(1/2, 1/2) is asymptotically optimal for 
@@ -201,7 +201,7 @@ pub fn quadratic_sieve(n: &BigInt) -> BigInt {
     // a given square is B-smooth is better the smaller it is.
     // We get the smallest squares modulo n by considering integers k near
     // sqrt(n) and then looking at k^2 - n
-    let m = BigInt::from_float_approx(n_float.sqrt()).unwrap();
+    let m = BigInt::RING.from_float_approx(n_float.sqrt()).unwrap();
     let mut relations: Vec<(BigInt, RelVec)> = Vec::with_capacity(
         factor_base.len() + 1
     );

@@ -678,3 +678,18 @@ impl CanonicalIsomorphismInfo<BigIntRing> for StaticRing<i64> {
         BigInt::from(el)
     }
 }
+
+impl UfdInfoRing for StaticRing<i64> {
+    
+    fn is_ufd(&self) -> RingPropValue {
+        RingPropValue::True
+    }
+    
+    fn is_prime(&self, el: &Self::El) -> bool {
+        BigInt::RING.is_prime(&BigInt::from(*el))
+    }
+
+    fn calc_factor(&self, el: &Self::El) -> Option<Self::El> {
+        BigInt::RING.calc_factor(&BigInt::from(*el)).map(|x| x.to_int().unwrap())
+    }
+}

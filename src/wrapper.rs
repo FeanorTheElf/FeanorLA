@@ -9,6 +9,7 @@ use std::ops::{
     Add, Mul, Sub, Neg, Div, Rem,
     AddAssign, MulAssign, SubAssign, DivAssign
 };
+use std::iter::Step;
 
 #[derive(Debug)]
 pub struct RingElWrapper<R>
@@ -56,6 +57,14 @@ impl<R> RingElWrapper<R>
             ring: &self.ring,
             el: self.el.clone()
         }
+    }
+}
+
+impl<R> RingElWrapper<R>
+    where R: UfdInfoRing
+{
+    pub fn factor(self) -> VecMap<RingElWrapper<R>, usize> {
+        self.ring.factor(self.el)
     }
 }
 
@@ -605,11 +614,33 @@ impl<R> Rem<RingElWrapper<R>> for RingElWrapper<R>
     }
 }
 
+impl<'b, R> Rem<&'b RingElWrapper<R>> for RingElWrapper<R>
+    where R: EuclideanInfoRing
+{
+    type Output = RingElWrapper<R>;
+
+    fn rem(self, rhs: &'b RingElWrapper<R>) -> Self::Output {
+        assert!(self.ring.is_euclidean().can_use());
+        RingElWrapper {
+            el: self.ring.euclidean_rem(self.el, &rhs.el),
+            ring: self.ring
+        }
+    }
+}
+
 impl<R> std::cmp::PartialOrd for RingElWrapper<R>
     where R: OrderedRing
 {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+impl<R> std::cmp::PartialOrd<i64> for RingElWrapper<R>
+    where R: OrderedRing
+{
+    fn partial_cmp(&self, other: &i64) -> Option<std::cmp::Ordering> {
+        Some(self.ring.cmp(&self.el, &self.ring.from_z(*other)))
     }
 }
 
@@ -924,9 +955,9 @@ impl<R> UfdInfoRing for WrappingRing<R>
         self.wrapped_ring().calc_factor(el.val()).map(|x| self.wrapped_ring().bind_by_value(x))
     }
 
-    fn factor<'a>(&'a self, el: Self::El) -> VecMap<RingElWrapper<&'a Self>, usize> {
+    fn factor(&self, el: Self::El) -> VecMap<RingElWrapper<Self>, usize> {
         self.wrapped_ring().factor(el.into_val()).into_iter().map(|(key, val)| 
-            (self.bind(self.wrapped_ring().bind_by_value(key.into_val())), val)
+            (self.bind_by_value(self.wrapped_ring().bind_by_value(key.into_val())), val)
         ).collect()
     }
 }
@@ -1048,5 +1079,28 @@ impl<R> std::hash::Hash for RingElWrapper<R>
 {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.parent_ring().hash(state, &self.el)
+    }
+}
+
+impl<I> Step for RingElWrapper<I>
+    where I: IntegerRing
+{
+    fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+        let difference = end - start;
+        assert!(difference >= 0);
+        if difference < i64::MAX {
+            let difference = start.parent_ring().preimage(&i64::RING, difference.el);
+            return Some(difference as usize)
+        } else {
+            return None;
+        }
+    }
+
+    fn forward_checked(start: Self, count: usize) -> Option<Self> {
+        Some(start + (count as i64))
+    }
+
+    fn backward_checked(start: Self, count: usize) -> Option<Self> {
+        Some(start - (count as i64))
     }
 }

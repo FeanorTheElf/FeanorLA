@@ -458,7 +458,7 @@ impl<R> UfdInfoRing for PolyRing<R>
         return None;
     }
 
-    fn factor<'a>(&'a self, mut el: Self::El) -> VecMap<RingElWrapper<&'a Self>, usize> {
+    fn factor(&self, mut el: Self::El) -> VecMap<RingElWrapper<Self>, usize> {
         assert!(self.is_ufd().can_use());
         assert!(!self.is_zero(&el));
         let mut result = VecMap::new();
@@ -478,7 +478,7 @@ impl<R> UfdInfoRing for PolyRing<R>
                     if self.is_one(&el) {
                         continue;
                     } else if self.deg(&el) == Some(d) {
-                        let wrapped_el = self.bind(el);
+                        let wrapped_el = self.bind_by_value(el);
                         if let Some(power) = result.get_mut(&wrapped_el) {
                             *power += 1;
                         } else {
@@ -502,7 +502,7 @@ impl<R> UfdInfoRing for PolyRing<R>
         unit = self.base_ring().mul_ref(&unit, el.at(0));
         debug_assert!(self.base_ring().is_unit(&unit));
         if !self.base_ring().is_one(&unit) {
-            result.insert(self.bind(self.from(unit)), 1);
+            result.insert(self.bind_by_value(self.from(unit)), 1);
         }
         return result;
     }
@@ -573,7 +573,7 @@ fn test_poly_degree() {
 fn test_factor() {
     let coeff_ring = Zn::new(BigInt::from(3));
     let ring = PolyRing::adjoint(coeff_ring, "X");
-    let x = ring.bind(ring.unknown());
+    let x = ring.bind_by_value(ring.unknown());
 
     let p = x.clone().pow(9) - &x;
     let mut expected = VecMap::new();
@@ -591,12 +591,12 @@ fn test_factor() {
 fn test_factor_fq() {
     let coeff_ring = F49.clone();
     let ring = PolyRing::adjoint(&coeff_ring, "X");
-    let x = ring.bind(ring.unknown());
+    let x = ring.bind_by_value(ring.unknown());
 
     let f = x.pow(2) + &x * 6 + 3;
-    let factor = <_ as Iterator>::next(&mut ring.factor(f.into_val()).into_iter()).unwrap().0.clone_ring();
+    let factor = <_ as Iterator>::next(&mut ring.factor(f.into_val()).into_iter()).unwrap().0;
     let coeff_ring_gen = -factor.coefficient_at(0) / factor.coefficient_at(1);
-    let a = ring.bind(ring.from(coeff_ring_gen.into_val())); // up to field automorphism, this is the generator picked by sage
+    let a = ring.bind_by_value(ring.from(coeff_ring_gen.into_val())); // up to field automorphism, this is the generator picked by sage
 
     let p = x.clone().pow(14) - &x;
     let mut expected = VecMap::new();

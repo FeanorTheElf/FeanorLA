@@ -16,6 +16,7 @@ use super::ring_extension::simple_extension::*;
 use super::ring_extension::extension_wrapper::*;
 use super::poly::*;
 use super::fraction_field::*;
+use super::square_multiply::abs_square_and_multiply;
 
 #[derive(Debug, Clone)]
 pub struct EllipticCurve<K: Ring> {
@@ -291,28 +292,22 @@ impl<K> EllipticCurve<WrappingRing<K>>
         }
     }
 
-    pub fn mul_point<F>(&self, point: &EllipticCurvePoint<WrappingRing<F>>, n: &BigInt, field: &WrappingRing<F>) -> EllipticCurvePoint<WrappingRing<F>> 
-        where F: Ring + CanonicalEmbeddingInfo<K>
+    pub fn mul_point<L>(&self, point: &EllipticCurvePoint<WrappingRing<L>>, n: &BigInt, field: &WrappingRing<L>) -> EllipticCurvePoint<WrappingRing<L>> 
+        where L: Ring + CanonicalEmbeddingInfo<K>
     {
         assert!(field.is_field().can_use());
         assert!(field.has_embedding(self.base_field()).can_use());
-        assert!(*n >= 0);
-        if n.is_zero() {
-            return EllipticCurvePoint::Infinity;
+        let mut result = abs_square_and_multiply(point, n, BigInt::RING, |x, y| self.point_add(x, y, field), |x, y| self.point_add(x.clone(), y.clone(), field), EllipticCurvePoint::Infinity);
+        if *n < 0 {
+            return self.inv_point(result);
+        } else {
+            return result;
         }
-
-        let mut result = EllipticCurvePoint::Infinity;
-        for i in (0..(n.abs_log2_floor() + 1)).rev() {
-            if n.is_bit_set(i) {
-                result = self.point_add(self.point_add(result.clone(), point.clone(), field), result, field);
-            } else {
-                result = self.point_add(result.clone(), result, field);
-            }
-        }
-        return result;
     }
 
-    pub fn inv_point(&self, point: EllipticCurvePoint<WrappingRing<K>>) -> EllipticCurvePoint<WrappingRing<K>> {
+    pub fn inv_point<L>(&self, point: EllipticCurvePoint<WrappingRing<L>>) -> EllipticCurvePoint<WrappingRing<L>> 
+        where L: Ring + CanonicalEmbeddingInfo<K>
+    {
         match point {
             EllipticCurvePoint::Infinity => EllipticCurvePoint::Infinity,
             EllipticCurvePoint::Affine(x, y) => EllipticCurvePoint::Affine(x, -y)

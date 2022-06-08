@@ -9,7 +9,6 @@ use super::super::integer::*;
 use std::cmp::Ordering;
 use std::ops::*;
 use std::hash::{Hash, Hasher};
-use std::ops::Range;
 
 #[derive(Debug, Clone)]
 pub struct BigInt {
@@ -544,68 +543,6 @@ impl BigInt {
         }
     }
 
-    pub fn abs_log2_floor(&self) -> usize {
-        if let Some(d) = self.highest_set_block() {
-            return Self::BLOCK_BITS - self.data[d].leading_zeros() as usize - 1 + 
-                d * Self::BLOCK_BITS;
-        } else {
-            // the number is zero, so the result would be -inf
-            panic!("log2 is undefined for 0");
-        }
-    }
-
-    ///
-    /// Returns the float that is closest to the integer. Note that 
-    /// if for very big numbers (with abs() in the order of magnitude 
-    /// 2^1024 or greater, this can even yield infinity)
-    /// 
-    pub fn to_float_approx(&self) -> f64 {
-        if let Some(d) = self.highest_set_block() {
-            let mut upper_part = self.data[d] as f64 * 
-                2f64.powi(Self::BLOCK_BITS as i32);
-            if d > 0 {
-                upper_part += self.data[d - 1] as f64;
-            }
-            return upper_part * 2f64.powi(Self::BLOCK_BITS as i32).powi(d as i32 - 1)
-        } else {
-            return 0.;
-        }
-    }
-
-    ///
-    /// Returns a BigInt that has the given value, rounded. Note that
-    /// for very big numbers, the float representation can be very imprecise.
-    /// For Infinity and NaN, nothing is returned;
-    /// 
-    pub fn from_float_approx(val: f64) -> Option<BigInt> {
-        if val.is_infinite() || val.is_nan() {
-            return None;
-        } else if val.abs() <= 0.5 {
-            return Some(BigInt::ZERO);
-        } else if val.abs() <= 1.5 {
-            if val.is_sign_negative() { 
-                return Some(BigInt::RING.neg(BigInt::RING.one()));
-            } else { 
-                return Some(BigInt::RING.one());
-            }
-        } else {
-            const MANTISSA: i32 = 52;
-            let exp = std::cmp::max(val.abs().log2() as i32, MANTISSA) - MANTISSA;
-            let int = (val.abs() / 2f64.powi(exp)).trunc() as u64;
-            let blocks = exp as usize / Self::BLOCK_BITS;
-            let within_block_shift = exp as usize % Self::BLOCK_BITS;
-            let mut result = (0..blocks).map(|_| 0).collect::<Vec<_>>();
-            result.push(int << within_block_shift);
-            if within_block_shift != 0 {
-                result.push(int >> (Self::BLOCK_BITS - within_block_shift));
-            }
-            return Some(BigInt {
-                negative: val.is_sign_negative(),
-                data: result
-            });
-        }
-    }
-
     pub fn pow(&self, power: u32) -> BigInt {
         Self::RING.pow(self, power)
     }
@@ -620,10 +557,10 @@ impl BigInt {
     }
 
     pub fn log_floor(self, base: BigInt) -> BigInt {
-        let log_approx = self.to_float_approx().log(base.to_float_approx());
+        let log_approx = BigInt::RING.to_float_approx(&self).log(BigInt::RING.to_float_approx(&base));
         return BigInt::RING.find_zero_floor(
             |x| base.clone().pow_big(x), 
-            BigInt::from_float_approx(log_approx).unwrap_or(BigInt::ZERO)
+            BigInt::RING.from_float_approx(log_approx).unwrap_or(BigInt::ZERO)
         );
     }
 
@@ -659,7 +596,7 @@ impl BigInt {
         where G: FnMut() -> u32
     {
         assert!(*end_exclusive > 0);
-        let k = statistical_distance_bound + end_exclusive.abs_log2_floor();
+        let k = statistical_distance_bound + BigInt::RING.abs_log2_floor(&end_exclusive) as usize;
         let random_blocks = k / Self::BLOCK_BITS + 1;
         // generate a uniform random number in the range from 0 to 2^k 
         // and take it modulo end_exclusive the number of bigints 
@@ -690,20 +627,6 @@ impl BigInt {
         }
     }
 
-    pub fn is_bit_set(&self, i: usize) -> bool {
-        if let Some(d) = self.highest_set_block() {
-            let block = i / Self::BLOCK_BITS;
-            let bit = i % Self::BLOCK_BITS;
-            if block > d {
-                false
-            } else {
-                ((self.data[block] >> bit) & 1) == 1
-            }
-        } else {
-            false
-        }
-    }
-
     pub fn to_int(&self) -> Result<i64, ()> {
         if let Some(d) = self.highest_set_block() {
             if d == 0 && self.data[0] <= i64::MAX as u64 && self.negative {
@@ -718,20 +641,8 @@ impl BigInt {
         }
     }
 
-    pub fn range_iter(range: Range<BigInt>) -> impl Iterator<Item = BigInt> {
-        let end_minus_2 = range.end - 2;
-        std::iter::repeat(()).scan(range.start - 1, move |state, ()| {
-            if *state <= end_minus_2 {
-                *state += 1;
-                return Some(state.clone());
-            } else {
-                return None;
-            }
-        })
-    }
-
     pub fn is_odd(&self) -> bool {
-        self.is_bit_set(0)
+        BigInt::RING.abs_is_bit_set(&self, 0)
     }
 }
 
@@ -1089,29 +1000,6 @@ impl MulAssign<i64> for BigInt {
     }
 }
 
-impl Shr<usize> for BigInt {
-
-    type Output = BigInt;
-
-    fn shr(mut self, rhs: usize) -> Self::Output {
-        let drop_blocks = rhs / Self::BLOCK_BITS;
-        let shift_amount = rhs % Self::BLOCK_BITS;
-        let keep_bits = Self::BLOCK_BITS - shift_amount;
-        if self.data.len() <= drop_blocks {
-            self = Self::ZERO.clone();
-        } else {
-            self.data.drain(0..drop_blocks);
-            self.data[0] >>= shift_amount;
-            for i in 1..self.data.len() {
-                let rotated = self.data[i].rotate_right(shift_amount as u32);
-                self.data[i] = rotated & (u64::MAX >> shift_amount);
-                self.data[i - 1] |= rotated & u64::MAX.wrapping_shl(keep_bits as u32);
-            }
-        }
-        return self;
-    }
-}
-
 impl std::fmt::Display for BigInt {
 
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -1196,6 +1084,121 @@ impl UfdInfoRing for BigIntRing {
 
     fn calc_factor(&self, el: &Self::El) -> Option<Self::El> {
         primes::calc_factor(el)
+    }
+}
+
+impl IntegerRing for BigIntRing {
+
+    ///
+    /// Returns the float that is closest to the integer. Note that 
+    /// if for very big numbers (with abs() in the order of magnitude 
+    /// 2^1024 or greater, this can even yield infinity)
+    /// 
+    fn to_float_approx(&self, el: &Self::El) -> f64 {
+        if let Some(d) = el.highest_set_block() {
+            let mut upper_part = el.data[d] as f64 * 
+                2f64.powi(BigInt::BLOCK_BITS as i32);
+            if d > 0 {
+                upper_part += el.data[d - 1] as f64;
+            }
+            return upper_part * 2f64.powi(BigInt::BLOCK_BITS as i32).powi(d as i32 - 1)
+        } else {
+            return 0.;
+        }
+    }
+
+    ///
+    /// Returns a BigInt that has the given value, rounded. Note that
+    /// for very big numbers, the float representation can be very imprecise.
+    /// For Infinity and NaN, nothing is returned;
+    /// 
+    fn from_float_approx(&self, val: f64) -> Option<BigInt> {
+        if val.is_infinite() || val.is_nan() {
+            return None;
+        } else if val.abs() <= 0.5 {
+            return Some(BigInt::ZERO);
+        } else if val.abs() <= 1.5 {
+            if val.is_sign_negative() { 
+                return Some(BigInt::RING.neg(BigInt::RING.one()));
+            } else { 
+                return Some(BigInt::RING.one());
+            }
+        } else {
+            const MANTISSA: i32 = 52;
+            let exp = std::cmp::max(val.abs().log2() as i32, MANTISSA) - MANTISSA;
+            let int = (val.abs() / 2f64.powi(exp)).trunc() as u64;
+            let blocks = exp as usize / BigInt::BLOCK_BITS;
+            let within_block_shift = exp as usize % BigInt::BLOCK_BITS;
+            let mut result = (0..blocks).map(|_| 0).collect::<Vec<_>>();
+            result.push(int << within_block_shift);
+            if within_block_shift != 0 {
+                result.push(int >> (BigInt::BLOCK_BITS - within_block_shift));
+            }
+            return Some(BigInt {
+                negative: val.is_sign_negative(),
+                data: result
+            });
+        }
+    }
+
+    fn mul_pow_2(&self, mut el: El<Self>, power: u64) -> El<Self> { 
+        let add_blocks = power as usize / BigInt::BLOCK_BITS;
+        let shift_amount = power as usize % BigInt::BLOCK_BITS;
+        let keep_bits = BigInt::BLOCK_BITS - shift_amount;
+        let keep_mask = ((1 << keep_bits) - 1) << shift_amount;
+        let carry_mask = (1 << shift_amount) - 1;
+        let mut carry = 0;
+        for i in 0..el.data.len() {
+            let rotated = el.data[i].rotate_left(shift_amount as u32);
+            el.data[i] = (rotated & keep_mask) | carry;
+            carry = rotated & carry_mask;
+        }
+        if carry != 0 {
+            el.data.push(carry);
+        }
+        let mut tmp = (0..add_blocks).map(|_| 0).collect();
+        std::mem::swap(&mut tmp, &mut el.data);
+        el.data.extend(tmp.into_iter());
+        return el;
+    }
+
+    fn euclidean_div_pow_2(&self, mut el: El<Self>, power: u64) -> El<Self> {
+        let drop_blocks = power as usize / BigInt::BLOCK_BITS;
+        let shift_amount = power as usize % BigInt::BLOCK_BITS;
+        let keep_bits = BigInt::BLOCK_BITS - shift_amount;
+        if el.data.len() <= drop_blocks {
+            el = BigInt::ZERO.clone();
+        } else {
+            el.data.drain(0..drop_blocks);
+            el.data[0] >>= shift_amount;
+            for i in 1..el.data.len() {
+                let rotated = el.data[i].rotate_right(shift_amount as u32);
+                el.data[i] = rotated & (u64::MAX >> shift_amount);
+                el.data[i - 1] |= rotated & u64::MAX.wrapping_shl(keep_bits as u32);
+            }
+        }
+        return el;
+    }
+
+    fn abs_log2_floor(&self, el: &BigInt) -> u64 {
+        assert!(!self.is_zero(el));
+        let d = el.highest_set_block().unwrap();
+        return BigInt::BLOCK_BITS as u64 - el.data[d].leading_zeros() as u64 - 1 + 
+            d as u64 * BigInt::BLOCK_BITS as u64;
+    }
+
+    fn abs_is_bit_set(&self, val: &BigInt, i: u64) -> bool {
+        if let Some(d) = val.highest_set_block() {
+            let block = i as usize / BigInt::BLOCK_BITS;
+            let bit = i as usize % BigInt::BLOCK_BITS;
+            if block > d {
+                false
+            } else {
+                ((val.data[block] >> bit) & 1) == 1
+            }
+        } else {
+            false
+        }
     }
 }
 
@@ -1346,10 +1349,25 @@ fn test_abs_division_small() {
 fn test_shift_right() {
     let mut x = BigInt::from_str_radix("9843a756781b34567f81394", 16).unwrap();
     let z = BigInt::from_str_radix("9843a756781b34567", 16).unwrap();
-    x = x >> 24;
+    x = BigInt::RING.euclidean_div_pow_2(x, 24);
+    assert_eq!(z, x);
+
+    let mut x = BigInt::from_str_radix("-9843a756781b34567f81394", 16).unwrap();
+    let z = BigInt::from_str_radix("-9843a756781b34567", 16).unwrap();
+    x = BigInt::RING.euclidean_div_pow_2(x, 24);
     assert_eq!(z, x);
 }
 
+#[test]
+fn test_shift_left() {
+    let x = BigInt::from_str_radix("9843a756781b34567f81394", 16).unwrap();
+    let z = BigInt::RING.mul_pow_2(x.clone(), 24);
+    assert_eq!(x.clone() * BigInt::power_of_two(24), z);
+
+    let x = BigInt::from_str_radix("-9843a756781b34567f81394", 16).unwrap();
+    let z = BigInt::RING.mul_pow_2(x.clone(), 24);
+    assert_eq!(x.clone() * BigInt::power_of_two(24), z);
+}
 #[test]
 fn test_assumptions_integer_division() {
     assert_eq!(-1, -3 / 2);
@@ -1421,7 +1439,7 @@ fn bench_mul(bencher: &mut test::Bencher) {
 #[test]
 fn from_to_float_approx() {
     let x: f64 = 83465209236517892563478156042389675783219532497861237985328563.;
-    let y = BigInt::from_float_approx(x).unwrap().to_float_approx();
+    let y = BigInt::RING.to_float_approx(&BigInt::RING.from_float_approx(x).unwrap());
     assert!(x * 0.99 < y);
     assert!(y < x * 1.01);
 }
@@ -1476,11 +1494,11 @@ fn test_cmp_small() {
 #[test]
 fn test_factor() {
     let mut expected = VecMap::new();
-    expected.insert(BigInt::RING.bind(BigInt::from(7)), 2);
-    expected.insert(BigInt::RING.bind(BigInt::from(2)), 1);
+    expected.insert(BigInt::RING.bind_by_value(BigInt::from(7)), 2);
+    expected.insert(BigInt::RING.bind_by_value(BigInt::from(2)), 1);
     assert_eq!(expected, BigInt::RING.factor(BigInt::from(98)));
     expected = VecMap::new();
-    expected.insert(BigInt::RING.bind(BigInt::from(3)), 5);
+    expected.insert(BigInt::RING.bind_by_value(BigInt::from(3)), 5);
     assert_eq!(expected, BigInt::RING.factor(BigInt::from(243)));
 }
 
@@ -1496,17 +1514,4 @@ fn test_cmp() {
     assert_eq!(false, BigInt::from(2) < BigInt::from(2));
     assert_eq!(false, BigInt::from(3) < BigInt::from(2));
     assert_eq!(true, BigInt::from(-1) > BigInt::from(-2));
-}
-
-#[test]
-fn test_range_iter() {
-    let i = |x| BigInt::from(x);
-    assert_eq!(
-        vec![i(1), i(2)],
-        BigInt::range_iter(i(1)..i(3)).collect::<Vec<_>>()
-    );
-    assert_eq!(
-        Vec::<BigInt>::new(),
-        BigInt::range_iter(i(1)..i(-3)).collect::<Vec<_>>()
-    );
 }

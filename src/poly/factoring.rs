@@ -3,6 +3,7 @@ use super::super::eea::*;
 use super::super::fq::*;
 use super::uni_var::*;
 use super::ops::*;
+use super::super::square_multiply::abs_square_and_multiply;
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -12,19 +13,8 @@ use oorandom;
 fn pow_mod_f<F>(poly_ring: &PolyRing<F>, g: &El<PolyRing<F>>, f: &El<PolyRing<F>>, pow: &BigInt) -> El<PolyRing<F>>
     where F: Ring
 {
-    if *pow == 0 {
-        return poly_ring.one();
-    }
-    let mut result = poly_ring.one();
-    for i in (0..(pow.abs_log2_floor() + 1)).rev() {
-        if pow.is_bit_set(i) {
-            result = poly_ring.mul(poly_ring.mul_ref(&result, g), result);
-        } else {
-            result = poly_ring.mul_ref(&result, &result);
-        }
-        result = poly_ring.euclidean_rem(result, &f);
-    }
-    return result;
+    assert!(*pow >= 0);
+    return abs_square_and_multiply(g, pow, BigInt::RING, |x, y| poly_ring.euclidean_rem(poly_ring.mul(x, y), f), |x, y| poly_ring.euclidean_rem(poly_ring.mul_ref(x, y), f), poly_ring.one());
 }
 
 pub fn distinct_degree_factorization<F>(prime_field: F, p: &BigInt, mut f: Vector<VectorOwned<F::El>, F::El>) -> Vec<Vector<VectorOwned<F::El>, F::El>>

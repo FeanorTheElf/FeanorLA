@@ -5,12 +5,32 @@ use super::ring::*;
 use super::embedding::*;
 use super::primitive::*;
 use super::wrapper::*;
-use std::cmp::Ordering;
 
-pub trait IntegerRing: OrderedRing + CanonicalIsomorphismInfo<StaticRing<i64>> + CanonicalIsomorphismInfo<BigIntRing> {
+use std::cmp::Ordering;
+use std::ops::Range;
+
+pub trait IntegerRing: OrderedRing + EuclideanInfoRing + CanonicalIsomorphismInfo<StaticRing<i64>> + CanonicalIsomorphismInfo<BigIntRing> {
 
     fn to_float_approx(&self, el: &Self::El) -> f64;
     fn from_float_approx(&self, el: f64) -> Option<Self::El>;
+    fn mul_pow_2(&self, el: El<Self>, power: u64) -> El<Self>;
+    fn euclidean_div_pow_2(&self, el: El<Self>, power: u64) -> El<Self>;
+
+    fn abs_log2_floor(&self, el: &El<Self>) -> u64 {
+        assert!(!self.is_zero(el));
+        i64::RING.find_zero_floor(
+            |power: &i64| if *power >= 0 && self.is_zero(&self.euclidean_div_pow_2(el.clone(), *power as u64)) {
+                1
+            } else {
+                -1
+            },
+            0
+        ) as u64
+    }
+
+    fn abs_is_bit_set(&self, el: &El<Self>, bit: u64) -> bool {
+        !self.is_zero(&self.euclidean_rem(self.euclidean_div_pow_2(el.clone(), bit), &self.from_z(2)))
+    }
     
     ///
     /// Given an increasing, continuous function f: R -> R that is negative for some x1 and 
@@ -31,7 +51,7 @@ pub trait IntegerRing: OrderedRing + CanonicalIsomorphismInfo<StaticRing<i64>> +
     /// time required for computing f on a value between x - d and x + d.
     /// 
     fn find_zero_floor<F>(&self, mut f: F, approx: Self::El) -> Self::El
-        where F: FnMut(&Self::El) -> Self::El, Self: OrderedRing + EuclideanInfoRing
+        where F: FnMut(&Self::El) -> Self::El
     {
         let mut begin = approx.clone();
         let mut step = self.one();
@@ -49,9 +69,7 @@ pub trait IntegerRing: OrderedRing + CanonicalIsomorphismInfo<StaticRing<i64>> +
         return self.bisect(f, begin, end);
     }
 
-    fn floor_div(&self, a: Self::El, b: &Self::El) -> Self::El 
-        where Self: OrderedRing + EuclideanInfoRing
-    {
+    fn floor_div(&self, a: Self::El, b: &Self::El) -> Self::El {
         let (q, r) = self.euclidean_div_rem(a.clone(), b);
         if self.cmp(&r, &self.zero()) == Ordering::Less {
             self.sub(q, self.one())
@@ -73,8 +91,7 @@ pub trait IntegerRing: OrderedRing + CanonicalIsomorphismInfo<StaticRing<i64>> +
     /// begin and end. 
     /// 
     fn bisect<F>(&self, mut f: F, mut start: Self::El, mut end: Self::El) -> Self::El
-        where F: FnMut(&Self::El) -> Self::El,
-            Self: OrderedRing + EuclideanInfoRing
+        where F: FnMut(&Self::El) -> Self::El
     {
         assert!(self.cmp(&f(&start), &self.zero()) != Ordering::Greater);
         assert!(self.cmp(&f(&end), &self.zero()) != Ordering::Less);
@@ -141,9 +158,7 @@ pub trait IntegerRing: OrderedRing + CanonicalIsomorphismInfo<StaticRing<i64>> +
     /// will be quite fast on most inputs due to internal use of floating
     /// point approximations.
     /// 
-    fn root_floor(&self, el: &Self::El, n: usize) -> Self::El
-        where Self: OrderedRing + EuclideanInfoRing
-    {
+    fn root_floor(&self, el: &Self::El, n: u64) -> Self::El {
         assert!(n > 0);
         let root_approx = self.to_float_approx(el).powf(1. / n as f64);
         if n % 2 == 0 {
@@ -160,11 +175,24 @@ pub trait IntegerRing: OrderedRing + CanonicalIsomorphismInfo<StaticRing<i64>> +
     }
 }
 
+pub fn range_iter<I: IntegerRing>(range: Range<El<I>>, ring: I) -> impl Iterator<Item = El<I>> {
+    let end_minus_2 = ring.sub(range.end, ring.from_z(2));
+    std::iter::repeat(()).scan(ring.sub(range.start, ring.one()), move |state, ()| {
+        if ring.cmp(&*state, &end_minus_2) != Ordering::Greater {
+            ring.add_assign(state, ring.one());
+            return Some(state.clone());
+        } else {
+            return None;
+        }
+    })
+}
+
 impl<'a, R: IntegerRing> IntegerRing for &'a R {
 
     fn to_float_approx(&self, el: &Self::El) -> f64 { (**self).to_float_approx(el) }
     fn from_float_approx(&self, el: f64) -> Option<Self::El>  { (**self).from_float_approx(el) }
-
+    fn mul_pow_2(&self, el: El<Self>, power: u64) -> El<Self> { (**self).mul_pow_2(el, power) }
+    fn euclidean_div_pow_2(&self, el: El<Self>, power: u64) -> El<Self> { (**self).euclidean_div_pow_2(el, power) }
 }
 
 impl IntegerRing for StaticRing<i64> {
@@ -176,17 +204,24 @@ impl IntegerRing for StaticRing<i64> {
     fn from_float_approx(&self, el: f64) -> Option<Self::El>  {
         Some(el as i64)
     }
-}
 
-impl IntegerRing for BigIntRing {
-
-    fn to_float_approx(&self, el: &Self::El) -> f64 {
-        el.to_float_approx()
+    fn mul_pow_2(&self, el: El<Self>, power: u64) -> El<Self> { 
+        el << power
     }
 
-    fn from_float_approx(&self, el: f64) -> Option<Self::El>  {
-        BigInt::from_float_approx(el)
+    fn euclidean_div_pow_2(&self, el: El<Self>, power: u64) -> El<Self> {
+        el / (1 << power)
     }
+
+    fn abs_log2_floor(&self, el: &El<Self>) -> u64 {
+        assert!(!self.is_zero(el));
+        (i64::BITS - el.abs().leading_zeros() - 1) as u64
+    }
+
+    fn abs_is_bit_set(&self, el: &El<Self>, bit: u64) -> bool {
+        (el.abs() >> bit) & 1 == 1
+    }
+    
 }
 
 impl<R: IntegerRing> IntegerRing for WrappingRing<R> {
@@ -197,6 +232,14 @@ impl<R: IntegerRing> IntegerRing for WrappingRing<R> {
 
     fn from_float_approx(&self, el: f64) -> Option<Self::El>  {
         self.wrapped_ring().from_float_approx(el).map(|x| (self.wrapped_ring().clone()).bind_by_value(x))
+    }
+
+    fn mul_pow_2(&self, el: El<Self>, power: u64) -> El<Self> {
+        self.from(self.wrapped_ring().mul_pow_2(el.into_val(), power))
+    }
+
+    fn euclidean_div_pow_2(&self, el: El<Self>, power: u64) -> El<Self> {
+        self.from(self.wrapped_ring().euclidean_div_pow_2(el.into_val(), power))
     }
 }
 
@@ -219,4 +262,17 @@ fn test_find_zero_floor_i64() {
 fn test_root_floor() {
     let n = BigInt::from(7681).pow(32);
     assert_eq!(BigInt::from(7681), BigInt::RING.root_floor(&n, 32));
+}
+
+#[test]
+fn test_range_iter() {
+    let i = |x| BigInt::from(x);
+    assert_eq!(
+        vec![i(1), i(2)],
+        range_iter(i(1)..i(3), BigInt::RING).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        Vec::<BigInt>::new(),
+        range_iter(i(1)..i(-3), BigInt::RING).collect::<Vec<_>>()
+    );
 }

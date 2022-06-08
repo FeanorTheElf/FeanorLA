@@ -47,9 +47,17 @@ pub fn eea<R>(ring: &R, fst: R::El, snd: R::El) -> (R::El, R::El, R::El)
 /// element of the set of integers dividing a and b (ordered by divisibility), 
 /// whose sign matches the sign of a.
 /// 
-/// In particular, have `signed_gcd(6, 8) == 2`, `signed_gcd(0, 0) == 0`, 
-/// `signed_gcd(0, x) == |x|`, `signed_gcd(x, 0) == x`, 
-/// `signed_gcd(-1, 1) == -1`, `signed_gcd(1, -1) == 1`
+/// In particular, have 
+/// ```
+/// # use feanor_la::eea::signed_gcd;
+/// # use feanor_la::primitive::RingEl;
+/// assert_eq!(2, signed_gcd(6, 8, &i64::RING));
+/// assert_eq!(0, signed_gcd(0, 0, &i64::RING)); 
+/// assert_eq!(5, signed_gcd(0, -5, &i64::RING));
+/// assert_eq!(-5, signed_gcd(-5, 0, &i64::RING)); 
+/// assert_eq!(-1, signed_gcd(-1, 1, &i64::RING));
+/// assert_eq!(1, signed_gcd(1, -1, &i64::RING));
+/// ```
 /// and therefore `signed_eea(6, 8) == (-1, 1, 2)`, 
 /// `signed_eea(-6, 8) == (-1, -1, -2)`, 
 /// `signed_eea(8, -6) == (1, 1, 2)`, 

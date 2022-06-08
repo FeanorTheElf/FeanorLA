@@ -39,7 +39,7 @@ pub fn miller_rabin(n: &BigInt, k: usize) -> bool {
     let mut rng = oorandom::Rand32::new(hasher.finish());
     let n_minus_one = n.clone() - 1;
     let s = n_minus_one.highest_dividing_power_of_two();
-    let d = n_minus_one.clone() >> s;
+    let d = BigInt::RING.euclidean_div_pow_2(n_minus_one.clone(), s as u64);
     let Z_nZ = Zn::new(n.clone());
 
     // Admitted, there is no calculation behind this choice
@@ -87,7 +87,7 @@ pub fn calc_factor(el: &BigInt) -> Option<BigInt> {
         if miller_rabin(&n, IS_PRIME_ERROR_BOUND) {
             return None;
         } else {
-            for i in 2..n.abs_log2_floor() {
+            for i in 2..BigInt::RING.abs_log2_floor(&n) {
                 if BigInt::RING.root_floor(&n, i).pow(i as u32) == n {
                     let root = BigInt::RING.root_floor(&n, i);
                     return Some(root);
