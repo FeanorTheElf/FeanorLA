@@ -769,7 +769,7 @@ impl<'a, S, R, F> Clone for LiftedHom<'a, S, R, F>
 }
 
 impl<'a, S, R, F> FnOnce<(RingElWrapper<S>,)> for LiftedHom<'a, S, R, F>
-    where S: Ring, R: Ring, F: Clone + Fn(El<S>) -> El<R>
+    where S: Ring, R: Ring, F: Fn(El<S>) -> El<R>
 {
     type Output = RingElWrapper<R>;
 
@@ -782,7 +782,7 @@ impl<'a, S, R, F> FnOnce<(RingElWrapper<S>,)> for LiftedHom<'a, S, R, F>
 }
 
 impl<'a, S, R, F> FnMut<(RingElWrapper<S>,)> for LiftedHom<'a, S, R, F>
-    where S: Ring, R: Ring, F: Clone + Fn(El<S>) -> El<R>
+    where S: Ring, R: Ring, F: Fn(El<S>) -> El<R>
 {
     extern "rust-call" fn call_mut(
         &mut self, 
@@ -793,7 +793,7 @@ impl<'a, S, R, F> FnMut<(RingElWrapper<S>,)> for LiftedHom<'a, S, R, F>
 }
 
 impl<'a, S, R, F> Fn<(RingElWrapper<S>,)> for LiftedHom<'a, S, R, F>
-    where S: Ring, R: Ring, F: Clone + Fn(El<S>) -> El<R>
+    where S: Ring, R: Ring, F: Fn(El<S>) -> El<R>
 {
     extern "rust-call" fn call(
         &self, 
