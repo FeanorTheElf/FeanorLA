@@ -103,6 +103,11 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
         *lhs = self.add(value, rhs);
     }
 
+    fn add_assign_ref(&self, lhs: &mut Self::El, rhs: &Self::El) { 
+        let value = std::mem::replace(lhs, self.unspecified_element());
+        *lhs = self.add_ref(value, rhs);
+    }
+
     fn sum<I>(&self, data: I) -> Self::El
         where I: Iterator<Item = Self::El>
     {
@@ -173,7 +178,7 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El;
 
     fn from_z_big(&self, x: &BigInt) -> Self::El {
-        let mut result = abs_square_and_multiply(&self.one(), x, BigInt::RING, |x, y| self.add(x, y), |x, y| self.add_ref(x.clone(), y), self.zero());
+        let result = abs_square_and_multiply(&self.one(), x, BigInt::RING, |x, y| self.add(x, y), |x, y| self.add_ref(x.clone(), y), self.zero());
         if *x < 0 {
             return self.neg(result);
         } else {
@@ -182,7 +187,7 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     }
 
     fn from_z(&self, x: i64) -> Self::El {
-        let mut result = abs_square_and_multiply(&self.one(), &x, i64::RING, |x, y| self.add(x, y), |x, y| self.add_ref(x.clone(), y), self.zero());
+        let result = abs_square_and_multiply(&self.one(), &x, i64::RING, |x, y| self.add(x, y), |x, y| self.add_ref(x.clone(), y), self.zero());
         if x < 0 {
             return self.neg(result);
         } else {
@@ -227,6 +232,7 @@ impl<'a, R: RingBase> RingBase for &'a R {
     fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).add_ref(lhs, rhs) }
     fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El { (**self).mul_ref(lhs, rhs) }
     fn add_assign(&self, lhs: &mut Self::El, rhs: Self::El) { (**self).add_assign(lhs, rhs) }
+    fn add_assign_ref(&self, lhs: &mut Self::El, rhs: &Self::El) { (**self).add_assign_ref(lhs, rhs) }
     fn mul_assign(&self, lhs: &mut Self::El, rhs: Self::El) { (**self).mul_assign(lhs, rhs) }
     fn neg(&self, val: Self::El) -> Self::El { (**self).neg(val) }
     fn zero(&self) -> Self::El { (**self).zero() }

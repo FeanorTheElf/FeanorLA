@@ -157,5 +157,4 @@ fn bench_division_poly(b: &mut Bencher) {
         assert_eq!(f(P.x().unwrap().clone()) / h(P.x().unwrap().clone()), *E.mul_point(&P, &BigInt::from(n), E.base_field()).x().unwrap());
         println!("one run");
     });
-    println!("{}", super::super::fq::zn_small::operations.load(std::sync::atomic::Ordering::SeqCst));
 }

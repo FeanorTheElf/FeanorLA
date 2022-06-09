@@ -193,6 +193,14 @@ impl<R> AddAssign<RingElWrapper<R>> for RingElWrapper<R>
     }
 }
 
+impl<'a, R> AddAssign<&'a RingElWrapper<R>> for RingElWrapper<R>
+    where R: Ring
+{
+    fn add_assign(&mut self, rhs: &'a RingElWrapper<R>) {
+        rhs.ring.add_assign_ref(self.val_mut(), &rhs.el);
+    }
+}
+
 impl<R> Sub<RingElWrapper<R>> for RingElWrapper<R>
     where R: Ring
 {
@@ -766,6 +774,10 @@ impl<R> RingBase for WrappingRing<R>
 
     fn add_assign(&self, lhs: &mut Self::El, rhs: Self::El) { 
         self.wrapped_ring().add_assign(lhs.val_mut(), rhs.el)
+    }
+
+    fn add_assign_ref(&self, lhs: &mut Self::El, rhs: &Self::El) { 
+        self.wrapped_ring().add_assign_ref(lhs.val_mut(), &rhs.el)
     }
 
     fn sub_ref_fst(&self, lhs: &Self::El, rhs: Self::El) -> Self::El {

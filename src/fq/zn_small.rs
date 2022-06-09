@@ -12,16 +12,14 @@ pub struct ZnElImpl<const N: u64, const IS_FIELD: bool> {
 
 pub const fn is_prime(n: u64) -> bool {
     assert!(n >= 2);
-    const fn is_b_smooth(b: u64, n: u64) -> bool {
-        if b <= 1 {
-            false
-        } else if n % b == 0 {
-            true
-        } else {
-            is_b_smooth(b - 1, n)
+    let mut d = 2;
+    while d < n {
+        if n % d == 0 {
+            return false;
         }
+        d += 1;
     }
-    return !is_b_smooth(n - 1, n);
+    return true;
 }
 
 impl<const N: u64, const IS_FIELD: bool> ZnElImpl<N, IS_FIELD> {
@@ -54,15 +52,11 @@ impl<const N: u64, const IS_FIELD: bool> From<i8> for ZnElImpl<N, IS_FIELD> {
     }
 }
 
-use std::sync::atomic::{AtomicU64, Ordering};
-pub static operations: AtomicU64 = AtomicU64::new(0);
-
 impl<const N: u64, const IS_FIELD: bool> AddAssign for ZnElImpl<N, IS_FIELD> {
 
     fn add_assign(&mut self, rhs: ZnElImpl<N, IS_FIELD>) {
         assert!(self.repr < N);
         assert!(rhs.repr < N);
-        operations.fetch_add(1, Ordering::Relaxed);
         self.repr += rhs.repr;
         if self.repr >= N {
             self.repr -= N;
