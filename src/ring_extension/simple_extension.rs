@@ -27,11 +27,16 @@ impl<R, W> SimpleRingExtension<R, VectorOwned<R::El>, W>
         where F: FnOnce(&PolyRing<R>) -> El<PolyRing<R>>
     {
         let ring = PolyRing::adjoint(base_ring.clone(), "X");
-        let mut mipo = mipo(&ring);
-        let scaling_factor = base_ring.neg(base_ring.div(base_ring.one(), ring.lc(&mipo).expect("Minimal polynomial must not be constant when creating a new ring")));
-        mipo = ring.mul(mipo, ring.from(scaling_factor));
+        let mipo = mipo(&ring);
+        assert!(base_ring.is_one(ring.lc(&mipo).unwrap()), "Only adjoining monic polynomials is supported");
         let degree = mipo.iter().enumerate().filter(|(_, x)| !base_ring.is_zero(x)).map(|(i, _)| i).max().unwrap();
-        let mipo_values = Vector::new(mipo.raw_data().into_iter().take(degree).collect::<Vec<_>>());
+        let mipo_values = Vector::new(
+            mipo.raw_data()
+                .into_iter()
+                .map(|x| base_ring.neg(x))
+                .take(degree)
+                .collect::<Vec<_>>()
+        );
         return Self::new(base_ring, mipo_values, gen_name);
     }
 }
@@ -489,4 +494,14 @@ fn test_mul() {
     let b = extension.add(extension.one(), extension.generator());
     assert!(extension.is_eq(&extension.from_z(2), &extension.mul(a, b)));
     assert!(extension.is_eq(&extension.from_z(-1), &extension.pow(&extension.generator(), 2)));
+}
+
+#[test]
+fn test_adjoin_element() {
+    let ring = PolyRing::adjoint(i64::RING, "x");
+    let x = ring.bind_by_value(ring.unknown());
+    let f = x.pow(3) + x.pow(2) + 1;
+    let ring = SimpleRingExtension::<StaticRing<i64>, Vec<_>>::adjoin_element(i64::RING, |poly_ring| poly_ring.embed(f.parent_ring(), f.val().clone()), "x");
+    let x = ring.bind_by_value(ring.generator());
+    assert_eq!(x.ring().zero(), f(x));
 }
