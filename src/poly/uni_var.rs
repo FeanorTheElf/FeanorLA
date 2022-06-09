@@ -46,7 +46,7 @@ impl<R> PolyRing<R>
     }
 
     pub fn lift_hom<F, S>(&self, (ring_ext, mut hom): (S, F)) -> (PolyRing<S>, impl FnMut(El<Self>) -> El<PolyRing<S>>)
-        where S: CanonicalIsomorphismInfo<S>, F: FnMut(R::El) -> S::El
+        where S: Ring, F: FnMut(R::El) -> S::El
     {
         (
             PolyRing::adjoint(ring_ext, self.var_name),

@@ -10,6 +10,7 @@ use std::ops::{
     AddAssign, MulAssign, SubAssign, DivAssign
 };
 use std::iter::Step;
+use std::marker::PhantomData;
 
 #[derive(Debug)]
 pub struct RingElWrapper<R>
@@ -712,6 +713,14 @@ impl<R> Copy for WrappingRing<R>
     where R: Ring + Copy
 {}
 
+pub struct LiftedHom<'a, S, R, F> 
+    where S: Ring, R: Ring, F: Fn(El<S>) -> El<R>
+{
+    base: F,
+    from: PhantomData<S>,
+    to: &'a R
+}
+
 impl<R> WrappingRing<R>
     where R: Ring
 {
@@ -726,6 +735,71 @@ impl<R> WrappingRing<R>
         WrappingRing {
             ring: &self.ring
         }
+    }
+
+    pub fn lifthom<'a, S, F>(&'a self, e: F) -> LiftedHom<'a, S, R, F>
+        where S: Ring, F: Fn(El<S>) -> El<R>
+    {
+        LiftedHom {
+            base: e,
+            from: PhantomData,
+            to: &self.ring
+        }
+    }
+}
+
+impl<'a, S, R, F> PartialEq for LiftedHom<'a, S, R, F>
+    where S: Ring, R: Ring, F: PartialEq + Fn(El<S>) -> El<R>
+{
+    fn eq(&self, rhs: &LiftedHom<S, R, F>) -> bool {
+        self.base == rhs.base
+    }
+}
+
+impl<'a, S, R, F> Clone for LiftedHom<'a, S, R, F>
+    where S: Ring, R: Ring, F: Clone + Fn(El<S>) -> El<R>
+{
+    fn clone(&self) -> LiftedHom<'a, S, R, F> {
+        LiftedHom {
+            base: self.base.clone(),
+            from: PhantomData,
+            to: self.to
+        }
+    }
+}
+
+impl<'a, S, R, F> FnOnce<(RingElWrapper<S>,)> for LiftedHom<'a, S, R, F>
+    where S: Ring, R: Ring, F: Clone + Fn(El<S>) -> El<R>
+{
+    type Output = RingElWrapper<R>;
+
+    extern "rust-call" fn call_once(
+        mut self, 
+        (x, ): (RingElWrapper<S>,)
+    ) -> Self::Output {
+        self.call_mut((x, ))
+    }
+}
+
+impl<'a, S, R, F> FnMut<(RingElWrapper<S>,)> for LiftedHom<'a, S, R, F>
+    where S: Ring, R: Ring, F: Clone + Fn(El<S>) -> El<R>
+{
+    extern "rust-call" fn call_mut(
+        &mut self, 
+        (x, ): (RingElWrapper<S>,)
+    ) -> Self::Output {
+        self.call((x, ))
+    }
+}
+
+impl<'a, S, R, F> Fn<(RingElWrapper<S>,)> for LiftedHom<'a, S, R, F>
+    where S: Ring, R: Ring, F: Clone + Fn(El<S>) -> El<R>
+{
+    extern "rust-call" fn call(
+        &self, 
+        (x, ): (RingElWrapper<S>,)
+    ) -> Self::Output {
+        self.to.bind_by_value((self.base)(x.el))
     }
 }
 
