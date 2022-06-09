@@ -41,11 +41,11 @@ impl<R> PolyRing<R>
         return Vector::new(result);
     }
 
-    pub fn evaluation_hom<'a>(&'a self, x: R::El) -> impl 'a + FnMut(El<Self>) -> R::El {
+    pub fn evaluation_hom<'a>(&'a self, x: R::El) -> impl 'a + Fn(El<Self>) -> R::El {
         move |poly| self.evaluate(&poly, x.clone(), self.base_ring())
     }
 
-    pub fn lift_hom<F, S>(&self, hom: F) -> impl FnMut(El<PolyRing<S>>) -> El<Self>
+    pub fn lift_hom<F, S>(&self, hom: F) -> impl Fn(El<PolyRing<S>>) -> El<Self>
         where S: Ring, F: Fn(S::El) -> R::El
     {
         move |poly| {
