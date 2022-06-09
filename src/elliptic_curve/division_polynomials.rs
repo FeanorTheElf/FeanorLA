@@ -140,7 +140,7 @@ fn test_division_polynomials() {
     let (f, _, h) = division_polynomials(&E, 3);
     let i = z_hom(&field);
     let point = EllipticCurvePoint::Affine(i(2), i(3));
-    assert!(E.is_on_curve(&point));
+    assert!(E.is_on_curve(&point, &field));
     let point_3 = E.mul_point(&point, &BigInt::from(3), &field);
     assert_eq!(*point_3.x().unwrap(), f(i(2)) / h(i(2)));
 }

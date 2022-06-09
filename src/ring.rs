@@ -471,9 +471,6 @@ impl<'a, R> OrderedRing for &'a R
     fn cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering { (**self).cmp(lhs, rhs) }
 }
 
-#[cfg(test)]
-use super::primitive::*;
-
 #[test]
 fn test_pow() {
     let ring = i64::RING;

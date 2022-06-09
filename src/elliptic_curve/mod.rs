@@ -245,10 +245,12 @@ impl<K> EllipticCurve<WrappingRing<K>>
         self.A.pow(3) * 1728 * 4 / self.discriminant()
     }
 
-    pub fn is_on_curve(&self, point: &EllipticCurvePoint<WrappingRing<K>>) -> bool {
+    pub fn is_on_curve<L>(&self, point: &EllipticCurvePoint<WrappingRing<L>>, field: &WrappingRing<L>) -> bool 
+        where L: Ring + CanonicalEmbeddingInfo<K>
+    {
         match point {
             EllipticCurvePoint::Infinity => true,
-            EllipticCurvePoint::Affine(x, y) => y.pow(2) == x.pow(3) + x * &self.A + &self.B
+            EllipticCurvePoint::Affine(x, y) => y.pow(2) == x.pow(3) + x * field.embed(&self.A.ring(), self.A.clone()) + field.embed(&self.B.ring(), self.B.clone())
         }
     }
 
@@ -260,8 +262,8 @@ impl<K> EllipticCurve<WrappingRing<K>>
         self.j_invariant() == rhs.j_invariant()
     }
 
-    pub fn point_add<F>(&self, a: EllipticCurvePoint<WrappingRing<F>>, b: EllipticCurvePoint<WrappingRing<F>>, field: &WrappingRing<F>) -> EllipticCurvePoint<WrappingRing<F>>
-        where F: Ring + CanonicalEmbeddingInfo<K>
+    pub fn point_add<L>(&self, a: EllipticCurvePoint<WrappingRing<L>>, b: EllipticCurvePoint<WrappingRing<L>>, field: &WrappingRing<L>) -> EllipticCurvePoint<WrappingRing<L>>
+        where L: Ring + CanonicalEmbeddingInfo<K>
     {
         assert!(field.is_field().can_use());
         assert!(field.has_embedding(self.base_field()).can_use());
@@ -297,7 +299,14 @@ impl<K> EllipticCurve<WrappingRing<K>>
     {
         assert!(field.is_field().can_use());
         assert!(field.has_embedding(self.base_field()).can_use());
-        let mut result = abs_square_and_multiply(point, n, BigInt::RING, |x, y| self.point_add(x, y, field), |x, y| self.point_add(x.clone(), y.clone(), field), EllipticCurvePoint::Infinity);
+        let result = abs_square_and_multiply(
+            point, 
+            n, 
+            BigInt::RING, 
+            |x, y| self.point_add(x, y, field), 
+            |x, y| self.point_add(x.clone(), y.clone(), field), 
+            EllipticCurvePoint::Infinity
+        );
         if *n < 0 {
             return self.inv_point(result);
         } else {
@@ -356,7 +365,7 @@ impl<K> EllipticCurve<WrappingRing<K>>
     pub fn points<'a>(&'a self) -> impl 'a + Iterator<Item = EllipticCurvePoint<WrappingRing<K>>> {
         cartesian_product(elements(self.base_field()), elements(self.base_field()))
             .map(|(x, y)| EllipticCurvePoint::Affine(x, y))
-            .filter(move |p| self.is_on_curve(p))
+            .filter(move |p| self.is_on_curve(p, self.base_field()))
             .chain(std::iter::once(EllipticCurvePoint::Infinity))
     }
 }
@@ -385,8 +394,8 @@ fn test_elliptic_curve_point_eq() {
     let E = EllipticCurve::new(Q.clone(), i(0), i(1));
     let P = EllipticCurvePoint::Affine(i(0), i(1));
     let Q = EllipticCurvePoint::Affine(i(0), i(-1));
-    assert!(E.is_on_curve(&P));
-    assert!(E.is_on_curve(&Q));
+    assert!(E.is_on_curve(&P, E.base_field()));
+    assert!(E.is_on_curve(&Q, E.base_field()));
     assert_eq!(P, P);
     assert_ne!(P, Q);
 }

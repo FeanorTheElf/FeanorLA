@@ -198,8 +198,8 @@ fn test_isomorphic_curve_over_z() {
     let (actual_curve, f, finv) = curve.isomorphic_curve_over_z();
     assert_eq!(expected_curve, actual_curve);
     let P = EllipticCurvePoint::Affine(i(0), i(1));
-    assert!(actual_curve.is_on_curve(&P));
-    assert!(curve.is_on_curve(&finv(P.clone())));
+    assert!(actual_curve.is_on_curve(&P, &Q));
+    assert!(curve.is_on_curve(&finv(P.clone()), &Q));
     assert!(actual_curve.points_eq(&P, &f(finv(P.clone()))));
 }
 
