@@ -101,6 +101,34 @@ impl<R> PolyRing<R>
     }
 }
 
+impl<R> RingElWrapper<PolyRing<R>>
+    where R: Ring, PolyRing<R>: UfdInfoRing
+{
+    pub fn roots(self) -> VecMap<RingElWrapper<R>, usize> {
+        self.factor().into_iter().filter_map(|(f, e)| {
+            if f.deg() == Some(1) {
+                Some((-f.coefficient_at(0) / f.coefficient_at(1), e))
+            } else {
+                None
+            }
+        }).collect()
+    }
+}
+
+impl<'a, R> RingElWrapper<&'a PolyRing<R>>
+    where R: Ring, PolyRing<R>: UfdInfoRing
+{
+    pub fn roots(self) -> VecMap<RingElWrapper<&'a R>, usize> {
+        self.factor().into_iter().filter_map(|(f, e)| {
+            if f.deg() == Some(1) {
+                Some((-f.coefficient_at(0) / f.coefficient_at(1), e))
+            } else {
+                None
+            }
+        }).collect()
+    }
+}
+
 impl<R> CanonicalEmbeddingInfo<R> for PolyRing<R> 
     where R: CanonicalIsomorphismInfo<R>
 {
@@ -346,6 +374,27 @@ impl<R> RingElWrapper<PolyRing<R>>
     pub fn scaled(self, factor: &RingElWrapper<R>) -> Self {
         let (el, ring) = self.destruct();
         ring.bind_by_value(ring.scale(el, factor.val()))
+    }
+}
+
+impl<'a, R> RingElWrapper<&'a PolyRing<R>>
+    where R: Ring
+{
+    pub fn lc(&self) -> Option<El<WrappingRing<&'a R>>> {
+        self.parent_ring().lc(self.val()).map(|x| self.parent_ring().base_ring().bind(x.clone()))
+    }
+
+    pub fn deg(&self) -> Option<usize> {
+        self.parent_ring().deg(self.val())
+    }
+
+    pub fn coefficient_at(&self, i: usize) -> RingElWrapper<&'a R> {
+        self.parent_ring().base_ring().bind(self.val()[i].clone())
+    }
+
+    pub fn scaled(self, factor: &RingElWrapper<&R>) -> Self {
+        let (el, ring) = self.destruct();
+        ring.bind(ring.scale(el, factor.val()))
     }
 }
 
