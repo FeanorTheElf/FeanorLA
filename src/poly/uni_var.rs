@@ -45,15 +45,12 @@ impl<R> PolyRing<R>
         move |poly| self.evaluate(&poly, x.clone(), self.base_ring())
     }
 
-    pub fn lift_hom<F, S>(&self, (ring_ext, mut hom): (S, F)) -> (PolyRing<S>, impl FnMut(El<Self>) -> El<PolyRing<S>>)
-        where S: Ring, F: FnMut(R::El) -> S::El
+    pub fn lift_hom<F, S>(&self, hom: F) -> impl FnMut(El<PolyRing<S>>) -> El<Self>
+        where S: Ring, F: Fn(S::El) -> R::El
     {
-        (
-            PolyRing::adjoint(ring_ext, self.var_name),
-            move |poly| {
-                Vector::new(poly.raw_data().into_iter().map(&mut hom).collect())
-            }
-        )
+        move |poly| {
+            Vector::new(poly.raw_data().into_iter().map(&hom).collect())
+        }
     }
 
     pub fn deg(&self, el: &El<Self>) -> Option<usize> {

@@ -737,7 +737,7 @@ impl<R> WrappingRing<R>
         }
     }
 
-    pub fn lifthom<'a, S, F>(&'a self, e: F) -> LiftedHom<'a, S, R, F>
+    pub fn lift_hom<'a, S, F>(&'a self, e: F) -> LiftedHom<'a, S, R, F>
         where S: Ring, F: Fn(El<S>) -> El<R>
     {
         LiftedHom {
