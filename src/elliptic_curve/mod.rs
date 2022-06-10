@@ -92,6 +92,15 @@ impl<K> EllipticCurvePoint<WrappingRing<K>>
             EllipticCurvePoint::Infinity => None
         }
     }
+
+    pub fn change_field<L, F>(self, field: &WrappingRing<L>, hom: F) -> EllipticCurvePoint<WrappingRing<L>>
+        where L: Ring, F: Fn(El<WrappingRing<K>>) -> El<WrappingRing<L>>
+    {
+        match self {
+            EllipticCurvePoint::Affine(x, y) => EllipticCurvePoint::Affine(hom(x), hom(y)),
+            EllipticCurvePoint::Infinity => EllipticCurvePoint::Infinity
+        }
+    }
 }
 
 impl<K> PartialEq for EllipticCurvePoint<WrappingRing<K>>
@@ -175,12 +184,22 @@ impl<K> EllipticCurve<WrappingRing<K>>
         }
     }
 
-    pub fn lift_homomorphism<L, F>(&self, _other: &EllipticCurve<WrappingRing<L>>, f: F) -> impl Fn(EllipticCurvePoint<WrappingRing<K>>) -> EllipticCurvePoint<WrappingRing<L>>
-        where L: Ring, F: Fn(El<WrappingRing<K>>) -> El<WrappingRing<L>>
+    pub fn lift_hom<L1, L2, F>(f: F) -> impl Fn(EllipticCurvePoint<WrappingRing<L1>>) -> EllipticCurvePoint<WrappingRing<L2>>
+        where L1: Ring, L2: Ring, F: Fn(El<WrappingRing<L1>>) -> El<WrappingRing<L2>>
     {
         move |x| match x {
             EllipticCurvePoint::Infinity => EllipticCurvePoint::Infinity,
             EllipticCurvePoint::Affine(x, y) => EllipticCurvePoint::Affine(f(x), f(y))
+        }
+    }
+
+    pub fn base_change<L, F>(self, field: WrappingRing<L>, hom: F) -> EllipticCurve<WrappingRing<L>>
+        where L: Ring, F: Fn(El<WrappingRing<K>>) -> El<WrappingRing<L>>
+    {
+        EllipticCurve {
+            A: hom(self.A),
+            B: hom(self.B),
+            base_field: field
         }
     }
 
