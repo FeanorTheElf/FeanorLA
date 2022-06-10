@@ -713,12 +713,12 @@ impl<R> Copy for WrappingRing<R>
     where R: Ring + Copy
 {}
 
-pub struct LiftedHom<'a, S, R, F> 
+pub struct LiftedHom<S, R, F> 
     where S: Ring, R: Ring, F: Fn(El<S>) -> El<R>
 {
     base: F,
     from: PhantomData<S>,
-    to: &'a R
+    to: R
 }
 
 impl<R> WrappingRing<R>
@@ -737,18 +737,18 @@ impl<R> WrappingRing<R>
         }
     }
 
-    pub fn lift_hom<'a, S, F>(&'a self, e: F) -> LiftedHom<'a, S, R, F>
+    pub fn lift_hom<S, F>(&self, e: F) -> LiftedHom<S, R, F>
         where S: Ring, F: Fn(El<S>) -> El<R>
     {
         LiftedHom {
             base: e,
             from: PhantomData,
-            to: &self.ring
+            to: self.ring.clone()
         }
     }
 }
 
-impl<'a, S, R, F> PartialEq for LiftedHom<'a, S, R, F>
+impl<S, R, F> PartialEq for LiftedHom<S, R, F>
     where S: Ring, R: Ring, F: PartialEq + Fn(El<S>) -> El<R>
 {
     fn eq(&self, rhs: &LiftedHom<S, R, F>) -> bool {
@@ -756,19 +756,23 @@ impl<'a, S, R, F> PartialEq for LiftedHom<'a, S, R, F>
     }
 }
 
-impl<'a, S, R, F> Clone for LiftedHom<'a, S, R, F>
+impl<S, R, F> Clone for LiftedHom<S, R, F>
     where S: Ring, R: Ring, F: Clone + Fn(El<S>) -> El<R>
 {
-    fn clone(&self) -> LiftedHom<'a, S, R, F> {
+    fn clone(&self) -> LiftedHom<S, R, F> {
         LiftedHom {
             base: self.base.clone(),
             from: PhantomData,
-            to: self.to
+            to: self.to.clone()
         }
     }
 }
 
-impl<'a, S, R, F> FnOnce<(RingElWrapper<S>,)> for LiftedHom<'a, S, R, F>
+impl<S, R, F> Copy for LiftedHom<S, R, F>
+    where S: Ring, R: Ring + Copy, F: Copy + Fn(El<S>) -> El<R>
+{}
+
+impl<S, R, F> FnOnce<(RingElWrapper<S>,)> for LiftedHom<S, R, F>
     where S: Ring, R: Ring, F: Fn(El<S>) -> El<R>
 {
     type Output = RingElWrapper<R>;
@@ -781,7 +785,7 @@ impl<'a, S, R, F> FnOnce<(RingElWrapper<S>,)> for LiftedHom<'a, S, R, F>
     }
 }
 
-impl<'a, S, R, F> FnMut<(RingElWrapper<S>,)> for LiftedHom<'a, S, R, F>
+impl<S, R, F> FnMut<(RingElWrapper<S>,)> for LiftedHom<S, R, F>
     where S: Ring, R: Ring, F: Fn(El<S>) -> El<R>
 {
     extern "rust-call" fn call_mut(
@@ -792,7 +796,7 @@ impl<'a, S, R, F> FnMut<(RingElWrapper<S>,)> for LiftedHom<'a, S, R, F>
     }
 }
 
-impl<'a, S, R, F> Fn<(RingElWrapper<S>,)> for LiftedHom<'a, S, R, F>
+impl<S, R, F> Fn<(RingElWrapper<S>,)> for LiftedHom<S, R, F>
     where S: Ring, R: Ring, F: Fn(El<S>) -> El<R>
 {
     extern "rust-call" fn call(
