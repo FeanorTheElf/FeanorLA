@@ -76,25 +76,25 @@ pub enum EllipticCurvePoint<K>
     Affine(K::El, K::El), Infinity
 }
 
-impl<K> EllipticCurvePoint<WrappingRing<K>>
+impl<K> EllipticCurvePoint<K>
     where K: Ring
 {
-    pub fn x(&self) -> Option<&El<WrappingRing<K>>> {
+    pub fn x(&self) -> Option<&El<K>> {
         match self {
             EllipticCurvePoint::Affine(x, _) => Some(x),
             EllipticCurvePoint::Infinity => None
         }
     }
 
-    pub fn y(&self) -> Option<&El<WrappingRing<K>>> {
+    pub fn y(&self) -> Option<&El<K>> {
         match self {
             EllipticCurvePoint::Affine(_, y) => Some(y),
             EllipticCurvePoint::Infinity => None
         }
     }
 
-    pub fn change_field<L, F>(self, field: &WrappingRing<L>, hom: F) -> EllipticCurvePoint<WrappingRing<L>>
-        where L: Ring, F: Fn(El<WrappingRing<K>>) -> El<WrappingRing<L>>
+    pub fn change_field<L, F>(self, hom: F) -> EllipticCurvePoint<L>
+        where L: Ring, F: Fn(El<K>) -> El<L>
     {
         match self {
             EllipticCurvePoint::Affine(x, y) => EllipticCurvePoint::Affine(hom(x), hom(y)),
