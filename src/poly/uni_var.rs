@@ -6,7 +6,7 @@ use super::super::fq::*;
 
 use vector_map::VecMap;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct PolyRing<R>
     where R: Ring
 {
@@ -100,6 +100,21 @@ impl<R> PolyRing<R>
         return f;
     }
 }
+
+impl<R> Clone for PolyRing<R>
+    where R: Ring
+{
+    fn clone(&self) -> Self {
+        PolyRing {
+            var_name: self.var_name,
+            base_ring: self.base_ring.clone()
+        }
+    }
+}
+
+impl<R> Copy for PolyRing<R>
+    where R: Ring + Copy
+{}
 
 impl<R> RingElWrapper<PolyRing<R>>
     where R: Ring, PolyRing<R>: UfdInfoRing
