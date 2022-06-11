@@ -45,6 +45,10 @@ impl<R> RingElWrapper<R>
         self.ring().from(self.ring.pow(&self.el, exp))
     }
 
+    pub fn pow_big(&self, exp: &BigInt) -> RingElWrapper<R> {
+        self.ring().from(self.ring.pow_big(&self.el, exp))
+    }
+
     pub fn parent_ring(&self) -> &R {
         &self.ring
     }
