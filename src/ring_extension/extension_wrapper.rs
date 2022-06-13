@@ -158,8 +158,45 @@ impl<R, S, F> ExtensionWrapper<R, S, F>
         &self.ring
     }
 
-    pub fn wrapping_embedding<'a>(&'a self) -> StandardEmbedding<&'a S, &'a S> {
+    pub fn wrapping_embedding<'a>(&'a self) -> impl 'a + Clone + Fn(El<S>) -> El<Self> {
         embedding(&self.ring, &self.ring)
+    }
+
+    pub fn extension<T>(self, ring: T) -> ExtensionWrapper<R, T, ComposedEmbedding<F, StandardEmbedding<S, T>, R, S, T>>
+        where T: Ring + PartialEq + CanonicalEmbeddingInfo<S>
+    {
+        ExtensionWrapper {
+            base: self.base,
+            ring: ring.clone(),
+            embedding: compose(embedding(self.ring, ring), self.embedding)
+        }
+    }
+
+    pub fn extend<G, T>(self, ext_ring_fn: G) -> ExtensionWrapper<R, T, ComposedEmbedding<F, StandardEmbedding<S, T>, R, S, T>>
+        where T: Ring + PartialEq + CanonicalEmbeddingInfo<S>, G: FnOnce(S) -> T
+    {
+        let ring = ext_ring_fn(self.ring.clone());
+        self.extension(ring)
+    }
+
+    pub fn as_ref<'a>(&'a self) -> ExtensionWrapper<R, &'a S, F> {
+        ExtensionWrapper {
+            base: self.base.clone(),
+            ring: &self.ring,
+            embedding: self.embedding.clone()
+        }
+    }
+}
+
+impl<R> From<R> for ExtensionWrapper<R, R, StandardEmbedding<R, R>> 
+    where R: Ring + PartialEq
+{
+    fn from(ring: R) -> Self {
+        ExtensionWrapper {
+            base: ring.clone(),
+            ring: ring.clone(),
+            embedding: embedding(ring.clone(), ring)
+        }
     }
 }
 
@@ -176,6 +213,8 @@ impl<R, S, F> RingElWrapper<ExtensionWrapper<R, S, F>>
 use super::super::fq::zn_big::*;
 #[cfg(test)]
 use super::simple_extension::*;
+#[cfg(test)]
+use super::super::poly::*;
 
 #[allow(non_snake_case)]
 #[test]
@@ -235,4 +274,14 @@ fn test_no_embedding() {
     let S2 = ExtensionWrapper::new(R.clone(), S.clone(), GaussianIntegersAutomorphism::Conjugation);
     assert!(S1.has_embedding(&S1).can_use());
     assert!(!S1.has_embedding(&S2).can_use());
+}
+
+#[test]
+fn test_build_extension_wrapper() {
+    let ring = ExtensionWrapper::from(i64::RING);
+    let ring = ring.extend(|r| SimpleRingExtension::new(r, Vector::from_array([-1, 0]), "i") as SimpleRingExtension<_, _>);
+    let ring = ring.as_ref().extend(|r| PolyRing::adjoint(r, "x")).bind_ring_by_value();
+    let i = ring.from(ring.wrapped_ring().wrapped_ring().from(ring.wrapped_ring().wrapped_ring().base_ring().generator()));
+    let x = ring.from(ring.wrapped_ring().wrapped_ring().unknown());
+    assert_eq!(x.pow(2) + 1, (&x - &i) * (x + i));
 }

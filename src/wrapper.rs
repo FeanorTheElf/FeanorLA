@@ -959,6 +959,14 @@ impl<R> WrappingRing<R>
     pub fn wrapping_embedding<'a>(&'a self) -> impl 'a + Clone + Fn(R::El) -> <Self as RingBase>::El {
         move |x| self.ring.bind_by_value(x)
     }
+
+    pub fn map_ring<F, S>(self, f: F) -> WrappingRing<S>
+        where F: FnOnce(R) -> S, S: Ring
+    {
+        WrappingRing {
+            ring: f(self.ring)
+        }
+    }
 }
 
 impl<R> EuclideanInfoRing for WrappingRing<R>

@@ -20,8 +20,8 @@ pub struct SimpleRingExtension<R, V, W = VectorOwned<El<R>>>
     gen_name: &'static str
 }
 
-impl<R, W> SimpleRingExtension<R, VectorOwned<R::El>, W>
-    where R: Ring, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
+impl<R> SimpleRingExtension<R, VectorOwned<R::El>, VectorOwned<R::El>>
+    where R: Ring
 {
     pub fn adjoin_element<F>(base_ring: R, mipo: F, gen_name: &'static str) -> Self
         where F: FnOnce(&PolyRing<R>) -> El<PolyRing<R>>
