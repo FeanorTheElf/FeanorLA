@@ -115,19 +115,8 @@ impl<K> PartialEq for EllipticCurvePoint<WrappingRing<K>>
     }
 }
 
-impl<K> std::fmt::Debug for EllipticCurvePoint<K>
-    where K: Ring, K::El: std::fmt::Debug
-{
-    default fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            EllipticCurvePoint::Infinity => write!(f, "o̲"),
-            EllipticCurvePoint::Affine(x, y) => write!(f, "({:?}, {:?})", x, y)
-        }
-    }
-}
-
-impl<K> std::fmt::Debug for EllipticCurvePoint<K>
-    where K: Ring, K::El: std::fmt::Display + std::fmt::Debug
+impl<K> std::fmt::Debug for EllipticCurvePoint<WrappingRing<K>>
+    where K: Ring
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -138,7 +127,7 @@ impl<K> std::fmt::Debug for EllipticCurvePoint<K>
 }
 
 impl<K> std::fmt::Display for EllipticCurvePoint<WrappingRing<K>>
-    where K: Ring, K::El: std::fmt::Display + std::fmt::Debug
+    where K: Ring
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         <Self as std::fmt::Debug>::fmt(self, f)
