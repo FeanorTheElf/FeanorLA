@@ -1,5 +1,6 @@
 use super::super::prelude::*;
 use super::super::wrapper::*;
+use super::super::fq::*;
 
 #[derive(Clone)]
 pub struct ExtensionWrapper<R, S, F>
@@ -51,6 +52,48 @@ impl<R, S, F> RingBase for ExtensionWrapper<R, S, F>
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { self.ring.div(lhs, rhs) }
     fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result { self.ring.format(el, f, in_prod) }
     fn format_in_brackets(&self, el: &Self::El, f: &mut std::fmt::Formatter) -> std::fmt::Result { self.ring.format_in_brackets(el, f) }
+}
+
+#[derive(Clone)]
+pub struct ExtensionWrapperIterFn<S> 
+    where S: FiniteRing
+{
+    base: S::IterFn
+}
+
+impl<R, S, F> FiniteRingIterFn<ExtensionWrapper<R, S, F>> for ExtensionWrapperIterFn<S> 
+    where R: Ring + PartialEq, S: FiniteRing + PartialEq, F: Fn(El<R>) -> El<S> + Clone + PartialEq
+{
+    fn next(&mut self, ring: &ExtensionWrapper<R, S, F>) -> Option<El<ExtensionWrapper<R, S, F>>> {
+        self.base.next(&ring.ring)
+    }
+}
+
+impl<R, S, F> FiniteRing for ExtensionWrapper<R, S, F> 
+    where R: Ring + PartialEq, S: FiniteRing + PartialEq, F: Fn(El<R>) -> El<S> + Clone + PartialEq
+{
+    type IterFn = ExtensionWrapperIterFn<S>;
+
+    fn size(&self) -> BigInt { self.ring.size() }
+
+    fn iter_fn(&self) -> Self::IterFn { 
+        ExtensionWrapperIterFn { base: self.ring.iter_fn() }
+    }
+
+    fn random_element<G>(&self, rng: G) -> El<Self> 
+        where G: FnMut() -> u32
+    {
+        self.ring.random_element(rng)
+    }
+}
+
+impl<R, S, F> DivisibilityInfoRing for ExtensionWrapper<R, S, F> 
+    where R: Ring + PartialEq, S: DivisibilityInfoRing + PartialEq, F: Fn(El<R>) -> El<S> + Clone + PartialEq
+{
+    fn is_divisibility_computable(&self) -> RingPropValue { self.ring.is_divisibility_computable() }
+    fn is_divisible_by(&self, lhs: &Self::El, rhs: &Self::El) -> bool { self.ring.is_divisible_by(lhs, rhs) }
+    fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> { self.ring.quotient(lhs, rhs) }
+    fn is_unit(&self, el: &Self::El) -> bool { self.ring.is_unit(el) }
 }
 
 impl<R, S, F> CanonicalEmbeddingInfo<ExtensionWrapper<R, S, F>> for ExtensionWrapper<R, S, F> 
