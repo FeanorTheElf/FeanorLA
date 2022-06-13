@@ -96,6 +96,12 @@ impl<R, S, F> DivisibilityInfoRing for ExtensionWrapper<R, S, F>
     fn is_unit(&self, el: &Self::El) -> bool { self.ring.is_unit(el) }
 }
 
+impl<R, S, F> HashableElRing for ExtensionWrapper<R, S, F> 
+    where R: Ring + PartialEq, S: HashableElRing + PartialEq, F: Fn(El<R>) -> El<S> + Clone + PartialEq
+{
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H, el: &Self::El) { self.ring.hash(h, el) }
+}
+
 impl<R, S, F> CanonicalEmbeddingInfo<ExtensionWrapper<R, S, F>> for ExtensionWrapper<R, S, F> 
     where R: Ring + PartialEq, S: Ring + PartialEq, F: Fn(El<R>) -> El<S> + Clone + PartialEq
 {
