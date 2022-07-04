@@ -1,9 +1,9 @@
 use super::integer::*;
 use super::embedding::*;
-use super::wrapper::*;
 use super::primitive::*;
 use super::ring_property::*;
 use super::square_multiply::abs_square_and_multiply;
+use super::wrapper::*;
 
 use vector_map::VecMap;
 
@@ -309,6 +309,29 @@ impl<'a, R: EuclideanInfoRing> EuclideanInfoRing for &'a R {
     fn euclidean_rem(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).euclidean_rem(lhs, rhs) }
     fn euclidean_div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).euclidean_div(lhs, rhs) }
     fn euclidean_deg(&self, el: Self::El) -> BigInt { (**self).euclidean_deg(el) }
+}
+
+pub trait RingExtension: Ring {
+
+    type BaseRing: Ring;
+    type Embedding: Fn(El<Self::BaseRing>) -> El<Self>;
+
+    fn base_ring(&self) -> &Self::BaseRing;
+    fn embedding(&self) -> Self::Embedding;
+    fn from(&self, el: El<Self::BaseRing>) -> El<Self> {
+        self.embedding()(el)
+    }
+}
+
+impl<'a, K> RingExtension for &'a K
+    where K: RingExtension
+{
+    type BaseRing = K::BaseRing;
+    type Embedding = K::Embedding;
+
+    fn base_ring(&self) -> &Self::BaseRing { (**self).base_ring() }
+    fn embedding(&self) -> Self::Embedding { (**self).embedding() }
+    fn from(&self, el: El<Self::BaseRing>) -> El<Self> { (**self).from(el) }
 }
 
 ///

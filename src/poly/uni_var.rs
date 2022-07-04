@@ -1,8 +1,8 @@
 use super::super::prelude::*;
-use super::super::wrapper::*;
 use super::ops::*;
 use super::factoring;
 use super::super::fq::*;
+use super::*;
 
 use vector_map::VecMap;
 
@@ -35,12 +35,6 @@ impl<R> PolyRing<R>
         poly_evaluate(&self.base_ring, value, poly.as_ref(), ring)
     }
 
-    pub fn from(&self, el: R::El) -> El<Self> {
-        let mut result = Vec::with_capacity(1);
-        result.push(el);
-        return Vector::new(result);
-    }
-
     pub fn evaluation_hom<'a>(&'a self, x: R::El) -> impl 'a + Fn(El<Self>) -> R::El {
         move |poly| self.evaluate(&poly, x.clone(), self.base_ring())
     }
@@ -51,14 +45,6 @@ impl<R> PolyRing<R>
         move |poly| {
             Vector::new(poly.raw_data().into_iter().map(&hom).collect())
         }
-    }
-
-    pub fn deg(&self, el: &El<Self>) -> Option<usize> {
-        poly_degree(&self.base_ring, el.as_ref())
-    }
-
-    pub fn lc<'a>(&self, el: &'a El<Self>) -> Option<&'a R::El> {
-        self.deg(el).map(|i| &el[i])
     }
 
     ///
@@ -82,10 +68,6 @@ impl<R> PolyRing<R>
         result.push(self.base_ring.zero());
         result.push(self.base_ring.one());
         return Vector::new(result);
-    }
-
-    pub fn base_ring(&self) -> &R {
-        &self.base_ring
     }
 
     pub fn normalize(&self, f: El<Self>) -> (El<Self>, R::El) {
@@ -116,31 +98,30 @@ impl<R> Copy for PolyRing<R>
     where R: Ring + Copy
 {}
 
-impl<R> RingElWrapper<PolyRing<R>>
-    where R: Ring, PolyRing<R>: UfdInfoRing
+impl<R> UnivarPolyRing for PolyRing<R>
+    where R: Ring
 {
-    pub fn roots(self) -> VecMap<RingElWrapper<R>, usize> {
-        self.factor().into_iter().filter_map(|(f, e)| {
-            if f.deg() == Some(1) {
-                Some((-f.coefficient_at(0) / f.coefficient_at(1), e))
-            } else {
-                None
-            }
-        }).collect()
+    fn lc(&self, x: &El<Self>) -> Option<El<Self::BaseRing>> {
+        if let Some(d) = self.deg(x) {
+            Some(x[d].clone())
+        } else {
+            None
+        }
     }
-}
 
-impl<'a, R> RingElWrapper<&'a PolyRing<R>>
-    where R: Ring, PolyRing<R>: UfdInfoRing
-{
-    pub fn roots(self) -> VecMap<RingElWrapper<&'a R>, usize> {
-        self.factor().into_iter().filter_map(|(f, e)| {
-            if f.deg() == Some(1) {
-                Some((-f.coefficient_at(0) / f.coefficient_at(1), e))
-            } else {
-                None
-            }
-        }).collect()
+    fn deg(&self, x: &El<Self>) -> Option<usize> {
+        let mut it = x.iter().enumerate().filter(|(_, x)| !self.base_ring().is_zero(x)).map(|(i, _)| i);
+        <_ as Iterator>::last(&mut it)
+    }
+
+    fn coefficient_at(&self, x: &El<Self>, i: usize) -> El<Self::BaseRing> {
+        x[i].clone()
+    }
+
+    fn scale(&self, x: &mut El<Self>, coeff: &El<Self::BaseRing>) {
+        for i in 0..x.len() {
+            *x.at_mut(i) = self.base_ring().mul_ref(x.at(i), &coeff);
+        }
     }
 }
 
@@ -302,6 +283,24 @@ impl<R> RingBase for PolyRing<R>
     }
 }
 
+impl<R: Ring> RingExtension for PolyRing<R> {
+    
+    type BaseRing = R;
+    type Embedding = StandardEmbedding<R, Self>;
+
+    fn base_ring(&self) -> &R {
+        &self.base_ring
+    }
+
+    fn embedding(&self) -> Self::Embedding {
+        embedding(self.base_ring().clone(), self.clone())
+    }
+
+    fn from(&self, el: El<R>) -> El<Self> {
+        Vector::new(vec![el])
+    }
+}
+
 impl<R> DivisibilityInfoRing for PolyRing<R> 
     where R: DivisibilityInfoRing + CanonicalIsomorphismInfo<R>
 {
@@ -317,7 +316,7 @@ impl<R> DivisibilityInfoRing for PolyRing<R>
         let result = self.poly_division(
             &mut p, 
             &rhs, 
-            |x| self.base_ring.quotient(x, lc).ok_or(())
+            |x| self.base_ring.quotient(x, &lc).ok_or(())
         ).ok()?;
         if self.is_zero(&p) {
             return Some(result);
@@ -353,7 +352,7 @@ impl<R> EuclideanInfoRing for PolyRing<R>
         assert!(self.base_ring().is_field().can_use());
         assert!(!self.is_zero(&rhs));
         let rhs_lc = self.lc(&rhs).unwrap();
-        let rhs_lc_inv = self.base_ring.div(self.base_ring.one(), rhs_lc);
+        let rhs_lc_inv = self.base_ring.div(self.base_ring.one(), &rhs_lc);
         let q = self.poly_division(
             &mut lhs, 
             &rhs, 
@@ -371,105 +370,27 @@ impl<R> PartialEq for PolyRing<R>
     }
 }
 
-impl<R> RingElWrapper<PolyRing<R>>
-    where R: Ring
-{
-    pub fn lc(&self) -> Option<El<WrappingRing<R>>> {
-        self.parent_ring().lc(self.val()).map(|x| self.parent_ring().base_ring().clone().bind_by_value(x.clone()))
-    }
+pub trait Evaluatable<S: Ring>: Ring {
 
-    pub fn deg(&self) -> Option<usize> {
-        self.parent_ring().deg(self.val())
-    }
-
-    pub fn coefficient_at(&self, i: usize) -> RingElWrapper<R> {
-        self.parent_ring().base_ring().clone().bind_by_value(self.val()[i].clone())
-    }
-
-    pub fn scaled(self, factor: &RingElWrapper<R>) -> Self {
-        let (el, ring) = self.destruct();
-        ring.bind_by_value(ring.scale(el, factor.val()))
-    }
+    fn evaluate_at(&self, f: &El<Self>, x: El<S>, ring: &S) -> El<S>;
 }
 
-impl<'a, R> RingElWrapper<&'a PolyRing<R>>
-    where R: Ring
-{
-    pub fn lc(&self) -> Option<El<WrappingRing<&'a R>>> {
-        self.parent_ring().lc(self.val()).map(|x| self.parent_ring().base_ring().bind(x.clone()))
-    }
-
-    pub fn deg(&self) -> Option<usize> {
-        self.parent_ring().deg(self.val())
-    }
-
-    pub fn coefficient_at(&self, i: usize) -> RingElWrapper<&'a R> {
-        self.parent_ring().base_ring().bind(self.val()[i].clone())
-    }
-
-    pub fn scaled(self, factor: &RingElWrapper<&R>) -> Self {
-        let (el, ring) = self.destruct();
-        ring.bind(ring.scale(el, factor.val()))
-    }
-}
-
-trait Evaluatable<S: Ring>: Ring {
-
-    fn evaluate_at(&self, f: &El<Self>, x: El<S>) -> El<S>;
-}
-
-impl<R, S> Evaluatable<WrappingRing<S>> for PolyRing<R>
+impl<R, S> Evaluatable<S> for PolyRing<R>
     where S: Ring + CanonicalEmbeddingInfo<R>, R: Ring
 {
-    fn evaluate_at(&self, f: &El<Self>, x: El<WrappingRing<S>>) -> El<WrappingRing<S>> { 
+    fn evaluate_at(&self, f: &El<Self>, x: El<S>, ring: &S) -> El<S> { 
         let poly_vec = f.as_ref();
-        let (el, ring) = x.destruct();
         let coeff_ring = self.base_ring();
-        let result: S::El = poly_evaluate(coeff_ring, el, poly_vec, &ring);
-        return ring.bind_by_value(result);
+        let result: S::El = poly_evaluate(coeff_ring, x, poly_vec, ring);
+        return result;
     }
 }
 
 impl<S, P> Evaluatable<S> for &P
     where S: Ring, P: Evaluatable<S>
 {
-    fn evaluate_at(&self, f: &El<Self>, x: El<S>) -> El<S> { 
-        (**self).evaluate_at(f, x)
-    }
-}
-
-impl<S, P> FnOnce<(RingElWrapper<S>, )> for RingElWrapper<P>
-    where S: Ring, P: Evaluatable<WrappingRing<S>>
-{
-    type Output = RingElWrapper<S>;
-
-    extern "rust-call" fn call_once(
-        mut self, 
-        (x, ): (RingElWrapper<S>, )
-    ) -> Self::Output {
-        self.call_mut((x, ))
-    }
-}
-
-impl<S, P> FnMut<(RingElWrapper<S>, )> for RingElWrapper<P>
-    where S: Ring, P: Evaluatable<WrappingRing<S>>
-{
-    extern "rust-call" fn call_mut(
-        &mut self, 
-        (x, ): (RingElWrapper<S>, )
-    ) -> Self::Output {
-        self.call((x, ))
-    }
-}
-
-impl<S, P> Fn<(RingElWrapper<S>, )> for RingElWrapper<P>
-    where S: Ring, P: Evaluatable<WrappingRing<S>>
-{
-    extern "rust-call" fn call(
-        &self, 
-        (x, ): (RingElWrapper<S>, )
-    ) -> Self::Output {
-        self.parent_ring().evaluate_at(self.val(), x)
+    fn evaluate_at(&self, f: &El<Self>, x: El<S>, ring: &S) -> El<S> { 
+        (**self).evaluate_at(f, x, ring)
     }
 }
 

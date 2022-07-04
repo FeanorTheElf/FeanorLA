@@ -86,7 +86,7 @@ impl<'a, R: IntegerRing + OrderedRing + EuclideanInfoRing> IntegralCubic<'a, R> 
 
 impl<QType> EllipticCurve<WrappingRing<QType>>
     where QType: RationalField + HashableElRing + SingletonRing, 
-        QType::UnderlyingIntegers: SingletonRing + UfdInfoRing + EuclideanInfoRing
+        QType::BaseRing: SingletonRing + UfdInfoRing + EuclideanInfoRing
 {
 
     ///
@@ -99,30 +99,31 @@ impl<QType> EllipticCurve<WrappingRing<QType>>
         impl Fn(EllipticCurvePoint<WrappingRing<QType>>) -> EllipticCurvePoint<WrappingRing<QType>>, 
         impl Fn(EllipticCurvePoint<WrappingRing<QType>>) -> EllipticCurvePoint<WrappingRing<QType>>
     ) {
-        let (A_num, A_den) = (self.base_field().num(&self.A), self.base_field().den(&self.A));
-        let (B_num, B_den) = (self.base_field().num(&self.B), self.base_field().den(&self.B));
+        let (A_num, A_den) = (self.A.num().clone_ring(), self.A.den().clone_ring());
+        let (B_num, B_den) = (self.B.num().clone_ring(), self.B.den().clone_ring());
 
-        let Z = self.base_field().underlying_integers();
+        let Z = self.base_field().base_ring().clone_ring();
         let Q = self.base_field().clone();
+        let i = self.base_field().embedding();
 
         // there seems to be no better way to find the correct u without factoring A resp. B
         // as even for checking whether a number is square-free currently there is no better
         // method known
         let u_num_A = Z.factor(A_den.clone()).into_iter()
             .map(|(factor, power)| factor.into_val().pow((power as u32 - 1) / 4 + 1))
-            .product::<RingElWrapper<QType::UnderlyingIntegers>>();
+            .product::<RingElWrapper<QType::BaseRing>>();
         let u_num_B = Z.factor(B_den.clone()).into_iter()
             .map(|(factor, power)| factor.into_val().pow((power as u32 - 1) / 6 + 1))
-            .product::<RingElWrapper<QType::UnderlyingIntegers>>();
+            .product::<RingElWrapper<QType::BaseRing>>();
         
         let u_den_A = Z.factor(A_num.clone()).into_iter()
             .map(|(factor, power)| factor.into_val().pow(power as u32 / 4))
-            .product::<RingElWrapper<QType::UnderlyingIntegers>>();
+            .product::<RingElWrapper<QType::BaseRing>>();
         let u_den_B = Z.factor(B_num.clone()).into_iter()
             .map(|(factor, power)| factor.into_val().pow(power as u32 / 6))
-            .product::<RingElWrapper<QType::UnderlyingIntegers>>();
+            .product::<RingElWrapper<QType::BaseRing>>();
 
-        let u: RingElWrapper<QType> = Q.embed(&Z, lcm(&Z, u_num_A, u_num_B)) / Q.embed(&Z, gcd(&Z, u_den_A, u_den_B));
+        let u: RingElWrapper<QType> = i(lcm(&Z, u_num_A, u_num_B)) / i(gcd(&Z, u_den_A, u_den_B));
         let u_inv: RingElWrapper<QType> = Q.one() / &u;
         return (EllipticCurve {
             base_field: Q.clone(),
@@ -147,13 +148,14 @@ impl<QType> EllipticCurve<WrappingRing<QType>>
     }
 
     pub fn torsion_group(&self) -> HashSet<EllipticCurvePoint<WrappingRing<QType>>> {
-        let Z = self.base_field().underlying_integers();
+        let Z = self.base_field().base_ring().clone_ring();
         let Q = self.base_field().clone();
+        let i = self.base_field().embedding();
 
         let (E, _f, finv) = self.isomorphic_curve_over_z();
         let disc = E.discriminant();
         // it is a theorem that for all torsion points (x, y), have y^2 | Disc
-        let disc = Z.quotient(&Q.num(&disc), &Q.den(&disc)).unwrap();
+        let disc = (disc.num() / disc.den()).clone_ring();
         let y_multiple = Z.factor(disc).into_iter()
             .map(|(factor, power)| (factor, power as u32 / 2));
         // note that the divisors of y_multiple are bijective to the cartesian product
@@ -166,15 +168,16 @@ impl<QType> EllipticCurve<WrappingRing<QType>>
                     .product::<RingElWrapper<_>>()
             )
         );
-        let A = Z.quotient(&Q.num(&E.A), &Q.den(&E.A)).unwrap();
-        let B = Z.quotient(&Q.num(&E.B), &Q.den(&E.B)).unwrap();
+        let A = (E.A.num() / E.A.den()).clone_ring();
+        let B = (E.B.num() / E.B.den()).clone_ring();
 
         let mut result: HashSet<EllipticCurvePoint<WrappingRing<QType>>> = HashSet::new();
         result.insert(EllipticCurvePoint::Infinity);
         for y in possible_y {
             let B_minus_y2 = &B - &y * &y;
-            for x in IntegralCubic::new(&A, &B_minus_y2, y.ring()).find_integral_roots() {
-                let point = EllipticCurvePoint::Affine(Q.embed(&Z, x), Q.embed(&Z, y.clone()));
+            for x in IntegralCubic::new(A.val(), B_minus_y2.val(), y.parent_ring()).find_integral_roots() {
+                let x = Z.from(x);
+                let point = EllipticCurvePoint::Affine(i(x), i(y.clone()));
                 // it is a theorem that the torsion group has order dividing 24
                 if E.points_eq(&E.mul_point::<QType>(&point, &BigInt::from(24), &Q), &EllipticCurvePoint::Infinity) {
                     result.insert(finv(point.clone()));

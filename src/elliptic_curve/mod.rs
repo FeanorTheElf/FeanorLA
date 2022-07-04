@@ -369,9 +369,8 @@ impl<K> EllipticCurve<WrappingRing<K>>
 impl<K> EllipticCurve<WrappingRing<K>>
     where K: FiniteRing + CanonicalIsomorphismInfo<K>
 {
-
     pub fn points<'a>(&'a self) -> impl 'a + Iterator<Item = EllipticCurvePoint<WrappingRing<K>>> {
-        cartesian_product(elements(self.base_field()), elements(self.base_field()))
+        cartesian_product(self.base_field().elements(), self.base_field().elements())
             .map(|(x, y)| EllipticCurvePoint::Affine(x, y))
             .filter(move |p| self.is_on_curve(p, self.base_field()))
             .chain(std::iter::once(EllipticCurvePoint::Infinity))

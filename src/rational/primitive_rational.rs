@@ -367,6 +367,24 @@ impl CanonicalEmbeddingInfo<StaticRing<i64>> for StaticRing<r64> {
     }
 }
 
+impl RingExtension for StaticRing<r64> {
+
+    type BaseRing = StaticRing<i64>;
+    type Embedding = StandardEmbedding<StaticRing<i64>, Self>;
+
+    fn base_ring(&self) -> &Self::BaseRing {
+        &StaticRing::<i64>::RING
+    }
+
+    fn embedding(&self) -> Self::Embedding {
+        embedding(*self.base_ring(), *self)
+    }
+
+    fn from(&self, el: El<Self::BaseRing>) -> El<Self> {
+        r64::new(el, 1)
+    }
+}
+
 #[test]
 fn test_add_assign() {
     let mut a: r64 = r64::from(1);

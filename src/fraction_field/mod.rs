@@ -1,6 +1,5 @@
 use super::prelude::*;
 use super::rational::*;
-use super::wrapper::*;
 use super::eea::*;
 
 #[derive(Debug, Clone, Copy)]
@@ -26,10 +25,6 @@ impl<R> FieldOfFractions<R>
         FieldOfFractions { base_ring }
     }
 
-    pub fn from(&self, el: R::El) -> El<Self> {
-        (el, self.base_ring.one())
-    }
-
     fn format_base(&self, num: &R::El, den: &R::El, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         if self.base_ring.is_zero(&num) || self.base_ring.is_one(&den) {
             self.base_ring.format(&num, f, true)?;
@@ -42,24 +37,6 @@ impl<R> FieldOfFractions<R>
             self.base_ring.format(den, f, true)?;
         }
         return Ok(());
-    }
-
-    pub fn base_ring(&self) -> &R {
-        &self.base_ring
-    }
-}
-
-impl<R> RingElWrapper<FieldOfFractions<R>>
-    where R: Ring
-{
-    pub fn num(self) -> RingElWrapper<R> {
-        let ((num, _), ring) = self.destruct();
-        return ring.base_ring.bind_by_value(num);
-    }
-
-    pub fn den(self) -> RingElWrapper<R> {
-        let ((_, den), ring) = self.destruct();
-        return ring.base_ring.bind_by_value(den);
     }
 }
 
@@ -197,6 +174,24 @@ impl<R> RingBase for FieldOfFractions<R>
     }
 }
 
+impl<R: Ring> RingExtension for FieldOfFractions<R> {
+    
+    type BaseRing = R;
+    type Embedding = StandardEmbedding<R, FieldOfFractions<R>>;
+
+    fn base_ring(&self) -> &R {
+        &self.base_ring
+    }
+    
+    fn embedding(&self) -> Self::Embedding {
+        embedding(self.base_ring().clone(), self.clone())
+    }
+
+    fn from(&self, el: El<R>) -> El<Self> {
+        (el, self.base_ring().one())
+    }
+}
+
 ///
 /// Finding a normal form for the fraction is not so easy, since the (reduced) 
 /// denominator is only unique up to multiplication by a unit. In other words,
@@ -309,18 +304,12 @@ impl<R: IntegerRing> CanonicalIsomorphismInfo<StaticRing<r64>> for FieldOfFracti
 
 impl<R: IntegerRing> RationalField for FieldOfFractions<R> {
 
-    type UnderlyingIntegers = R;
-
-    fn num(&self, el: &Self::El) -> El<Self::UnderlyingIntegers> {
+    fn num(&self, el: &El<Self>) -> El<Self::BaseRing> {
         el.0.clone()
     }
 
-    fn den(&self, el: &Self::El) -> El<Self::UnderlyingIntegers> {
+    fn den(&self, el: &El<Self>) -> El<Self::BaseRing> {
         el.1.clone()
-    }
-
-    fn underlying_integers(&self) -> Self::UnderlyingIntegers {
-        self.base_ring().clone()
     }
 }
 
@@ -349,6 +338,9 @@ impl<R> PartialEq for FieldOfFractions<R>
         self.base_ring() == rhs.base_ring()
     }
 }
+
+#[cfg(test)]
+use super::wrapper::*;
 
 #[test]
 fn test_add() {

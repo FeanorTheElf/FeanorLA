@@ -4,7 +4,6 @@ pub use bigint::*;
 use super::ring::*;
 use super::embedding::*;
 use super::primitive::*;
-use super::wrapper::*;
 
 use std::cmp::Ordering;
 use std::ops::Range;
@@ -222,25 +221,6 @@ impl IntegerRing for StaticRing<i64> {
         (el.abs() >> bit) & 1 == 1
     }
     
-}
-
-impl<R: IntegerRing> IntegerRing for WrappingRing<R> {
-    
-    fn to_float_approx(&self, el: &Self::El) -> f64 {
-        self.wrapped_ring().to_float_approx(el.val())
-    }
-
-    fn from_float_approx(&self, el: f64) -> Option<Self::El>  {
-        self.wrapped_ring().from_float_approx(el).map(|x| (self.wrapped_ring().clone()).bind_by_value(x))
-    }
-
-    fn mul_pow_2(&self, el: El<Self>, power: u64) -> El<Self> {
-        self.from(self.wrapped_ring().mul_pow_2(el.into_val(), power))
-    }
-
-    fn euclidean_div_pow_2(&self, el: El<Self>, power: u64) -> El<Self> {
-        self.from(self.wrapped_ring().euclidean_div_pow_2(el.into_val(), power))
-    }
 }
 
 #[test]

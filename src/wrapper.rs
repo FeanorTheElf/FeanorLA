@@ -3,6 +3,10 @@ use super::embedding::*;
 use super::integer::*;
 use super::primitive::*;
 use super::ring_property::*;
+use super::rational::*;
+use super::poly::uni_var::Evaluatable;
+use super::poly::*;
+use super::fq::*;
 
 use vector_map::VecMap;
 use std::ops::{ 
@@ -73,6 +77,119 @@ impl<R> RingElWrapper<R>
     }
 }
 
+impl<R> RingElWrapper<&R>
+    where R: Ring
+{
+    pub fn clone_ring(self) -> RingElWrapper<R> {
+        RingElWrapper {
+            ring: self.ring.clone(),
+            el: self.el
+        }
+    }
+}
+
+impl<R: IntegerRing> RingElWrapper<R> 
+{
+    pub fn to_float_approx(&self) -> f64 {
+        self.parent_ring().to_float_approx(self.val())
+    }
+
+    pub fn root_floor(&self, n: u64) -> Self {
+        let result = self.parent_ring().root_floor(self.val(), n);
+        return self.parent_ring().bind_by_value(result);
+    }
+}
+
+impl<R: RationalField> RingElWrapper<R> 
+{
+    pub fn num(&self) -> RingElWrapper<&R::BaseRing> {
+        self.parent_ring().base_ring().bind(self.parent_ring().num(self.val()))
+    }
+
+    pub fn den(&self) -> RingElWrapper<&R::BaseRing> {
+        self.parent_ring().base_ring().bind(self.parent_ring().den(self.val()))
+    }
+}
+
+impl<P> RingElWrapper<P>
+    where P: UnivarPolyRing
+{
+    pub fn lc(&self) -> Option<RingElWrapper<P::BaseRing>> {
+        self.parent_ring().lc(self.val()).map(|x| self.parent_ring().base_ring().bind_by_value(x))
+    }
+
+    pub fn deg(&self) -> Option<usize> {
+        self.parent_ring().deg(self.val())
+    }
+
+    pub fn coefficient_at(&self, i: usize) -> RingElWrapper<P::BaseRing> {
+        self.parent_ring().base_ring().bind_by_value(self.parent_ring().coefficient_at(self.val(), i))
+    }
+
+    pub fn roots(self) -> VecMap<RingElWrapper<P::BaseRing>, usize>
+        where P: UfdInfoRing
+    {
+        self.factor().into_iter().filter_map(|(f, e)| {
+            if f.deg() == Some(1) {
+                Some((-f.coefficient_at(0) / f.coefficient_at(1), e))
+            } else {
+                None
+            }
+        }).collect()
+    }
+
+    pub fn normalize(&mut self) {
+        let coeff = self.lc().unwrap().inv();
+        self.ring.scale(&mut self.el, coeff.val());
+    }
+
+    pub fn scale(&mut self, coeff: &RingElWrapper<P::BaseRing>) {
+        self.ring.scale(&mut self.el, coeff.val());
+    }
+
+    pub fn scaled(mut self, coeff: &RingElWrapper<P::BaseRing>) -> RingElWrapper<P> {
+        self.scale(coeff);
+        return self;
+    }
+}
+
+impl<S, P> FnOnce<(RingElWrapper<S>, )> for RingElWrapper<P>
+    where S: Ring, P: Evaluatable<S>
+{
+    type Output = RingElWrapper<S>;
+
+    extern "rust-call" fn call_once(
+        mut self, 
+        (x, ): (RingElWrapper<S>, )
+    ) -> Self::Output {
+        self.call_mut((x, ))
+    }
+}
+
+impl<S, P> FnMut<(RingElWrapper<S>, )> for RingElWrapper<P>
+    where S: Ring, P: Evaluatable<S>
+{
+    extern "rust-call" fn call_mut(
+        &mut self, 
+        (x, ): (RingElWrapper<S>, )
+    ) -> Self::Output {
+        self.call((x, ))
+    }
+}
+
+impl<S, P> Fn<(RingElWrapper<S>, )> for RingElWrapper<P>
+    where S: Ring, P: Evaluatable<S>
+{
+    extern "rust-call" fn call(
+        &self, 
+        (x, ): (RingElWrapper<S>, )
+    ) -> Self::Output {
+        let (x, ring) = x.destruct();
+        ring.bind_by_value(self.parent_ring().evaluate_at(self.val(), x, &ring))
+    }
+}
+
+
 pub trait Invertible {
     fn inv(self) -> Self;
 }
@@ -92,17 +209,6 @@ impl<R> Invertible for RingElWrapper<R>
     fn inv(self) -> Self {
         assert!(self.parent_ring().is_unit(self.val()));
         self.parent_ring().bind_by_value(self.parent_ring().quotient(&self.ring.one(), self.val()).unwrap())
-    }
-}
-
-impl<R> RingElWrapper<&R>
-    where R: Ring
-{
-    pub fn clone_ring(self) -> RingElWrapper<R> {
-        RingElWrapper {
-            ring: self.ring.clone(),
-            el: self.el
-        }
     }
 }
 
@@ -706,16 +812,12 @@ impl<R: Ring> BindableElementRing for R {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct WrappingRing<R>
     where R: Ring
 {
     ring: R
 }
-
-impl<R> Copy for WrappingRing<R>
-    where R: Ring + Copy
-{}
 
 pub struct LiftedHom<S, R, F> 
     where S: Ring, R: Ring, F: Fn(El<S>) -> El<R>
@@ -748,6 +850,85 @@ impl<R> WrappingRing<R>
             base: e,
             from: PhantomData,
             to: self.ring.clone()
+        }
+    }
+
+    pub fn wrapped_ring(&self) -> &R {
+        &self.ring
+    }
+
+    pub fn wrapping_embedding<'a>(&'a self) -> impl 'a + Clone + Fn(R::El) -> <Self as RingBase>::El {
+        move |x| self.ring.bind_by_value(x)
+    }
+
+    pub fn map_ring<F, S>(self, f: F) -> WrappingRing<S>
+        where F: FnOnce(R) -> S, S: Ring
+    {
+        WrappingRing {
+            ring: f(self.ring)
+        }
+    }
+}
+
+impl<R> WrappingRing<R>
+    where R: RingExtension
+{
+    pub fn base_ring(&self) -> WrappingRing<&R::BaseRing> {
+        self.wrapped_ring().base_ring().bind_ring()
+    }
+
+    pub fn embedding(&self) -> LiftedHom<R::BaseRing, R, R::Embedding> {
+        self.lift_hom(self.wrapped_ring().embedding())
+    }
+}
+
+impl<R> WrappingRing<R>
+    where R: FiniteRing
+{
+    pub fn elements(&self) -> FiniteRingElementIter<&WrappingRing<R>> {
+        finite_field_elements(&self)
+    }
+}
+
+pub struct WrappingRingIterFn<R: FiniteRing> {
+    base_fn: R::IterFn
+}
+
+impl<R: FiniteRing> Clone for WrappingRingIterFn<R> {
+
+    fn clone(&self) -> Self {
+        WrappingRingIterFn {
+            base_fn: self.base_fn.clone()
+        }
+    }
+}
+
+impl<R: FiniteRing> FiniteRingIterFn<WrappingRing<R>> for WrappingRingIterFn<R> {
+
+    fn next(&mut self, ring: &WrappingRing<R>) -> Option<RingElWrapper<R>> {
+        let el = self.base_fn.next(ring.wrapped_ring());
+        el.map(|e| ring.wrapped_ring().bind_by_value(e))
+    }
+}
+
+impl<R> FiniteRing for WrappingRing<R>
+    where R: FiniteRing
+{
+    type IterFn = WrappingRingIterFn<R>;
+
+    fn random_element<G>(&self, rng: G) -> RingElWrapper<R>
+        where G: FnMut() -> u32
+    {
+        self.wrapped_ring().bind_by_value(self.wrapped_ring().random_element(rng))
+    }
+
+    fn size(&self) -> BigInt {
+        self.wrapped_ring().size()
+    }
+
+    fn iter_fn(&self) -> Self::IterFn {
+        WrappingRingIterFn {
+            base_fn: self.wrapped_ring().iter_fn()
         }
     }
 }
@@ -946,26 +1127,6 @@ impl<R> SingletonRing for WrappingRing<R>
 {
     fn singleton() -> Self {
         R::singleton().bind_ring_by_value()
-    }
-}
-
-impl<R> WrappingRing<R> 
-    where R: Ring
-{
-    pub fn wrapped_ring(&self) -> &R {
-        &self.ring
-    }
-
-    pub fn wrapping_embedding<'a>(&'a self) -> impl 'a + Clone + Fn(R::El) -> <Self as RingBase>::El {
-        move |x| self.ring.bind_by_value(x)
-    }
-
-    pub fn map_ring<F, S>(self, f: F) -> WrappingRing<S>
-        where F: FnOnce(R) -> S, S: Ring
-    {
-        WrappingRing {
-            ring: f(self.ring)
-        }
     }
 }
 

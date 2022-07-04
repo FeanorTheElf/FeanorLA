@@ -112,14 +112,6 @@ impl<R> MultivariatePolyRing<R>
         return result;
     }
 
-    pub fn from(&self, el: R::El) -> El<Self> {
-        let mut result = BTreeMap::new();
-        result.insert(Vec::new(), el);
-
-        self.assert_valid(&result);
-        return result;
-    }
-
     fn assert_valid(&self, el: &El<Self>) {
         //
         // We require that the power vector has no trailing zeros, as otherwise this
@@ -422,6 +414,27 @@ impl<R> RingBase for MultivariatePolyRing<R>
             }
             return Ok(());
         }
+    }
+}
+
+impl<R: Ring> RingExtension for MultivariatePolyRing<R> {
+    
+    type BaseRing = R;
+    type Embedding = StandardEmbedding<R, Self>;
+
+    fn base_ring(&self) -> &R {
+        &self.base_ring
+    }
+
+    fn embedding(&self) -> Self::Embedding {
+        embedding(self.base_ring().clone(), self.clone())
+    }
+
+    fn from(&self, el: El<R>) -> El<Self> {
+        let mut result = BTreeMap::new();
+        result.insert(Vec::new(), el);
+        self.assert_valid(&result);
+        return result;
     }
 }
 

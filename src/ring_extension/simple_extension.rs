@@ -3,14 +3,13 @@ use super::super::poly::*;
 use super::super::la::inversion::*;
 use super::super::poly::ops::poly_format;
 use super::super::fq::*;
-use super::super::wrapper::*;
 use super::super::combinatorics::iters::*;
 
 use std::marker::PhantomData;
 use std::iter::FromIterator;
 
 #[derive(Clone)]
-pub struct SimpleRingExtension<R, V, W = VectorOwned<El<R>>>
+pub struct SimpleRingExtension<R, V = VectorOwned<El<R>>, W = VectorOwned<El<R>>>
     where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El>
 {
     base_ring: R,
@@ -28,7 +27,7 @@ impl<R> SimpleRingExtension<R, VectorOwned<R::El>, VectorOwned<R::El>>
     {
         let ring = PolyRing::adjoint(base_ring.clone(), "X");
         let mipo = mipo(&ring);
-        assert!(base_ring.is_one(ring.lc(&mipo).unwrap()), "Only adjoining monic polynomials is supported");
+        assert!(base_ring.is_one(&ring.lc(&mipo).unwrap()), "Only adjoining monic polynomials is supported");
         let degree = mipo.iter().enumerate().filter(|(_, x)| !base_ring.is_zero(x)).map(|(i, _)| i).max().unwrap();
         let mipo_values = Vector::new(
             mipo.raw_data()
@@ -83,14 +82,6 @@ impl<R, V, W> SimpleRingExtension<R, V, W>
         )
     }
 
-    pub fn from(&self, el: R::El) -> El<Self> {
-        Vector::new(
-            std::iter::once(el)
-            .chain(std::iter::repeat(self.base_ring.zero()).take(self.degree() - 1))
-            .collect()
-        )
-    }
-
     fn create_multiplication_matrix(&self, el: El<Self>) -> Matrix<MatrixOwned<R::El>, R::El> {
         let d = self.degree();
         let mut matrix = Matrix::zero_ring(d, d, &self.base_ring).into_owned();
@@ -122,10 +113,6 @@ impl<R, V, W> SimpleRingExtension<R, V, W>
                 poly_ring.mul_assign(state, poly_ring.unknown());
                 return Some(result);
             }).fold(poly_ring.zero(), |a, b| poly_ring.add(a, b))
-    }
-
-    pub fn base_ring(&self) -> &R {
-        &self.base_ring
     }
 
     pub fn in_base_ring(&self, el: &El<Self>) -> Option<El<R>> {
@@ -335,6 +322,29 @@ impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
     }
 }
 
+impl<R, V, W> RingExtension for SimpleRingExtension<R, V, W> 
+    where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
+{
+    type BaseRing = R;
+    type Embedding = StandardEmbedding<R, Self>;
+
+    fn base_ring(&self) -> &R {
+        &self.base_ring
+    }
+
+    fn from(&self, el: El<R>) -> El<Self> {
+        Vector::new(
+            std::iter::once(el)
+            .chain(std::iter::repeat(self.base_ring.zero()).take(self.degree() - 1))
+            .collect()
+        )
+    }
+
+    fn embedding(&self) -> Self::Embedding {
+        embedding(self.base_ring().clone(), self.clone())
+    }
+}
+
 impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
     where R: Ring, for<'a> PolyRing<&'a R>: UfdInfoRing, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
@@ -430,7 +440,7 @@ impl<R, V, W> FiniteRing for SimpleRingExtension<R, V, W>
         }
         FiniteRingExtensionIterFn{
             base_iter: multi_cartesian_product(
-                std::iter::repeat(self.base_ring.clone()).map(|ring| elements(ring)), 
+                std::iter::repeat(self.base_ring.clone()).map(|ring| finite_field_elements(ring)), 
                 convert::<R, W>
             ),
             vector_type: PhantomData
@@ -454,16 +464,10 @@ impl<R, V, W> HashableElRing for SimpleRingExtension<R, V, W>
     }
 }
 
-impl<R, V, W> RingElWrapper<SimpleRingExtension<R, V, W>>
-    where  R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
-{
-    pub fn in_base_ring(&self) -> Option<RingElWrapper<R>> {
-        self.parent_ring().in_base_ring(self.val()).map(|x| self.parent_ring().base_ring().clone().bind_by_value(x))
-    }
-}
-
 #[cfg(test)]
 use super::super::fq::zn_small::*;
+#[cfg(test)]
+use super::super::wrapper::*;
 
 #[test]
 fn test_format() {

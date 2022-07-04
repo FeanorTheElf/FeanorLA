@@ -1,5 +1,6 @@
 use super::super::ring::*;
 use super::super::embedding::*;
+use super::*;
 use super::uni_var::*;
 use super::multi_var::*;
 
@@ -41,8 +42,6 @@ pub fn sumation_operator<R>(ring: &MultivariatePolyRing<R>, f: El<MultivariatePo
 use super::super::prelude::*;
 #[cfg(test)]
 use super::super::rational::*;
-#[cfg(test)]
-use super::super::wrapper::*;
 
 #[test]
 fn test_sumation_poly() {

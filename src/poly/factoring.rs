@@ -2,6 +2,7 @@ use super::super::prelude::*;
 use super::super::eea::*;
 use super::super::fq::*;
 use super::uni_var::*;
+use super::*;
 use super::ops::*;
 use super::super::square_multiply::abs_square_and_multiply;
 
@@ -126,8 +127,6 @@ pub fn poly_squarefree_part<R>(ring: &R, poly: Vector<VectorOwned<R::El>, R::El>
 use super::super::rational::*;
 #[cfg(test)]
 use super::super::fq::zn_small::*;
-#[cfg(test)]
-use super::super::wrapper::*;
 
 #[test]
 fn test_poly_squarefree_part() {
@@ -136,7 +135,7 @@ fn test_poly_squarefree_part() {
     let a = (&x + 4) * (&x + 6).pow(2) * (&x - 2).pow(2) * (&x + 8).pow(3);
     let b = (&x + 4) * (&x + 6) * (&x - 2) * (&x + 8);
     let mut squarefree_part = ring.bind(poly_squarefree_part(ring.base_ring(), a.val().clone()));
-    squarefree_part = squarefree_part.ring().quotient(&squarefree_part, &ring.bind(ring.from(*ring.lc(squarefree_part.val()).unwrap()))).unwrap();
+    squarefree_part.normalize();
     assert_eq!(b, squarefree_part);
 }
 
@@ -156,7 +155,7 @@ fn test_distinct_degree_factorization() {
     assert_eq!(expected.len(), distinct_degree_factorization.len());
     for (f, e) in distinct_degree_factorization.into_iter().zip(expected.into_iter()) {
         let mut f = ring.bind(f);
-        f = f.ring().quotient(&f, &ring.bind(ring.from(*ring.lc(f.val()).unwrap()))).unwrap();
+        f.normalize();
         assert_eq!(e, f);
     }
 }

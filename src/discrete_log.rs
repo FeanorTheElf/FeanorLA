@@ -16,9 +16,9 @@ use vector_map::VecMap;
 pub fn baby_giant_step<T, F, I>(value: T, base: &T, base_order: &RingElWrapper<I>, op: F, identity: T) -> Option<RingElWrapper<I>> 
     where F: Fn(T, T) -> T, T: Clone + Hash + Eq, I: IntegerRing
 {
-    let n = base_order.ring().root_floor(&base_order, 2) + 1;
+    let n = base_order.root_floor(2) + 1;
     let mut giant_steps = HashMap::new();
-    let giant_step = abs_square_and_multiply(base, &n, n.ring(), |a, b| op(a, b), |a, b| op(a.clone(), b.clone()), identity.clone());
+    let giant_step = abs_square_and_multiply(base, n.val(), n.parent_ring(), |a, b| op(a, b), |a, b| op(a.clone(), b.clone()), identity.clone());
     let mut current = identity;
     for j in n.ring().zero()..n.clone() {
         giant_steps.insert(current.clone(), j);
@@ -43,11 +43,11 @@ pub fn baby_giant_step<T, F, I>(value: T, base: &T, base_order: &RingElWrapper<I
 pub fn baby_giant_step_2d<T, F, I>(value: T, base: (&T, &T), base_order: (&RingElWrapper<I>, &RingElWrapper<I>), op: F, identity: T) -> Option<(RingElWrapper<I>, RingElWrapper<I>)> 
     where F: Fn(T, T) -> T, T: Clone + Hash + Eq, I: IntegerRing
 {
-    let n1 = base_order.0.ring().root_floor(&base_order.0, 2) + 1;
-    let n2 = base_order.1.ring().root_floor(&base_order.1, 2) + 1;
+    let n1 = base_order.0.root_floor(2) + 1;
+    let n2 = base_order.1.root_floor(2) + 1;
     let mut giant_steps = HashMap::new();
-    let giant_step1 = abs_square_and_multiply(base.0, &n1, n1.ring(), |a, b| op(a, b), |a, b| op(a.clone(), b.clone()), identity.clone());
-    let giant_step2 = abs_square_and_multiply(base.1, &n2, n2.ring(), |a, b| op(a, b), |a, b| op(a.clone(), b.clone()), identity.clone());
+    let giant_step1 = abs_square_and_multiply(base.0, n1.val(), n1.parent_ring(), |a, b| op(a, b), |a, b| op(a.clone(), b.clone()), identity.clone());
+    let giant_step2 = abs_square_and_multiply(base.1, n2.val(), n2.parent_ring(), |a, b| op(a, b), |a, b| op(a.clone(), b.clone()), identity.clone());
     let mut current1 = identity;
     for k in n1.ring().zero()..n1.clone() {
         let mut current2 = current1.clone();
@@ -74,7 +74,7 @@ pub fn baby_giant_step_2d<T, F, I>(value: T, base: (&T, &T), base_order: (&RingE
 fn power_p_discrete_log<T, F, I>(value: T, p_e_base: &T, p: &RingElWrapper<I>, e: u32, op: F, identity: T) -> Option<RingElWrapper<I>> 
     where F: Fn(T, T) -> T, T: Clone + Hash + Eq + std::fmt::Debug, I: IntegerRing
 {
-    let pow = |x: &T, e: &RingElWrapper<I>| abs_square_and_multiply(x, e, e.ring(), |a, b| op(a, b), |a, b| op(a.clone(), b.clone()), identity.clone());
+    let pow = |x: &T, e: &RingElWrapper<I>| abs_square_and_multiply(x, e.val(), e.parent_ring(), |a, b| op(a, b), |a, b| op(a.clone(), b.clone()), identity.clone());
     let p_base = pow(p_e_base, &p.pow(e - 1));
     debug_assert_ne!(p_base, identity);
     debug_assert_eq!(pow(&p_base, p), identity);
@@ -105,7 +105,7 @@ fn power_p_discrete_log_2d<T, F, I>(value: T, p_e_base: (&T, &T), p: &RingElWrap
     if e.0 == 0 {
         return Some((p.ring().zero(), power_p_discrete_log(value, p_e_base.1, p, e.1, op, identity)?));
     }
-    let pow = |x: &T, e: &RingElWrapper<I>| abs_square_and_multiply(x, e, e.ring(), |a, b| op(a, b), |a, b| op(a.clone(), b.clone()), identity.clone());
+    let pow = |x: &T, e: &RingElWrapper<I>| abs_square_and_multiply(x, e.val(), e.parent_ring(), |a, b| op(a, b), |a, b| op(a.clone(), b.clone()), identity.clone());
     let p_base = (pow(p_e_base.0, &p.pow(e.0 - 1)), pow(p_e_base.1, &p.pow(e.1 - 1)));
     debug_assert_ne!(p_base.0, identity);
     debug_assert_ne!(p_base.1, identity);
@@ -169,7 +169,7 @@ fn crt<I>(a: RingElWrapper<I>, b: RingElWrapper<I>, p: &RingElWrapper<I>, q: &Ri
 pub fn discrete_log<T, F, I>(value: T, base: &T, order: &RingElWrapper<I>, op: F, identity: T) -> Option<RingElWrapper<I>> 
     where F: Fn(T, T) -> T, T: Clone + Hash + Eq + std::fmt::Debug, I: IntegerRing + UfdInfoRing
 {
-    let pow = |x: &T, e: &RingElWrapper<I>| abs_square_and_multiply(x, e, e.ring(), |a, b| op(a, b), |a, b| op(a.clone(), b.clone()), identity.clone());
+    let pow = |x: &T, e: &RingElWrapper<I>| abs_square_and_multiply(x, e.val(), e.parent_ring(), |a, b| op(a, b), |a, b| op(a.clone(), b.clone()), identity.clone());
     debug_assert!(pow(&base, &order) == identity);
     let mut current_log = order.ring().one();
     let mut current_size = order.ring().one();
@@ -235,7 +235,7 @@ pub fn discrete_log<T, F, I>(value: T, base: &T, order: &RingElWrapper<I>, op: F
 pub fn discrete_log_2d<T, F, I>(value: T, base: (&T, &T), order: (&RingElWrapper<I>, &RingElWrapper<I>), op: F, identity: T) -> Option<(RingElWrapper<I>, RingElWrapper<I>)> 
     where F: Fn(T, T) -> T, T: Clone + Hash + Eq + std::fmt::Debug, I: IntegerRing + UfdInfoRing
 {
-    let pow = |x: &T, e: &RingElWrapper<I>| abs_square_and_multiply(x, e, e.ring(), |a, b| op(a, b), |a, b| op(a.clone(), b.clone()), identity.clone());
+    let pow = |x: &T, e: &RingElWrapper<I>| abs_square_and_multiply(x, e.val(), e.parent_ring(), |a, b| op(a, b), |a, b| op(a.clone(), b.clone()), identity.clone());
     let mut current_log = (order.0.ring().one(), order.1.ring().one());
     let mut current_size = (order.0.ring().one(), order.1.ring().one());
     let factorizations = (order.0.clone().factor(), order.1.clone().factor());
