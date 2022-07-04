@@ -44,3 +44,4 @@ impl<'a, K: NumberField> NumberField for &'a K {
     fn primitive_element(&self) -> El<Self> { (**self).primitive_element() }
     fn mipo(&self, el: &El<Self>) -> El<PolyRing<<Self as RingExtension>::BaseRing>> { (**self).mipo(el) }
 }
+

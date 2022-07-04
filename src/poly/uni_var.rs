@@ -302,6 +302,37 @@ impl<R: Ring> RingExtension for PolyRing<R> {
 }
 
 impl<R> DivisibilityInfoRing for PolyRing<R> 
+    where R: Ring + CanonicalIsomorphismInfo<R>
+{
+    default fn is_divisibility_computable(&self) -> RingPropValue {
+        self.base_ring.is_field()
+    }
+
+    default fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
+        assert!(self.is_divisibility_computable().can_use());
+        assert!(!self.is_zero(rhs));
+        let lc = self.lc(rhs).unwrap();
+        let lc_inv = self.base_ring().div(self.base_ring().one(), &lc);
+        let mut p = lhs.clone();
+        let result = self.poly_division(
+            &mut p, 
+            &rhs, 
+            |x| Ok(self.base_ring().mul_ref(&x, &lc_inv))
+        ).ok()?;
+        if self.is_zero(&p) {
+            return Some(result);
+        } else {
+            return None;
+        }
+    }
+
+    default fn is_unit(&self, el: &Self::El) -> bool {
+        assert!(self.is_divisibility_computable().can_use());
+        self.deg(el) == Some(0)
+    }
+}
+
+impl<R> DivisibilityInfoRing for PolyRing<R> 
     where R: DivisibilityInfoRing + CanonicalIsomorphismInfo<R>
 {
     fn is_divisibility_computable(&self) -> RingPropValue {

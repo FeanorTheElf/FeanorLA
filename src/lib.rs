@@ -25,6 +25,7 @@ pub mod float;
 pub mod prelude;
 pub mod karatsuba;
 pub mod eea;
+pub mod lattice;
 
 #[macro_use]
 pub mod la;

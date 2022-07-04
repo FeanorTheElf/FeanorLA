@@ -67,6 +67,10 @@ impl<R> RingElWrapper<R>
             el: self.el.clone()
         }
     }
+
+    pub fn is_zero(&self) -> bool {
+        self.ring().is_zero(self)
+    }
 }
 
 impl<R> RingElWrapper<R>
@@ -74,6 +78,14 @@ impl<R> RingElWrapper<R>
 {
     pub fn factor(self) -> VecMap<RingElWrapper<R>, usize> {
         self.ring.factor(self.el)
+    }
+}
+
+impl<R> RingElWrapper<R>
+    where R: DivisibilityInfoRing
+{
+    pub fn divides(&self, rhs: &RingElWrapper<R>) -> bool {
+        self.ring.is_divisible_by(rhs.val(), self.val())
     }
 }
 
@@ -88,6 +100,28 @@ impl<R> RingElWrapper<&R>
     }
 }
 
+impl<R> RingElWrapper<R>
+    where R: OrderedRing
+{
+    pub fn abs(self) -> Self {
+        if self < 0 {
+            -self
+        } else {
+            self
+        }
+    }
+
+    pub fn sgn(&self) -> Self {
+        if *self < 0 {
+            -self.ring().one()
+        } else if *self == 0 {
+            self.ring().zero()
+        } else {
+            self.ring().one()
+        }
+    }
+}
+
 impl<R: IntegerRing> RingElWrapper<R> 
 {
     pub fn to_float_approx(&self) -> f64 {
@@ -97,6 +131,24 @@ impl<R: IntegerRing> RingElWrapper<R>
     pub fn root_floor(&self, n: u64) -> Self {
         let result = self.parent_ring().root_floor(self.val(), n);
         return self.parent_ring().bind_by_value(result);
+    }
+
+    pub fn floor_div(self, rhs: &RingElWrapper<R>) -> Self {
+        let (el, ring) = self.destruct();
+        let result = ring.floor_div(el, rhs.val());
+        return RingElWrapper {
+            ring: ring, 
+            el: result
+        };
+    }
+
+    pub fn euclidean_div_pow_2(self, exponent: u64) -> Self {
+        let (el, ring) = self.destruct();
+        let result = ring.euclidean_div_pow_2(el, exponent);
+        return RingElWrapper {
+            ring: ring, 
+            el: result
+        };
     }
 }
 
@@ -304,6 +356,14 @@ impl<R> AddAssign<RingElWrapper<R>> for RingElWrapper<R>
     }
 }
 
+impl<R> AddAssign<i64> for RingElWrapper<R>
+    where R: Ring
+{
+    fn add_assign(&mut self, rhs: i64) {
+        self.ring.add_assign(&mut self.el, self.ring.from_z(rhs));
+    }
+}
+
 impl<'a, R> AddAssign<&'a RingElWrapper<R>> for RingElWrapper<R>
     where R: Ring
 {
@@ -370,6 +430,15 @@ impl<R> SubAssign<RingElWrapper<R>> for RingElWrapper<R>
     fn sub_assign(&mut self, rhs: RingElWrapper<R>) {
         let value = std::mem::replace(&mut self.el, self.ring.unspecified_element());
         self.el = self.ring.sub(value, rhs.el);
+    }
+}
+
+impl<R> SubAssign<i64> for RingElWrapper<R>
+    where R: Ring
+{
+    fn sub_assign(&mut self, rhs: i64) {
+        let value = std::mem::replace(&mut self.el, self.ring.unspecified_element());
+        self.el = self.ring.sub(value, self.ring.from_z(rhs));
     }
 }
 

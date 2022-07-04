@@ -271,7 +271,7 @@ pub type El<R: Ring> = <R as RingBase>::El;
 ///
 /// Trait for rings that might have a euclidean division.
 /// 
-pub trait EuclideanInfoRing: Ring {
+pub trait EuclideanInfoRing: DivisibilityInfoRing {
     
     ///
     /// Returns whether the ring is euclidean, so whether the euclidean division and remainder

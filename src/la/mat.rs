@@ -220,9 +220,15 @@ impl<T> Matrix<MatrixOwned<T>, T> {
     pub fn from<U, M>(matrix: Matrix<M, U>) -> Self
         where M: MatrixView<U>, T: From<U>, U: Clone
     {
+        Self::map(matrix, T::from)
+    }
+
+    pub fn map<U, M, F>(matrix: Matrix<M, U>, f: F) -> Self
+        where M: MatrixView<U>, F: FnMut(U) -> T, U: Clone
+    {
         let row_count = matrix.row_count();
         let col_count = matrix.col_count();
-        let mut data_it = matrix.into_owned().data.into_data_iter().map(T::from);
+        let mut data_it = matrix.into_owned().data.into_data_iter().map(f);
         let result = Self::from_fn(row_count, col_count, |_, _| data_it.next().unwrap());
         debug_assert!(data_it.next().is_none());
         return result;
