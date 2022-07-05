@@ -35,14 +35,11 @@ pub fn row_hnf<R, M>(A: &mut Matrix<M, RingElWrapper<R>>) -> Matrix<MatrixOwned<
 {
     let ring = A.at(0, 0).ring().clone();
     let incl = z_hom(&ring);
-    let mut U = Matrix::identity_ring(A.row_count(), A.row_count(), &ring).to_owned();
-    let mut transform_U = |i, j, [a, b, c, d]: [RingElWrapper<R>; 4]| {
-        let inv_det = (&a * &d - &b * &c).inv();
-        let col_transform = [d * &inv_det, -b * &inv_det, -c * &inv_det, a * &inv_det];
-        U.transform_two_dims_right(i, j, &col_transform, &ring);
+    let mut iU = Matrix::identity_ring(A.row_count(), A.row_count(), &ring).to_owned();
+    let mut transform_U = |i, j, transform: [RingElWrapper<R>; 4]| {
+        iU.transform_two_dims_left(i, j, &transform, &ring);
     };
     row_echelon_form(A, &mut transform_U);
-    println!("{}", A);
     let mut i = 0;
     let mut j = 0;
     while i < A.row_count() && j < A.col_count() {
@@ -57,13 +54,12 @@ pub fn row_hnf<R, M>(A: &mut Matrix<M, RingElWrapper<R>>) -> Matrix<MatrixOwned<
             let transform = [incl(1), -factor * &pivot_sign, incl(0), pivot_sign.clone()];
             A.submatrix_mut(..=i, j..).transform_two_dims_left(k, i, &transform, &ring);
             transform_U(k, i, transform);
-            println!("{}, {}, {}", A, i, j);
             pivot_sign = ring.one();
         }
         i += 1;
         j += 1;
     }
-    return U;
+    return iU;
 }
 
 fn find_transform_row<R, M>(A: Matrix<M, RingElWrapper<R>>, start_col: usize) -> Option<usize>
@@ -92,7 +88,6 @@ fn test_row_triangular() {
     let mut A = Matrix::map(Matrix::from_array([[ 6, 5, 9 ], [ 4, 10, 11 ], [ 7, 5, 2 ]]), ring.wrapping_embedding());
     let expected = Matrix::map(Matrix::from_array([[ 1, 20, 8 ], [ 0, 5, -12 ], [ 0, 0, -63 ]]), ring.wrapping_embedding());
     row_echelon_form(&mut A, |_, _, _| {});
-    println!("{}", A);
     assert_eq!(expected, A);
 }
 
@@ -102,7 +97,7 @@ fn test_row_hnf() {
     let A = Matrix::map(Matrix::from_array([[ 6, 5, 9 ], [ 4, 10, 11 ], [ 7, 5, 2 ]]), ring.wrapping_embedding());
     let expected = Matrix::map(Matrix::from_array([[ 1, 0, 56 ], [ 0, 5, 51 ], [ 0, 0, 63 ]]), ring.wrapping_embedding());
     let mut actual = A.clone();
-    let U = row_hnf(&mut actual);
+    let Uinv = row_hnf(&mut actual);
     assert_eq!(expected, actual);
-    assert_eq!(A, U.mul(actual, &ring));
+    assert_eq!(actual, Uinv.mul(A, &ring));
 }

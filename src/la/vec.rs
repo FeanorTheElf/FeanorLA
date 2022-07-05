@@ -326,6 +326,12 @@ impl<T> Vector<VectorOwned<T>, T> {
         *result.at_mut(i) = ring.one();
         return result;
     }
+
+    pub fn map<U, S, F>(vector: Vector<U, S>, f: F) -> Self
+        where U: VectorView<S>, F: FnMut(S) -> T, S: Clone
+    {
+        Vector::new(vector.into_owned().raw_data().into_iter().map(f).collect())
+    }
 }
 
 impl<V, T> Vector<V, T>
