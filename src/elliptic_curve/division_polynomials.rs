@@ -74,9 +74,9 @@ impl<'a, K: Ring> DivisionPolyArray<'a, K> {
             let i = self.i();
             let f = x.pow(3) + x * i(self.E.A.clone()) + i(self.E.B.clone());
             if m % 2 == 0 {
-                self.cache.insert(n, phi4 * phi2 * phi2 * phi2 * f - phi1 * phi3 * phi3 * phi3);
+                self.cache.insert(n, phi4 * phi2 * phi2 * phi2 * f.pow(2) - phi1 * phi3 * phi3 * phi3);
             } else {
-                self.cache.insert(n, phi4 * phi2 * phi2 * phi2 - phi1 * phi3 * phi3 * phi3 * f);
+                self.cache.insert(n, phi4 * phi2 * phi2 * phi2 - phi1 * phi3 * phi3 * phi3 * f.pow(2));
             }
         }
     }
@@ -161,16 +161,11 @@ fn test_division_polynomials() {
 fn bench_division_poly(b: &mut Bencher) {
     let ring = F49.bind_ring_by_value();
     let E = EllipticCurve::new(ring.clone(), ring.zero(), ring.one());
-    for n in 2..=5 {
-        let (x, y, z) = division_polynomials(&E, n);
-        println!("{}, {}, {}", x, y, z);
-    }
     let mut rng = oorandom::Rand32::new(3);
     let n: i64 = 13;
     b.iter(|| {
         let (f, _, h) = division_polynomials(&E, n as usize);
         let P = E.random_affine_point(|| rng.rand_u32());
         assert_eq!(f(P.x().unwrap().clone()) / h(P.x().unwrap().clone()), *E.mul_point(&P, &BigInt::from(n), E.base_field()).x().unwrap());
-        println!("one run");
     });
 }
