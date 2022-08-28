@@ -1,42 +1,101 @@
-use super::super::eea::*;
 use super::super::prelude::*;
 use super::super::wrapper::*;
 use super::super::poly::*;
 use super::*;
 
+use std::collections::HashMap;
+
 type P<K: Ring> = WrappingRing<PolyRing<K>>;
 
-fn duplication<K: Ring + PartialEq>(_poly_ring: &P<K>, a4: El<P<K>>, x1: El<P<K>>, y1_y: El<P<K>>, z1: El<P<K>>, f: El<P<K>>) -> (El<P<K>>, El<P<K>>, El<P<K>>) {
-    let lambda_div_y_num = x1.pow(2) * 3 + z1.pow(2) * a4;
-    let lambda_den = &y1_y * &z1 * 2;
-
-    // these are just defined to prevent repeated computation
-    let lambda_den_2 = &lambda_den * &lambda_den;
-    let lambda_den_3 = &lambda_den * &lambda_den_2;
-    let lambda_div_y_num_f = &lambda_div_y_num * f;
-    let lambda_den_2_x1 = &lambda_den_2 * &x1;
-
-    let x3_div_lambda_den = - &lambda_den_2_x1 * 2 + &z1 * lambda_div_y_num * &lambda_div_y_num_f;
-    let z3 = &lambda_den_3 * z1;
-    let y3_y = - y1_y * &lambda_den_3 + lambda_div_y_num_f * (lambda_den_2_x1 - &x3_div_lambda_den);
-    return (x3_div_lambda_den * lambda_den, y3_y, z3);
+pub struct DivisionPolyArray<'a, K: Ring> {
+    E: &'a EllipticCurve<WrappingRing<K>>,
+    cache: HashMap<usize, El<P<K>>>,
+    P: P<K>
 }
 
+impl<'a, K: Ring> DivisionPolyArray<'a, K> {
 
-fn xy1_addition<K: Ring + PartialEq>(_poly_ring: &P<K>, x1: El<P<K>>, y1_y: El<P<K>>, z1: El<P<K>>, f: El<P<K>>) -> (El<P<K>>, El<P<K>>, El<P<K>>) {
-    let x = x1.ring().from(x1.ring().wrapped_ring().unknown());
-    let lambda_y_num = &y1_y - &f * &z1;
-    let lambda_den = &x1 - &x * &z1;
+    pub fn new(E: &'a EllipticCurve<WrappingRing<K>>) -> Self {
+        let F = E.base_field();
+        let P = PolyRing::adjoint(F.wrapped_ring().clone(), "x").bind_ring_by_value();
+        let x = P.wrapped_ring().bind_by_value(P.wrapped_ring().unknown());
+        let i = embedding(F, &P);
+    
+        let mut cache = HashMap::new();
+        cache.insert(0, P.zero());
+        cache.insert(1, P.one());
+        cache.insert(2, P.from_z(2));
+        cache.insert(3, x.pow(4) * 3 + x.pow(2) * i(E.A.clone()) * 6 + &x * i(E.B.clone()) * 12 - i(E.A.pow(2)));
+        cache.insert(4, x.pow(6) * 4 + x.pow(4) * i(E.A.clone()) * 20 + x.pow(3) * i(E.B.clone()) * 80 - x.pow(2) * i(E.A.pow(2)) * 20 
+            - x * i(&E.A * &E.B) * 16 - i(E.B.pow(2)) * 32 - i(E.A.pow(3)) * 4);
+        return DivisionPolyArray { E, P, cache };
+    }
 
-    // these are just defined to prevent repeated computation
-    let lambda_den_2 = &lambda_den * &lambda_den;
-    let lambda_den_3 = &lambda_den * &lambda_den_2;
-    let lambda_den_2_x1 = &lambda_den_2 * &x1;
+    fn x(&self) -> El<P<K>> {
+        self.P.wrapped_ring().bind_by_value(self.P.wrapped_ring().unknown())
+    }
 
-    let x3_div_lambda_den = -&lambda_den_2_x1 - x * &z1 * &lambda_den_2 + &z1 * lambda_y_num.pow(2) / f;
-    let z3 = &lambda_den_3 * &z1;
-    let y3_y = - y1_y * lambda_den_3 + lambda_y_num * (lambda_den_2_x1 - &x3_div_lambda_den);
-    return (x3_div_lambda_den * lambda_den, y3_y, z3);
+    fn i(&self) -> StandardEmbedding<&WrappingRing<K>, &P<K>> {
+        embedding(self.E.base_field(), &self.P)
+    }
+
+    fn short_division_polynomial_rec(&mut self, n: usize) {
+        if self.cache.contains_key(&n) {
+            return;
+        }
+        if n % 2 == 0 {
+            let m = n / 2;
+            self.short_division_polynomial_rec(m - 2);
+            self.short_division_polynomial_rec(m - 1);
+            self.short_division_polynomial_rec(m);
+            self.short_division_polynomial_rec(m + 1);
+            self.short_division_polynomial_rec(m + 2);
+            let [phi0, phi1, phi2, phi3, phi4] = [
+                self.cache.get(&(m - 2)).unwrap(),
+                self.cache.get(&(m - 1)).unwrap(),
+                self.cache.get(&(m)).unwrap(),
+                self.cache.get(&(m + 1)).unwrap(),
+                self.cache.get(&(m + 2)).unwrap()
+            ];
+            self.cache.insert(n, phi2 * (phi4 * phi1 * phi1 - phi0 * phi3 * phi3) / 2);
+        } else {
+            let m = (n - 1) / 2;
+            self.short_division_polynomial_rec(m - 1);
+            self.short_division_polynomial_rec(m);
+            self.short_division_polynomial_rec(m + 1);
+            self.short_division_polynomial_rec(m + 2);
+            let [phi1, phi2, phi3, phi4] = [
+                self.cache.get(&(m - 1)).unwrap(),
+                self.cache.get(&(m)).unwrap(),
+                self.cache.get(&(m + 1)).unwrap(),
+                self.cache.get(&(m + 2)).unwrap()
+            ];
+            let x = self.x();
+            let i = self.i();
+            let f = x.pow(3) + x * i(self.E.A.clone()) + i(self.E.B.clone());
+            if m % 2 == 0 {
+                self.cache.insert(n, phi4 * phi2 * phi2 * phi2 * f - phi1 * phi3 * phi3 * phi3);
+            } else {
+                self.cache.insert(n, phi4 * phi2 * phi2 * phi2 - phi1 * phi3 * phi3 * phi3 * f);
+            }
+        }
+    }
+
+    ///
+    /// Returns the n-th short division polynomial, which is the polynomial
+    /// ```text
+    ///     n (X - x1) ... (X - xr)
+    /// ```
+    /// where xi runs through the x-coordinates of the points E[n] \ E[2].
+    /// Note that each x-coordinate occurs only once, even though though there
+    /// might be two points (x, y) and (x, -y) corresponding to that point.
+    /// Hence, we see that the result has degree (n - 1)/2 if n is odd and
+    /// (n - 4)/2 if n is even.
+    /// 
+    pub fn get(&mut self, n: usize) -> El<P<K>> {
+        self.short_division_polynomial_rec(n);
+        return self.cache.get(&n).cloned().unwrap();
+    }
 }
 
 ///
@@ -48,36 +107,20 @@ pub fn division_polynomials<K: Ring + PartialEq>(E: &EllipticCurve<WrappingRing<
     -> (El<WrappingRing<PolyRing<K>>>, El<WrappingRing<PolyRing<K>>>, El<WrappingRing<PolyRing<K>>>) 
 {
     assert!(n >= 2);
-    let poly_ring = PolyRing::adjoint(E.base_field().wrapped_ring().clone(), "x");
-    let P = poly_ring.bind_ring_by_value();
-    let x = P.from(P.wrapped_ring().unknown());
-    let incl = embedding(E.base_field(), &P);
-    let f = x.pow(3) + incl(E.a4().clone()) * &x + incl(E.a6().clone());
+    let mut phis = DivisionPolyArray::new(E);
+    let x = phis.x();
+    let i = phis.i();
+    let f = x.pow(3) + &x * i(E.A.clone()) + i(E.B.clone());
 
-    let reduce = |mut x1: El<WrappingRing<PolyRing<K>>>, mut y1_y: El<WrappingRing<PolyRing<K>>>, mut z1: El<WrappingRing<PolyRing<K>>>| {
-        let d1 = gcd(&x1.ring(), x1.clone(), z1.clone());
-        let d = gcd(&y1_y.ring(), d1, y1_y.clone());
-        x1 /= &d;
-        y1_y /= &d;
-        z1 /= &d;
-        let nomalize_factor = x1.lc().unwrap().inv();
-        x1 = x1.scaled(&nomalize_factor);
-        y1_y = y1_y.scaled(&nomalize_factor);
-        z1 = z1.scaled(&nomalize_factor);
-        return (x1, y1_y, z1);
-    };
-
-    let (mut x1, mut y1_y, mut z1) = (x, f.clone(), P.one());
-    for i in (0..(usize::BITS - n.leading_zeros() - 1)).rev() {
-        (x1, y1_y, z1) = duplication(&P, incl(E.a4().clone()), x1, y1_y, z1, f.clone());
-        (x1, y1_y, z1) = reduce(x1, y1_y, z1);
-        if (n >> i) & 1 == 1 {
-            (x1, y1_y, z1) = xy1_addition(&P, x1, y1_y, z1, f.clone());
-        }
+    if n % 2 == 0 {
+        let result_x = phis.get(n).pow(2) * &x * &f - phis.get(n + 1) * phis.get(n - 1);
+        let result_y = phis.get(n + 2) * phis.get(n - 1).pow(2) / 4 - phis.get(n - 2) * phis.get(n + 1).pow(2) / 4;
+        return (result_x * phis.get(n), result_y, phis.get(n).pow(3) * f);
+    } else {
+        let result_x = phis.get(n).pow(2) * &x - phis.get(n + 1) * phis.get(n - 1) * &f;
+        let result_y = phis.get(n + 2) * phis.get(n - 1).pow(2) * &f / 4 - phis.get(n - 2) * phis.get(n + 1).pow(2) * f / 4;
+        return (result_x * phis.get(n), result_y, phis.get(n).pow(3));
     }
-    (x1, y1_y, z1) = reduce(x1, y1_y, z1);
-
-    return (x1, y1_y, z1);
 }
 
 #[cfg(test)]
@@ -86,39 +129,8 @@ use super::super::rational::*;
 use test::Bencher;
 #[cfg(test)]
 use super::super::fq::fq_small::*;
-
-#[test]
-fn test_duplication() {
-    let F = r64::RING.bind_ring_by_value();
-    let E = EllipticCurve::new(F, F.zero(), F.one());
-    let poly_ring = PolyRing::adjoint(&r64::RING, "x");
-    let P = poly_ring.bind_ring_by_value();
-    let x = P.from(P.wrapped_ring().unknown());
-    let f = x.pow(3) + 1;
-    let a4 = P.zero();
-    let (x3, y3_y, z3) = duplication(&P, a4.clone(), x, f.clone(), P.one(), f);
-    let point = EllipticCurvePoint::Affine(F.from_z(2), F.from_z(3));
-    let point2 = E.mul_point(&point, &BigInt::from(2), &F);
-    assert_eq!(point2.x().unwrap().borrow_ring(), x3(F.from_z(2).borrow_ring()) / z3(F.from_z(2).borrow_ring()));
-    assert_eq!(point2.y().unwrap().borrow_ring(), y3_y(F.from_z(2).borrow_ring()) / z3(F.from_z(2).borrow_ring()) / F.from_z(3).borrow_ring());
-}
-
-#[test]
-fn test_xy1_addition() {
-    let F = r64::RING.bind_ring_by_value();
-    let E = EllipticCurve::new(F, F.zero(), F.one());
-    let poly_ring = PolyRing::adjoint(&r64::RING, "x");
-    let P = poly_ring.bind_ring_by_value();
-    let x = P.from(P.wrapped_ring().unknown());
-    let f = x.pow(3) + 1;
-    let a4 = P.zero();
-    let (x2, y2_y, z2) = duplication(&P, a4.clone(), x, f.clone(), P.one(), f.clone());
-    let (x3, y3_y, z3) = xy1_addition(&P, x2, y2_y, z2, f);
-    let point = EllipticCurvePoint::Affine(F.from_z(2), F.from_z(3));
-    let point3 = E.mul_point(&point, &BigInt::from(3), &F);
-    assert_eq!(point3.x().unwrap().borrow_ring(), x3(F.from_z(2).borrow_ring()) / z3(F.from_z(2).borrow_ring()));
-    assert_eq!(point3.y().unwrap().borrow_ring(), y3_y(F.from_z(2).borrow_ring()) / z3(F.from_z(2).borrow_ring()) / F.from_z(3).borrow_ring());
-}
+#[cfg(test)]
+use super::super::eea::gcd;
 
 #[test]
 fn test_division_polynomials() {
@@ -149,6 +161,10 @@ fn test_division_polynomials() {
 fn bench_division_poly(b: &mut Bencher) {
     let ring = F49.bind_ring_by_value();
     let E = EllipticCurve::new(ring.clone(), ring.zero(), ring.one());
+    for n in 2..=5 {
+        let (x, y, z) = division_polynomials(&E, n);
+        println!("{}, {}, {}", x, y, z);
+    }
     let mut rng = oorandom::Rand32::new(3);
     let n: i64 = 13;
     b.iter(|| {
