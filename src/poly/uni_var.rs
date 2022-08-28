@@ -202,7 +202,10 @@ impl<R> RingBase for PolyRing<R>
     }
 
     fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El {
-        poly_mul(&self.base_ring, lhs.as_ref(), rhs.as_ref())
+        let result_len = poly_degree(self.base_ring(), lhs.as_ref()).unwrap_or(0) + poly_degree(self.base_ring(), rhs.as_ref()).unwrap_or(0) + 1;
+        let mut result = Vector::new((0..result_len).map(|_| self.base_ring().zero()).collect::<Vec<_>>());
+        poly_mul(&self.base_ring, lhs.as_ref(), rhs.as_ref(), &mut result);
+        return result;
     }
 
     fn neg(&self, mut val: Self::El) -> Self::El {

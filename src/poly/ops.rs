@@ -70,15 +70,15 @@ pub fn poly_add<R, V, W>(coeff_ring: &R, lhs: Vector<V, R::El>, rhs: Vector<W, R
     }
 }
 
-pub fn poly_mul<R, V, W>(coeff_ring: &R, lhs: Vector<V, R::El>, rhs: Vector<W, R::El>) -> Vector<VectorOwned<R::El>, R::El>
-    where R: Ring, V: VectorView<R::El>, W: VectorView<R::El>
+pub fn poly_mul<R, U, V, W>(coeff_ring: &R, lhs: Vector<V, R::El>, rhs: Vector<W, R::El>, out: &mut Vector<U, R::El>) 
+    where R: Ring, U: VectorViewMut<R::El>, V: VectorView<R::El>, W: VectorView<R::El>
 {
     // do not just use lhs.len() and rhs.len(), as in some situations with huge amount of
     // multiplications, this can blow up the resulting vector terribly (e.g. when calculating powers) 
     let lhs_deg = poly_degree(coeff_ring, lhs.as_ref());
     let rhs_deg = poly_degree(coeff_ring, rhs.as_ref());
     if lhs_deg.is_none() || rhs_deg.is_none() {
-        return Vector::from_array([]).into_owned();
+        return;
     }
     let lhs_deg = lhs_deg.unwrap();
     let rhs_deg = rhs_deg.unwrap();
@@ -86,9 +86,8 @@ pub fn poly_mul<R, V, W>(coeff_ring: &R, lhs: Vector<V, R::El>, rhs: Vector<W, R
     // e.g. if coeff_ring is integral
     // the code works anyway
     let result_deg = lhs_deg + rhs_deg;
-    let mut result = Vector::new((0..(result_deg + 1)).map(|_| coeff_ring.zero()).collect::<Vec<_>>());
-    karatsuba_mul(lhs, rhs, result.as_mut(), coeff_ring);
-    return result;
+    assert!(out.len() >= result_deg);
+    karatsuba_mul(lhs, rhs, out.as_mut(), coeff_ring);
 }
 
 pub fn poly_format<R, V>(coeff_ring: &R, el: Vector<V, R::El>, f: &mut std::fmt::Formatter, var_name: &str) -> std::fmt::Result
@@ -139,8 +138,7 @@ pub fn poly_evaluate<R, S, V>(coeff_ring: &R, value: S::El, poly: Vector<V, R::E
 
 #[test]
 fn test_poly_mul() {
-    assert_eq!(
-        Vector::from_array([1]),
-        poly_mul(&i64::RING, Vector::from_array([1]).as_ref(), Vector::from_array([1]).as_ref())
-    );
+    let mut a = Vector::from_array([1]);
+    poly_mul(&i64::RING, Vector::from_array([1]).as_ref(), Vector::from_array([1]).as_ref(), &mut a);
+    assert_eq!(Vector::from_array([1]), a);
 }
