@@ -5,7 +5,7 @@ use super::*;
 
 use std::collections::HashMap;
 
-type P<K: Ring> = WrappingRing<PolyRing<K>>;
+type P<K: Ring> = WrappingRing<PolyRingImpl<K>>;
 
 pub struct DivisionPolyArray<'a, K: Ring> {
     E: &'a EllipticCurve<WrappingRing<K>>,
@@ -17,7 +17,7 @@ impl<'a, K: Ring> DivisionPolyArray<'a, K> {
 
     pub fn new(E: &'a EllipticCurve<WrappingRing<K>>) -> Self {
         let F = E.base_field();
-        let P = PolyRing::adjoint(F.wrapped_ring().clone(), "x").bind_ring_by_value();
+        let P = PolyRingImpl::adjoint(F.wrapped_ring().clone(), "x").bind_ring_by_value();
         let x = P.wrapped_ring().bind_by_value(P.wrapped_ring().unknown());
         let i = embedding(F, &P);
     
@@ -104,7 +104,7 @@ impl<'a, K: Ring> DivisionPolyArray<'a, K> {
 /// the x-coordinate of `[n]P` is `f(x)/g(x)`, if `[n]P` is affine.
 /// 
 pub fn division_polynomials<K: Ring + PartialEq>(E: &EllipticCurve<WrappingRing<K>>, n: usize) 
-    -> (El<WrappingRing<PolyRing<K>>>, El<WrappingRing<PolyRing<K>>>, El<WrappingRing<PolyRing<K>>>) 
+    -> (El<WrappingRing<PolyRingImpl<K>>>, El<WrappingRing<PolyRingImpl<K>>>, El<WrappingRing<PolyRingImpl<K>>>) 
 {
     assert!(n >= 2);
     let mut phis = DivisionPolyArray::new(E);
@@ -137,7 +137,7 @@ fn test_division_polynomials() {
     let field = r64::RING.bind_ring();
     let E = EllipticCurve::new(field, field.zero(), field.one());
     let (f, _, h) = division_polynomials(&E, 2);
-    let poly_ring = PolyRing::adjoint(field.wrapped_ring().clone(), "X").bind_ring_by_value();
+    let poly_ring = PolyRingImpl::adjoint(field.wrapped_ring().clone(), "X").bind_ring_by_value();
     let x = poly_ring.from(poly_ring.wrapped_ring().unknown());
     let f_expected = x.pow(4) - &x * 8;
     let h_expected = x.pow(3) * 4 + 4;

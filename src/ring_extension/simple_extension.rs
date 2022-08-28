@@ -23,9 +23,9 @@ impl<R> SimpleRingExtension<R, VectorOwned<R::El>, VectorOwned<R::El>>
     where R: Ring
 {
     pub fn adjoin_element<F>(base_ring: R, mipo: F, gen_name: &'static str) -> Self
-        where F: FnOnce(&PolyRing<R>) -> El<PolyRing<R>>
+        where F: FnOnce(&PolyRingImpl<R>) -> El<PolyRingImpl<R>>
     {
-        let ring = PolyRing::adjoint(base_ring.clone(), "X");
+        let ring = PolyRingImpl::adjoint(base_ring.clone(), "X");
         let mipo = mipo(&ring);
         assert!(base_ring.is_one(&ring.lc(&mipo).unwrap()), "Only adjoining monic polynomials is supported");
         let degree = mipo.iter().enumerate().filter(|(_, x)| !base_ring.is_zero(x)).map(|(i, _)| i).max().unwrap();
@@ -67,7 +67,7 @@ impl<R, V, W> SimpleRingExtension<R, V, W>
         assert_eq!(el.len(), self.degree());
     }
 
-    pub fn polynomial_repr(&self, poly_ring: &PolyRing<&R>, el: El<Self>) -> El<PolyRing<R>> {
+    pub fn polynomial_repr(&self, poly_ring: &PolyRingImpl<&R>, el: El<Self>) -> El<PolyRingImpl<R>> {
         el.into_owned().raw_data().into_iter().enumerate()
             .map(|(i, x)| poly_ring.mul(poly_ring.pow(&poly_ring.unknown(), i as u32), poly_ring.from(x)))
             .fold(poly_ring.zero(), |a, b| poly_ring.add(a, b))
@@ -104,7 +104,7 @@ impl<R, V, W> SimpleRingExtension<R, V, W>
     /// Returns the (monic) polynomial f such that this ring is isomorphic to
     /// `base_ring[X] / (f)`.
     /// 
-    pub fn generating_polynomial(&self, poly_ring: &PolyRing<&R>) -> El<PolyRing<&R>> {
+    pub fn generating_polynomial(&self, poly_ring: &PolyRingImpl<&R>) -> El<PolyRingImpl<&R>> {
         self.mipo_values.iter()
             .cloned()
             .chain(std::iter::once(self.base_ring.neg(self.base_ring.one())))
@@ -317,7 +317,7 @@ impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
     }
 
     fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
-        let poly_ring = PolyRing::adjoint(&self.base_ring, self.gen_name);
+        let poly_ring = PolyRingImpl::adjoint(&self.base_ring, self.gen_name);
         poly_ring.format(&self.polynomial_repr(&poly_ring, el.clone()), f, in_prod)
     }
 }
@@ -346,11 +346,11 @@ impl<R, V, W> RingExtension for SimpleRingExtension<R, V, W>
 }
 
 impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
-    where R: Ring, for<'a> PolyRing<&'a R>: UfdInfoRing, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
+    where R: Ring, for<'a> PolyRingImpl<&'a R>: UfdInfoRing, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn is_integral(&self) -> RingPropValue {
         if !self.is_integral_cache.is_computed() {
-            let poly_ring = PolyRing::adjoint(&self.base_ring, "X");
+            let poly_ring = PolyRingImpl::adjoint(&self.base_ring, "X");
             let can_compute = self.base_ring.is_integral() & poly_ring.is_ufd();
             if can_compute.can_use() {
                 self.is_integral_cache.set(RingPropValue::True & poly_ring.is_prime(&self.generating_polynomial(&poly_ring)))
@@ -371,7 +371,7 @@ impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
 }
 
 impl<R, V, W> DivisibilityInfoRing for SimpleRingExtension<R, V, W>
-    where R: Ring, for<'a> PolyRing<&'a R>: UfdInfoRing, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
+    where R: Ring, for<'a> PolyRingImpl<&'a R>: UfdInfoRing, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn is_divisibility_computable(&self) -> RingPropValue {
         // currently only implemented in case we have a field
@@ -502,7 +502,7 @@ fn test_mul() {
 
 #[test]
 fn test_adjoin_element() {
-    let ring = PolyRing::adjoint(i64::RING, "x");
+    let ring = PolyRingImpl::adjoint(i64::RING, "x");
     let x = ring.bind_by_value(ring.unknown());
     let f = x.pow(3) + x.pow(2) + 1;
     let ring = SimpleRingExtension::<StaticRing<i64>, Vec<_>>::adjoin_element(i64::RING, |poly_ring| poly_ring.embed(f.parent_ring(), f.val().clone()), "x");

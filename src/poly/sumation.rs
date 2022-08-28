@@ -4,7 +4,7 @@ use super::*;
 use super::uni_var::*;
 use super::multi_var::*;
 
-fn rising_power_poly<R>(ring: &PolyRing<R>, n: usize) -> El<PolyRing<R>>
+fn rising_power_poly<R>(ring: &PolyRingImpl<R>, n: usize) -> El<PolyRingImpl<R>>
     where R: DivisibilityInfoRing + CanonicalIsomorphismInfo<R>
 {
     let mut result = ring.one();
@@ -15,7 +15,7 @@ fn rising_power_poly<R>(ring: &PolyRing<R>, n: usize) -> El<PolyRing<R>>
     return result;
 }
 
-fn sumation_poly<R>(ring: &PolyRing<R>, f: El<PolyRing<R>>) -> El<PolyRing<R>> 
+fn sumation_poly<R>(ring: &PolyRingImpl<R>, f: El<PolyRingImpl<R>>) -> El<PolyRingImpl<R>> 
     where R: DivisibilityInfoRing + CanonicalIsomorphismInfo<R>
 {
     let mut current = f;
@@ -45,7 +45,7 @@ use super::super::rational::*;
 
 #[test]
 fn test_sumation_poly() {
-    let ring = PolyRing::adjoint(r64::RING, "X");
+    let ring = PolyRingImpl::adjoint(r64::RING, "X");
     let x = ring.bind(ring.unknown());
     let sum_x_2 = x.clone() * (x.clone() + 1) / 2;
     assert_eq!(sum_x_2, ring.bind(sumation_poly(&ring, ring.unknown())));

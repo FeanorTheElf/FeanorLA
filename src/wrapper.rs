@@ -3,8 +3,6 @@ use super::embedding::*;
 use super::integer::*;
 use super::primitive::*;
 use super::ring_property::*;
-use super::rational::*;
-use super::poly::uni_var::Evaluatable;
 use super::poly::*;
 use super::fq::*;
 
@@ -152,19 +150,8 @@ impl<R: IntegerRing> RingElWrapper<R>
     }
 }
 
-impl<R: RationalField> RingElWrapper<R> 
-{
-    pub fn num(&self) -> RingElWrapper<&R::BaseRing> {
-        self.parent_ring().base_ring().bind(self.parent_ring().num(self.val()))
-    }
-
-    pub fn den(&self) -> RingElWrapper<&R::BaseRing> {
-        self.parent_ring().base_ring().bind(self.parent_ring().den(self.val()))
-    }
-}
-
 impl<P> RingElWrapper<P>
-    where P: UnivarPolyRing
+    where P: PolyRing
 {
     pub fn lc(&self) -> Option<RingElWrapper<P::BaseRing>> {
         self.parent_ring().lc(self.val()).map(|x| self.parent_ring().base_ring().bind_by_value(x))
@@ -204,43 +191,6 @@ impl<P> RingElWrapper<P>
         return self;
     }
 }
-
-impl<S, P> FnOnce<(RingElWrapper<S>, )> for RingElWrapper<P>
-    where S: Ring, P: Evaluatable<S>
-{
-    type Output = RingElWrapper<S>;
-
-    extern "rust-call" fn call_once(
-        mut self, 
-        (x, ): (RingElWrapper<S>, )
-    ) -> Self::Output {
-        self.call_mut((x, ))
-    }
-}
-
-impl<S, P> FnMut<(RingElWrapper<S>, )> for RingElWrapper<P>
-    where S: Ring, P: Evaluatable<S>
-{
-    extern "rust-call" fn call_mut(
-        &mut self, 
-        (x, ): (RingElWrapper<S>, )
-    ) -> Self::Output {
-        self.call((x, ))
-    }
-}
-
-impl<S, P> Fn<(RingElWrapper<S>, )> for RingElWrapper<P>
-    where S: Ring, P: Evaluatable<S>
-{
-    extern "rust-call" fn call(
-        &self, 
-        (x, ): (RingElWrapper<S>, )
-    ) -> Self::Output {
-        let (x, ring) = x.destruct();
-        ring.bind_by_value(self.parent_ring().evaluate_at(self.val(), x, &ring))
-    }
-}
-
 
 pub trait Invertible {
     fn inv(self) -> Self;

@@ -15,7 +15,7 @@ use super::combinatorics::iters::*;
 use super::ring_extension::simple_extension::*;
 use super::ring_extension::extension_wrapper::*;
 use super::poly::*;
-use super::fraction_field::*;
+use super::fraction_field::fraction_field_impl::*;
 use super::square_multiply::abs_square_and_multiply;
 
 #[derive(Debug, Clone)]
@@ -45,28 +45,28 @@ impl<K> std::fmt::Display for EllipticCurve<K>
     }
 }
 
-pub type CoordRing<K: Ring> = WrappingRing<SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>>;
+pub type CoordRing<K: Ring> = WrappingRing<SimpleRingExtension<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>>;
 pub type FunctionField<K: Ring> = WrappingRing<ExtensionWrapper<
     K, 
-    FieldOfFractions<SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>>,
+    FractionFieldImpl<SimpleRingExtension<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>>,
     ComposedEmbedding<
         ComposedEmbedding<
-            StandardEmbedding<K, PolyRing<K>>,
+            StandardEmbedding<K, PolyRingImpl<K>>,
             StandardEmbedding<
-                PolyRing<K>,
-                SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>,
+                PolyRingImpl<K>,
+                SimpleRingExtension<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>,
             >,
             K,
-            PolyRing<K>,
-            SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>
+            PolyRingImpl<K>,
+            SimpleRingExtension<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>
         >,
         StandardEmbedding<
-            SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>,
-            FieldOfFractions<SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>>
+            SimpleRingExtension<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>,
+            FractionFieldImpl<SimpleRingExtension<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>>
         >,
         K, 
-        SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>,
-        FieldOfFractions<SimpleRingExtension<PolyRing<K>, VectorArray<El<PolyRing<K>>, 2>, VectorArray<El<PolyRing<K>>, 2>>>,
+        SimpleRingExtension<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>,
+        FractionFieldImpl<SimpleRingExtension<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>>,
     >>>;
 
 #[derive(Clone)]
@@ -197,7 +197,7 @@ impl<K> EllipticCurve<WrappingRing<K>>
     /// this elliptic curve.
     /// 
     pub fn coordinate_ring(&self) -> (CoordRing<K>, El<CoordRing<K>>, El<CoordRing<K>>) {
-        let poly_ring = PolyRing::adjoint(self.base_field().wrapped_ring().clone(), "X");
+        let poly_ring = PolyRingImpl::adjoint(self.base_field().wrapped_ring().clone(), "X");
         let mipo = Vector::new(VectorArray::new([
             poly_ring.add(
                 poly_ring.pow(&poly_ring.unknown(), 3),
@@ -220,10 +220,10 @@ impl<K> EllipticCurve<WrappingRing<K>>
     {
         assert!(self.base_field().is_field().can_use());
         let base_field = self.base_field().wrapped_ring().clone();
-        let poly_ring = PolyRing::adjoint(base_field.clone(), "X");
+        let poly_ring = PolyRingImpl::adjoint(base_field.clone(), "X");
         let (coord_ring, x, y) = self.coordinate_ring();
         let coord_ring = coord_ring.wrapped_ring().clone();
-        let func_field = FieldOfFractions::new_no_check(coord_ring.clone());
+        let func_field = FractionFieldImpl::new_no_check(coord_ring.clone());
         let (x, y) = {
             let incl = embedding(&coord_ring, &func_field);
             (incl(x.into_val()), incl(y.into_val()))
@@ -396,7 +396,7 @@ impl<K> std::hash::Hash for EllipticCurvePoint<WrappingRing<K>>
 
 #[test]
 fn test_elliptic_curve_point_eq() {
-    let Q = FieldOfFractions::<BigIntRing>::singleton().bind_ring_by_value();
+    let Q = FractionFieldImpl::<BigIntRing>::singleton().bind_ring_by_value();
     let i = z_hom(&Q);
     let E = EllipticCurve::new(Q.clone(), i(0), i(1));
     let P = EllipticCurvePoint::Affine(i(0), i(1));

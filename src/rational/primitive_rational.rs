@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types)]
 use super::super::prelude::*;
 use super::super::eea::signed_gcd;
+use super::*;
 
 use std::cmp::{Ord, Ordering, PartialEq, PartialOrd};
 use std::convert::From;
@@ -384,6 +385,19 @@ impl RingExtension for StaticRing<r64> {
         r64::new(el, 1)
     }
 }
+
+impl FractionField for StaticRing<r64> {
+
+    fn num<'a>(&self, el: &'a El<Self>) -> &'a i64 {
+        &el.numerator
+    }
+
+    fn den<'a>(&self, el: &'a El<Self>) -> &'a i64 {
+        &el.denominator
+    }
+}
+
+impl RationalField for StaticRing<r64> {}
 
 #[test]
 fn test_add_assign() {

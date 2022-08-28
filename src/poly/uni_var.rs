@@ -7,39 +7,27 @@ use super::*;
 use vector_map::VecMap;
 
 #[derive(Debug)]
-pub struct PolyRing<R>
+pub struct PolyRingImpl<R>
     where R: Ring
 {
     base_ring: R,
     var_name: &'static str
 }
 
-impl<R> PolyRing<R>
+impl<R> PolyRingImpl<R>
     where R: CanonicalIsomorphismInfo<R>
 {
-    pub fn derive(&self, el: El<Self>) -> El<Self> {
-        let mut result = el.into_owned();
-        poly_formal_derivative(&self.base_ring, result.as_mut());
-        return result;
-    }
-
     pub const fn adjoint(base_ring: R, var_name: &'static str) -> Self {
-        PolyRing {
+        PolyRingImpl {
             base_ring, var_name
         }
     }
 
-    pub fn evaluate<S>(&self, poly: &El<Self>, value: S::El, ring: &S) -> S::El 
-        where S: Ring + CanonicalEmbeddingInfo<R>
-    {
-        poly_evaluate(&self.base_ring, value, poly.as_ref(), ring)
-    }
-
     pub fn evaluation_hom<'a>(&'a self, x: R::El) -> impl 'a + Fn(El<Self>) -> R::El {
-        move |poly| self.evaluate(&poly, x.clone(), self.base_ring())
+        move |poly| self.evaluate_at(&poly, x.clone(), self.base_ring())
     }
 
-    pub fn lift_hom<F, S>(&self, hom: F) -> impl Fn(El<PolyRing<S>>) -> El<Self>
+    pub fn lift_hom<F, S>(&self, hom: F) -> impl Fn(El<PolyRingImpl<S>>) -> El<Self>
         where S: Ring, F: Fn(S::El) -> R::El
     {
         move |poly| {
@@ -62,43 +50,24 @@ impl<R> PolyRing<R>
     {
         poly_division(&self.base_ring, lhs.as_mut(), rhs.as_ref(), div_lc)
     }
-
-    pub fn unknown(&self) -> El<Self> {
-        let mut result = Vec::with_capacity(2);
-        result.push(self.base_ring.zero());
-        result.push(self.base_ring.one());
-        return Vector::new(result);
-    }
-
-    pub fn normalize(&self, f: El<Self>) -> (El<Self>, R::El) {
-        assert!(self.base_ring().is_field().can_use());
-        let lc = self.lc(&f).unwrap().clone();
-        let lc_inv = self.base_ring().div(self.base_ring().one(), &lc);
-        return (self.mul(f, self.from(lc_inv)), lc);
-    }
-
-    pub fn scale(&self, mut f: El<Self>, factor: &El<R>) -> El<Self> {
-        f.scale(factor, self.base_ring());
-        return f;
-    }
 }
 
-impl<R> Clone for PolyRing<R>
+impl<R> Clone for PolyRingImpl<R>
     where R: Ring
 {
     fn clone(&self) -> Self {
-        PolyRing {
+        PolyRingImpl {
             var_name: self.var_name,
             base_ring: self.base_ring.clone()
         }
     }
 }
 
-impl<R> Copy for PolyRing<R>
+impl<R> Copy for PolyRingImpl<R>
     where R: Ring + Copy
 {}
 
-impl<R> UnivarPolyRing for PolyRing<R>
+impl<R> PolyRing for PolyRingImpl<R>
     where R: Ring
 {
     fn lc(&self, x: &El<Self>) -> Option<El<Self::BaseRing>> {
@@ -123,9 +92,26 @@ impl<R> UnivarPolyRing for PolyRing<R>
             *x.at_mut(i) = self.base_ring().mul_ref(x.at(i), &coeff);
         }
     }
+
+    fn evaluate_at<S: Ring + CanonicalEmbeddingInfo<R>>(&self, f: &El<Self>, x: El<S>, ring: &S) -> El<S> {
+        poly_evaluate(&self.base_ring, x, f.as_ref(), ring)
+    }
+
+    fn derive(&self, el: El<Self>) -> El<Self> {
+        let mut result = el.into_owned();
+        poly_formal_derivative(&self.base_ring, result.as_mut());
+        return result;
+    }
+    
+    fn unknown(&self) -> El<Self> {
+        let mut result = Vec::with_capacity(2);
+        result.push(self.base_ring.zero());
+        result.push(self.base_ring.one());
+        return Vector::new(result);
+    }
 }
 
-impl<R> CanonicalEmbeddingInfo<R> for PolyRing<R> 
+impl<R> CanonicalEmbeddingInfo<R> for PolyRingImpl<R> 
     where R: CanonicalIsomorphismInfo<R>
 {
     fn has_embedding(&self, from: &R) -> RingPropValue {
@@ -138,7 +124,7 @@ impl<R> CanonicalEmbeddingInfo<R> for PolyRing<R>
     }
 }
 
-impl<R> CanonicalEmbeddingInfo<R> for PolyRing<&R> 
+impl<R> CanonicalEmbeddingInfo<R> for PolyRingImpl<&R> 
     where R: CanonicalIsomorphismInfo<R>
 {
 
@@ -152,7 +138,7 @@ impl<R> CanonicalEmbeddingInfo<R> for PolyRing<&R>
     }
 }
 
-impl<R> CanonicalEmbeddingInfo<&R> for PolyRing<R> 
+impl<R> CanonicalEmbeddingInfo<&R> for PolyRingImpl<R> 
     where R: CanonicalIsomorphismInfo<R>
 {
 
@@ -166,33 +152,33 @@ impl<R> CanonicalEmbeddingInfo<&R> for PolyRing<R>
     }
 }
 
-impl<R> CanonicalEmbeddingInfo<PolyRing<R>> for PolyRing<R>
+impl<R> CanonicalEmbeddingInfo<PolyRingImpl<R>> for PolyRingImpl<R>
     where R: CanonicalIsomorphismInfo<R>
 {
-    fn has_embedding(&self, from: &PolyRing<R>) -> RingPropValue {
+    fn has_embedding(&self, from: &PolyRingImpl<R>) -> RingPropValue {
         self.base_ring().has_embedding(from.base_ring())
     }
 
-    fn embed(&self, from: &PolyRing<R>, el: Self::El) -> Self::El {
+    fn embed(&self, from: &PolyRingImpl<R>, el: Self::El) -> Self::El {
         assert!(self.has_embedding(from).can_use());
         Vector::new(el.raw_data().into_iter().map(|x| self.base_ring().embed(from.base_ring(), x)).collect())
     }
 }
 
-impl<R> CanonicalIsomorphismInfo<PolyRing<R>> for PolyRing<R>
+impl<R> CanonicalIsomorphismInfo<PolyRingImpl<R>> for PolyRingImpl<R>
     where R: CanonicalIsomorphismInfo<R>
 {
-    fn has_isomorphism(&self, from: &PolyRing<R>) -> RingPropValue {
+    fn has_isomorphism(&self, from: &PolyRingImpl<R>) -> RingPropValue {
         self.base_ring().has_isomorphism(from.base_ring())
     }
 
-    fn preimage(&self, from: &PolyRing<R>, el: Self::El) -> Self::El {
+    fn preimage(&self, from: &PolyRingImpl<R>, el: Self::El) -> Self::El {
         assert!(self.has_isomorphism(from).can_use());
         Vector::new(el.raw_data().into_iter().map(|x| self.base_ring().preimage(from.base_ring(), x)).collect())
     }
 }
 
-impl<R> RingBase for PolyRing<R>
+impl<R> RingBase for PolyRingImpl<R>
     where R: CanonicalIsomorphismInfo<R>
 {
     type El = Vector<Vec<R::El>, R::El>;
@@ -286,7 +272,7 @@ impl<R> RingBase for PolyRing<R>
     }
 }
 
-impl<R: Ring> RingExtension for PolyRing<R> {
+impl<R: Ring> RingExtension for PolyRingImpl<R> {
     
     type BaseRing = R;
     type Embedding = StandardEmbedding<R, Self>;
@@ -304,7 +290,7 @@ impl<R: Ring> RingExtension for PolyRing<R> {
     }
 }
 
-impl<R> DivisibilityInfoRing for PolyRing<R> 
+impl<R> DivisibilityInfoRing for PolyRingImpl<R> 
     where R: Ring + CanonicalIsomorphismInfo<R>
 {
     default fn is_divisibility_computable(&self) -> RingPropValue {
@@ -335,7 +321,7 @@ impl<R> DivisibilityInfoRing for PolyRing<R>
     }
 }
 
-impl<R> DivisibilityInfoRing for PolyRing<R> 
+impl<R> DivisibilityInfoRing for PolyRingImpl<R> 
     where R: DivisibilityInfoRing + CanonicalIsomorphismInfo<R>
 {
     fn is_divisibility_computable(&self) -> RingPropValue {
@@ -365,7 +351,7 @@ impl<R> DivisibilityInfoRing for PolyRing<R>
     }
 }
 
-impl<R> EuclideanInfoRing for PolyRing<R> 
+impl<R> EuclideanInfoRing for PolyRingImpl<R> 
     where R: Ring + CanonicalIsomorphismInfo<R>
 {
     fn is_euclidean(&self) -> RingPropValue {
@@ -396,7 +382,7 @@ impl<R> EuclideanInfoRing for PolyRing<R>
     }
 }
 
-impl<R> PartialEq for PolyRing<R> 
+impl<R> PartialEq for PolyRingImpl<R> 
     where R: Ring + PartialEq
 {
     fn eq(&self, rhs: &Self) -> bool {
@@ -404,31 +390,7 @@ impl<R> PartialEq for PolyRing<R>
     }
 }
 
-pub trait Evaluatable<S: Ring>: Ring {
-
-    fn evaluate_at(&self, f: &El<Self>, x: El<S>, ring: &S) -> El<S>;
-}
-
-impl<R, S> Evaluatable<S> for PolyRing<R>
-    where S: Ring + CanonicalEmbeddingInfo<R>, R: Ring
-{
-    fn evaluate_at(&self, f: &El<Self>, x: El<S>, ring: &S) -> El<S> { 
-        let poly_vec = f.as_ref();
-        let coeff_ring = self.base_ring();
-        let result: S::El = poly_evaluate(coeff_ring, x, poly_vec, ring);
-        return result;
-    }
-}
-
-impl<S, P> Evaluatable<S> for &P
-    where S: Ring, P: Evaluatable<S>
-{
-    fn evaluate_at(&self, f: &El<Self>, x: El<S>, ring: &S) -> El<S> { 
-        (**self).evaluate_at(f, x, ring)
-    }
-}
-
-impl<R> UfdInfoRing for PolyRing<R>
+impl<R> UfdInfoRing for PolyRingImpl<R>
     where R: FiniteRing + DivisibilityInfoRing
 {
     fn is_ufd(&self) -> RingPropValue {
@@ -445,12 +407,12 @@ impl<R> UfdInfoRing for PolyRing<R>
             return false;
         }
         let d = self.deg(el).unwrap();
-        let sqrfree_part = factoring::poly_squarefree_part(self.base_ring(), el.as_ref().into_owned());
+        let sqrfree_part = factoring::poly_squarefree_part(self, el.as_ref().into_owned());
         if self.deg(&sqrfree_part) != Some(d) {
             return false;
         }
         let distinct_degree_factorization = factoring::distinct_degree_factorization(
-            self.base_ring(), 
+            self, 
             &self.base_ring().size(), 
             sqrfree_part
         );
@@ -480,9 +442,9 @@ impl<R> UfdInfoRing for PolyRing<R>
         let mut result = VecMap::new();
         let mut unit = self.base_ring().one();
         while !self.is_unit(&el) {
-            let sqrfree_part = factoring::poly_squarefree_part(self.base_ring(), el.clone());
+            let sqrfree_part = factoring::poly_squarefree_part(self, el.clone());
             for (d, el) in factoring::distinct_degree_factorization(
-                self.base_ring(), 
+                self, 
                 &self.base_ring().size(), 
                 sqrfree_part.clone()
             ).into_iter().enumerate() {
@@ -503,7 +465,7 @@ impl<R> UfdInfoRing for PolyRing<R>
                         }
                     } else {
                         let factor = factoring::cantor_zassenhaus(
-                            self.base_ring(), 
+                            self, 
                             &self.base_ring().size(), 
                             el.clone(), 
                             d
@@ -533,7 +495,7 @@ use test::Bencher;
 
 #[test]
 fn test_poly_arithmetic() {
-    let ring = PolyRing::adjoint(i32::RING, "X");
+    let ring = PolyRingImpl::adjoint(i32::RING, "X");
     let x = ring.bind(ring.unknown());
 
     let x2_2x_1 = (&x * &x) + (&x + &x) + 1;
@@ -546,7 +508,7 @@ fn test_poly_arithmetic() {
 
 #[test]
 fn test_format() {
-    let ring = PolyRing::adjoint(i32::RING, "X");
+    let ring = PolyRingImpl::adjoint(i32::RING, "X");
     let x = ring.bind(ring.unknown());
 
     let poly = &x * &x * &x + &x * &x * 2 - 1;
@@ -555,7 +517,7 @@ fn test_format() {
 
 #[test]
 fn test_poly_div() {
-    let ring = PolyRing::adjoint(i32::RING, "X");
+    let ring = PolyRingImpl::adjoint(i32::RING, "X");
     let x = ring.bind(ring.unknown());
 
     let mut p = &x * &x * &x + &x * &x + &x + 1;
@@ -568,7 +530,7 @@ fn test_poly_div() {
 
 #[test]
 fn test_quotient() {
-    let ring = PolyRing::adjoint(i32::RING, "X");
+    let ring = PolyRingImpl::adjoint(i32::RING, "X");
     let x = ring.bind(ring.unknown());
 
     let p = ring.bind(ring.one());
@@ -578,7 +540,7 @@ fn test_quotient() {
 
 #[test]
 fn test_poly_degree() {
-    let ring = PolyRing::adjoint(i32::RING, "X");
+    let ring = PolyRingImpl::adjoint(i32::RING, "X");
     let x = ring.bind(ring.unknown());
 
     let p = &x * &x * &x + 4;
@@ -588,7 +550,7 @@ fn test_poly_degree() {
 #[test]
 fn test_factor() {
     let coeff_ring = Zn::new(BigInt::from(3));
-    let ring = PolyRing::adjoint(coeff_ring, "X");
+    let ring = PolyRingImpl::adjoint(coeff_ring, "X");
     let x = ring.bind_by_value(ring.unknown());
 
     let p = x.clone().pow(9) - &x;
@@ -606,7 +568,7 @@ fn test_factor() {
 #[test]
 fn test_factor_fq() {
     let coeff_ring = F49.clone();
-    let ring = PolyRing::adjoint(&coeff_ring, "X");
+    let ring = PolyRingImpl::adjoint(&coeff_ring, "X");
     let x = ring.bind_by_value(ring.unknown());
 
     let f = x.pow(2) + &x * 6 + 3;
@@ -627,7 +589,7 @@ fn test_factor_fq() {
 #[test]
 fn test_is_prime() {
     let coeff_ring = Zn::new(BigInt::from(3));
-    let ring = PolyRing::adjoint(coeff_ring, "X");
+    let ring = PolyRingImpl::adjoint(coeff_ring, "X");
     let x = ring.bind(ring.unknown());
 
     let p = &x + 1;
@@ -643,12 +605,12 @@ fn test_is_prime() {
 #[test]
 fn test_evaluate() {
     let i = embedding(i64::RING, i64::RING.bind_ring_by_value());
-    let poly_ring = PolyRing::adjoint(i64::RING, "X").bind_ring_by_value();
+    let poly_ring = PolyRingImpl::adjoint(i64::RING, "X").bind_ring_by_value();
     let x = poly_ring.wrapped_ring().clone().bind_by_value(poly_ring.wrapped_ring().unknown());
     let f = x.pow(4) + x.pow(2) * 3 - x + 7;
     assert_eq!(f(i(2)), 16 + 12 - 2 + 7);
 
-    let poly_ring = PolyRing::adjoint(i64::RING, "X");
+    let poly_ring = PolyRingImpl::adjoint(i64::RING, "X");
     let x = poly_ring.bind(poly_ring.unknown());
     let f = x.pow(4) + x.pow(2) * 3 - x + 7;
     assert_eq!(f(i(2)), 16 + 12 - 2 + 7);
@@ -671,7 +633,7 @@ use f1369::F1369;
 
 #[bench]
 fn bench_poly_multiplication(b: &mut Bencher) {
-    let poly_ring = PolyRing::adjoint(F1369.clone(), "x");
+    let poly_ring = PolyRingImpl::adjoint(F1369.clone(), "x");
     let a = poly_ring.bind(poly_ring.from(poly_ring.base_ring().generator()));
     let x = poly_ring.bind(poly_ring.unknown());
     let f = (0..=100).map(|i| x.pow(i) * i as i64).sum::<RingElWrapper<&_>>();

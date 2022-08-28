@@ -316,6 +316,7 @@ pub trait RingExtension: Ring {
     type BaseRing: Ring;
     type Embedding: Fn(El<Self::BaseRing>) -> El<Self>;
 
+    fn is_extension(&self) -> RingPropValue { RingPropValue::True }
     fn base_ring(&self) -> &Self::BaseRing;
     fn embedding(&self) -> Self::Embedding;
     fn from(&self, el: El<Self::BaseRing>) -> El<Self> {
@@ -329,6 +330,7 @@ impl<'a, K> RingExtension for &'a K
     type BaseRing = K::BaseRing;
     type Embedding = K::Embedding;
 
+    fn is_extension(&self) -> RingPropValue { (**self).is_extension() }
     fn base_ring(&self) -> &Self::BaseRing { (**self).base_ring() }
     fn embedding(&self) -> Self::Embedding { (**self).embedding() }
     fn from(&self, el: El<Self::BaseRing>) -> El<Self> { (**self).from(el) }

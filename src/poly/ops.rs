@@ -140,5 +140,5 @@ pub fn poly_evaluate<R, S, V>(coeff_ring: &R, value: S::El, poly: Vector<V, R::E
 fn test_poly_mul() {
     let mut a = Vector::from_array([1]);
     poly_mul(&i64::RING, Vector::from_array([1]).as_ref(), Vector::from_array([1]).as_ref(), &mut a);
-    assert_eq!(Vector::from_array([1]), a);
+    assert_eq!(Vector::from_array([2]), a);
 }

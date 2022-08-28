@@ -1,5 +1,6 @@
 use super::super::prelude::*;
 use super::uni_var::*;
+use super::*;
 
 use std::ops::Index;
 use std::collections::BTreeMap;
@@ -58,9 +59,9 @@ impl<R> MultivariatePolyRing<R>
     }
 
     pub fn elevate_var<'a>(&'a self, var: Var) -> (
-        PolyRing<&'a MultivariatePolyRing<R>>, 
-        impl Fn(El<Self>) -> El<PolyRing<&'a MultivariatePolyRing<R>>>,
-        impl Fn(El<PolyRing<&'a MultivariatePolyRing<R>>>) -> El<Self>
+        PolyRingImpl<&'a MultivariatePolyRing<R>>, 
+        impl Fn(El<Self>) -> El<PolyRingImpl<&'a MultivariatePolyRing<R>>>,
+        impl Fn(El<PolyRingImpl<&'a MultivariatePolyRing<R>>>) -> El<Self>
     ) {
         (
             self.elevate_var_ring(var),
@@ -69,11 +70,11 @@ impl<R> MultivariatePolyRing<R>
         )
     }
 
-    fn elevate_var_ring(&self, var: Var) -> PolyRing<&MultivariatePolyRing<R>> {
-        PolyRing::adjoint(self, self.var_names[var.0])
+    fn elevate_var_ring(&self, var: Var) -> PolyRingImpl<&MultivariatePolyRing<R>> {
+        PolyRingImpl::adjoint(self, self.var_names[var.0])
     }
 
-    fn elevate_var_element(&self, variable: Var, x: El<Self>) -> El<PolyRing<&MultivariatePolyRing<R>>> {
+    fn elevate_var_element(&self, variable: Var, x: El<Self>) -> El<PolyRingImpl<&MultivariatePolyRing<R>>> {
         self.assert_valid(&x);
 
         let var = variable.0;
@@ -95,7 +96,7 @@ impl<R> MultivariatePolyRing<R>
         return Vector::new(result);
     }
 
-    fn de_elevate_var(&self, variable: Var, x: El<PolyRing<&MultivariatePolyRing<R>>>) -> El<Self> {
+    fn de_elevate_var(&self, variable: Var, x: El<PolyRingImpl<&MultivariatePolyRing<R>>>) -> El<Self> {
         let var = variable.0;
         let mut result = BTreeMap::new();
         for (pow, coeff) in x.raw_data().into_iter().enumerate() {
@@ -512,10 +513,10 @@ impl<R> CanonicalEmbeddingInfo<&R> for MultivariatePolyRing<R>
     }
 }
 
-impl<R> CanonicalEmbeddingInfo<PolyRing<R>> for MultivariatePolyRing<R>
+impl<R> CanonicalEmbeddingInfo<PolyRingImpl<R>> for MultivariatePolyRing<R>
     where R: CanonicalIsomorphismInfo<R>
 {
-    fn has_embedding(&self, _from: &PolyRing<R>) -> RingPropValue {
+    fn has_embedding(&self, _from: &PolyRingImpl<R>) -> RingPropValue {
         // It might seem natural to have the canonical embedding f(X) -> f(X),
         // but this would contradict the general commutativity of canonical embeddings;
         // The problem here is that we have defined k[X] and k[Y] to be canonically
@@ -524,7 +525,7 @@ impl<R> CanonicalEmbeddingInfo<PolyRing<R>> for MultivariatePolyRing<R>
         RingPropValue::False
     }
 
-    fn embed(&self, _from: &PolyRing<R>, _el: El<PolyRing<R>>) -> Self::El {
+    fn embed(&self, _from: &PolyRingImpl<R>, _el: El<PolyRingImpl<R>>) -> Self::El {
         panic!("No embedding defined!")
     }
 }

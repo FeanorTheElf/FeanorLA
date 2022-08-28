@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 use super::super::la::mat::*;
 use super::super::eea::*;
-use super::super::ring::*;
 use super::super::wrapper::*;
 use super::super::embedding::*;
 use super::super::integer::*;
