@@ -209,7 +209,7 @@ impl<K> EllipticCurve<WrappingRing<K>>
             poly_ring.zero()
         ]));
         let poly_ring_x = poly_ring.unknown();
-        let result = SimpleRingExtension::new(poly_ring, mipo, "Y").bind_ring_by_value();
+        let result = WrappingRing::new(SimpleRingExtension::new(poly_ring, mipo, "Y"));
         let X = result.from(result.wrapped_ring().from(poly_ring_x));
         let Y = result.from(result.wrapped_ring().generator());
         return (result, X, Y);
@@ -228,7 +228,7 @@ impl<K> EllipticCurve<WrappingRing<K>>
             let incl = embedding(&coord_ring, &func_field);
             (incl(x.into_val()), incl(y.into_val()))
         };
-        let result = ExtensionWrapper::new(
+        let result = WrappingRing::new(ExtensionWrapper::new(
             base_field.clone(), 
             func_field.clone(), 
             compose(
@@ -238,7 +238,7 @@ impl<K> EllipticCurve<WrappingRing<K>>
                     embedding(base_field.clone(), poly_ring.clone())
                 )
             )
-        ).bind_ring_by_value();
+        ));
         let x = result.from(x);
         let y = result.from(y);
         return (result, x, y);
@@ -396,7 +396,7 @@ impl<K> std::hash::Hash for EllipticCurvePoint<WrappingRing<K>>
 
 #[test]
 fn test_elliptic_curve_point_eq() {
-    let Q = FractionFieldImpl::<BigIntRing>::singleton().bind_ring_by_value();
+    let Q = WrappingRing::new(FractionFieldImpl::<BigIntRing>::singleton());
     let i = z_hom(&Q);
     let E = EllipticCurve::new(Q.clone(), i(0), i(1));
     let P = EllipticCurvePoint::Affine(i(0), i(1));

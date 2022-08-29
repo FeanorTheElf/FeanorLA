@@ -40,10 +40,10 @@ impl<'a, R: FractionField> FractionField for &'a R {
 impl<R: FractionField> RingElWrapper<R> 
 {
     pub fn num(&self) -> RingElWrapper<&R::BaseRing> {
-        self.parent_ring().base_ring().bind(self.parent_ring().num(self.val()).clone())
+        RingElWrapper::new(self.parent_ring().num(self.val()).clone(), self.parent_ring().base_ring())
     }
 
     pub fn den(&self) -> RingElWrapper<&R::BaseRing> {
-        self.parent_ring().base_ring().bind(self.parent_ring().den(self.val()).clone())
+        RingElWrapper::new(self.parent_ring().den(self.val()).clone(), self.parent_ring().base_ring())
     }
 }

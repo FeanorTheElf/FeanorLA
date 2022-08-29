@@ -1,5 +1,6 @@
 use super::ring::*;
 use super::integer::*;
+use super::wrapper::*;
 
 pub trait FiniteRingIterFn<R: FiniteRing>: Clone {
 
@@ -65,3 +66,54 @@ pub fn finite_field_elements<R: FiniteRing>(ring: R) -> FiniteRingElementIter<R>
 pub mod zn_big;
 pub mod zn_small;
 pub mod fq_small;
+
+pub struct WrappingRingIterFn<R: FiniteRing> {
+    base_fn: R::IterFn
+}
+
+impl<R: FiniteRing> Clone for WrappingRingIterFn<R> {
+
+    fn clone(&self) -> Self {
+        WrappingRingIterFn {
+            base_fn: self.base_fn.clone()
+        }
+    }
+}
+
+impl<R: FiniteRing> FiniteRingIterFn<WrappingRing<R>> for WrappingRingIterFn<R> {
+
+    fn next(&mut self, ring: &WrappingRing<R>) -> Option<RingElWrapper<R>> {
+        let el = self.base_fn.next(ring.wrapped_ring());
+        el.map(|e| ring.from(e))
+    }
+}
+
+impl<R> FiniteRing for WrappingRing<R>
+    where R: FiniteRing
+{
+    type IterFn = WrappingRingIterFn<R>;
+
+    fn random_element<G>(&self, rng: G) -> RingElWrapper<R>
+        where G: FnMut() -> u32
+    {
+        self.from(self.wrapped_ring().random_element(rng))
+    }
+
+    fn size(&self) -> BigInt {
+        self.wrapped_ring().size()
+    }
+
+    fn iter_fn(&self) -> Self::IterFn {
+        WrappingRingIterFn {
+            base_fn: self.wrapped_ring().iter_fn()
+        }
+    }
+}
+
+impl<R> WrappingRing<R>
+    where R: FiniteRing
+{
+    pub fn elements(&self) -> FiniteRingElementIter<&WrappingRing<R>> {
+        finite_field_elements(&self)
+    }
+}

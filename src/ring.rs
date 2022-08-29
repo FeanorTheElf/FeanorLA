@@ -423,12 +423,13 @@ pub trait UfdInfoRing : DivisibilityInfoRing {
     /// 
     /// This may panic if `is_ufd().can_use()` returns false.
     /// 
-    fn factor(&self, el: Self::El) -> VecMap<RingElWrapper<Self>, usize> {
+    fn factor<'a>(&'a self, el: Self::El) -> VecMap<RingElWrapper<&'a Self>, usize> {
         let mut result = VecMap::new();
         let mut stack = Vec::new();
         stack.push(el);
+        let wrapping_ring = WrappingRing::new(self);
         while let Some(el) = stack.pop() {
-            let wrapped_el = self.bind_by_value(el);
+            let wrapped_el = wrapping_ring.from(el);
             if let Some(factor) = self.calc_factor(wrapped_el.val()) {
                 stack.push(self.quotient(wrapped_el.val(), &factor).unwrap());
                 stack.push(factor);
@@ -449,9 +450,10 @@ impl<'a, R> UfdInfoRing for &'a R
     fn is_prime(&self, el: &Self::El) -> bool { (**self).is_prime(el) }
     fn calc_factor(&self, el: &Self::El) -> Option<Self::El> { (**self).calc_factor(el) }
 
-    fn factor(&self, el: Self::El) -> VecMap<RingElWrapper<Self>, usize> { 
+    fn factor<'b>(&'b self, el: Self::El) -> VecMap<RingElWrapper<&'b Self>, usize> { 
         let result = (**self).factor(el);
-        return result.into_iter().map(|(el, power)| (self.bind_by_value(el.into_val()), power)).collect();
+        let wrapping_ring = WrappingRing::new(self);
+        return result.into_iter().map(|(el, power)| (wrapping_ring.from(el.into_val()), power)).collect();
     }
 }
 

@@ -436,11 +436,12 @@ impl<R> UfdInfoRing for PolyRingImpl<R>
         return None;
     }
 
-    fn factor(&self, mut el: Self::El) -> VecMap<RingElWrapper<Self>, usize> {
+    fn factor<'a>(&'a self, mut el: Self::El) -> VecMap<RingElWrapper<&'a Self>, usize> {
         assert!(self.is_ufd().can_use());
         assert!(!self.is_zero(&el));
         let mut result = VecMap::new();
         let mut unit = self.base_ring().one();
+        let wrapped_ring = WrappingRing::new(self);
         while !self.is_unit(&el) {
             let sqrfree_part = factoring::poly_squarefree_part(self, el.clone());
             for (d, el) in factoring::distinct_degree_factorization(
@@ -456,7 +457,7 @@ impl<R> UfdInfoRing for PolyRingImpl<R>
                     if self.is_one(&el) {
                         continue;
                     } else if self.deg(&el) == Some(d) {
-                        let wrapped_el = self.bind_by_value(el);
+                        let wrapped_el = wrapped_ring.from(el);
                         if let Some(power) = result.get_mut(&wrapped_el) {
                             *power += 1;
                         } else {
@@ -480,7 +481,7 @@ impl<R> UfdInfoRing for PolyRingImpl<R>
         unit = self.base_ring().mul_ref(&unit, el.at(0));
         debug_assert!(self.base_ring().is_unit(&unit));
         if !self.base_ring().is_one(&unit) {
-            result.insert(self.bind_by_value(self.from(unit)), 1);
+            result.insert(wrapped_ring.from(self.from(unit)), 1);
         }
         return result;
     }
@@ -495,21 +496,21 @@ use test::Bencher;
 
 #[test]
 fn test_poly_arithmetic() {
-    let ring = PolyRingImpl::adjoint(i32::RING, "X");
-    let x = ring.bind(ring.unknown());
+    let ring = WrappingRing::new(PolyRingImpl::adjoint(i32::RING, "X"));
+    let x = ring.unknown();
 
     let x2_2x_1 = (&x * &x) + (&x + &x) + 1;
     let x_1_square = (&x + 1) * (&x + 1);
 
     assert_eq!(x2_2x_1, x_1_square);
     assert!(x2_2x_1 != x);
-    assert_eq!(ring.bind(ring.zero()), x2_2x_1 - x_1_square);
+    assert_eq!(ring.zero(), x2_2x_1 - x_1_square);
 }
 
 #[test]
 fn test_format() {
-    let ring = PolyRingImpl::adjoint(i32::RING, "X");
-    let x = ring.bind(ring.unknown());
+    let ring = WrappingRing::new(PolyRingImpl::adjoint(i32::RING, "X"));
+    let x = ring.unknown();
 
     let poly = &x * &x * &x + &x * &x * 2 - 1;
     assert_eq!("-1 + 2 * X^2 + X^3", format!("{}", poly));
@@ -517,41 +518,41 @@ fn test_format() {
 
 #[test]
 fn test_poly_div() {
-    let ring = PolyRingImpl::adjoint(i32::RING, "X");
-    let x = ring.bind(ring.unknown());
+    let ring = WrappingRing::new(PolyRingImpl::adjoint(i32::RING, "X"));
+    let x = ring.unknown();
 
     let mut p = &x * &x * &x + &x * &x + &x + 1;
     let q = &x + 1;
     let expected = &x * &x + 1;
-    let result = ring.bind(ring.poly_division(p.val_mut(), q.val(), |x| Ok(*x)).unwrap());
-    assert_eq!(ring.bind(ring.zero()), p);
+    let result = ring.from(ring.wrapped_ring().poly_division(p.val_mut(), q.val(), |x| Ok(*x)).unwrap());
+    assert_eq!(ring.zero(), p);
     assert_eq!(expected, result);
 }
 
 #[test]
 fn test_quotient() {
-    let ring = PolyRingImpl::adjoint(i32::RING, "X");
-    let x = ring.bind(ring.unknown());
+    let ring = WrappingRing::new(PolyRingImpl::adjoint(i32::RING, "X"));
+    let x = ring.unknown();
 
-    let p = ring.bind(ring.one());
+    let p = ring.one();
     let q = &x + 1;
-    assert_eq!(None, ring.quotient(p.val(), q.val()));
+    assert_eq!(None, ring.quotient(&p, &q));
 }
 
 #[test]
 fn test_poly_degree() {
-    let ring = PolyRingImpl::adjoint(i32::RING, "X");
-    let x = ring.bind(ring.unknown());
+    let ring = WrappingRing::new(PolyRingImpl::adjoint(i32::RING, "X"));
+    let x = ring.unknown();
 
     let p = &x * &x * &x + 4;
-    assert_eq!(Some(3), ring.deg(p.val()));
+    assert_eq!(Some(3), p.deg());
 }
 
 #[test]
 fn test_factor() {
     let coeff_ring = Zn::new(BigInt::from(3));
-    let ring = PolyRingImpl::adjoint(coeff_ring, "X");
-    let x = ring.bind_by_value(ring.unknown());
+    let ring = WrappingRing::new(PolyRingImpl::adjoint(&coeff_ring, "X"));
+    let x = ring.unknown();
 
     let p = x.clone().pow(9) - &x;
     let mut expected = VecMap::new();
@@ -561,20 +562,21 @@ fn test_factor() {
     expected.insert(&x * &x + &x + 2, 1);
     expected.insert(&x * &x + &x * 2 + 2, 1);
     expected.insert(&x * &x + 1, 1);
-    let factorization = ring.factor(p.into_val());
+    let factorization = p.factor();
     assert_eq!(expected, factorization);
 }
 
 #[test]
 fn test_factor_fq() {
     let coeff_ring = F49.clone();
-    let ring = PolyRingImpl::adjoint(&coeff_ring, "X");
-    let x = ring.bind_by_value(ring.unknown());
+    let ring = PolyRingImpl::adjoint(coeff_ring, "X");
+    let ring = WrappingRing::new(&ring);
+    let x = ring.unknown();
 
     let f = x.pow(2) + &x * 6 + 3;
-    let factor = <_ as Iterator>::next(&mut ring.factor(f.into_val()).into_iter()).unwrap().0;
+    let factor = <_ as Iterator>::next(&mut ring.factor(f).into_iter()).unwrap().0.into_val();
     let coeff_ring_gen = -factor.coefficient_at(0) / factor.coefficient_at(1);
-    let a = ring.bind_by_value(ring.from(coeff_ring_gen.into_val())); // up to field automorphism, this is the generator picked by sage
+    let a = ring.embedding()(coeff_ring_gen); // up to field automorphism, this is the generator picked by sage
 
     let p = x.clone().pow(14) - &x;
     let mut expected = VecMap::new();
@@ -582,36 +584,37 @@ fn test_factor_fq() {
     expected.insert(&x + 6, 1);
     expected.insert(x.pow(6) + (&a * 3 + 6) * x.pow(5) + x.pow(4) * 2 + (&a * 3 + 5) * x.pow(3) + x.pow(2) * 2 + (&a * 3 + 6) * &x + 1, 1);
     expected.insert(x.pow(6) + (&a * 4 + 2) * x.pow(5) + x.pow(4) * 2 + (&a * 4 + 1) * x.pow(3) + x.pow(2) * 2 + (&a * 4 + 2) * &x + 1, 1);
-    let factorization = ring.factor(p.into_val());
+    let factorization = (**ring.wrapped_ring()).factor(p.into_val());
     assert_eq!(expected, factorization);
 }
 
 #[test]
 fn test_is_prime() {
     let coeff_ring = Zn::new(BigInt::from(3));
-    let ring = PolyRingImpl::adjoint(coeff_ring, "X");
-    let x = ring.bind(ring.unknown());
+    let ring = WrappingRing::new(PolyRingImpl::adjoint(&coeff_ring, "X"));
+    let x = ring.unknown();
 
     let p = &x + 1;
     let q = &x * &x * &x + &x * 2 + 2;
     let a = &x * &x + 2;
     let b = &x * &x + &x * 2 + 1;
-    assert_eq!(true, ring.is_prime(p.val()));
-    assert_eq!(true, ring.is_prime(q.val()));
-    assert_eq!(false, ring.is_prime(a.val()));
-    assert_eq!(false, ring.is_prime(b.val()));
+    assert_eq!(true, ring.is_prime(&p));
+    assert_eq!(true, ring.is_prime(&q));
+    assert_eq!(false, ring.is_prime(&a));
+    assert_eq!(false, ring.is_prime(&b));
 }
 
 #[test]
 fn test_evaluate() {
-    let i = embedding(i64::RING, i64::RING.bind_ring_by_value());
-    let poly_ring = PolyRingImpl::adjoint(i64::RING, "X").bind_ring_by_value();
-    let x = poly_ring.wrapped_ring().clone().bind_by_value(poly_ring.wrapped_ring().unknown());
+    let poly_ring = WrappingRing::new(PolyRingImpl::adjoint(i32::RING, "X"));
+    let base_ring = poly_ring.base_ring();
+    let i = base_ring.wrapping_embedding();
+    let x = poly_ring.unknown();
     let f = x.pow(4) + x.pow(2) * 3 - x + 7;
     assert_eq!(f(i(2)), 16 + 12 - 2 + 7);
 
-    let poly_ring = PolyRingImpl::adjoint(i64::RING, "X");
-    let x = poly_ring.bind(poly_ring.unknown());
+    let poly_ring = WrappingRing::new(PolyRingImpl::adjoint(i32::RING, "X"));
+    let x = poly_ring.unknown();
     let f = x.pow(4) + x.pow(2) * 3 - x + 7;
     assert_eq!(f(i(2)), 16 + 12 - 2 + 7);
 }
@@ -633,9 +636,10 @@ use f1369::F1369;
 
 #[bench]
 fn bench_poly_multiplication(b: &mut Bencher) {
-    let poly_ring = PolyRingImpl::adjoint(F1369.clone(), "x");
-    let a = poly_ring.bind(poly_ring.from(poly_ring.base_ring().generator()));
-    let x = poly_ring.bind(poly_ring.unknown());
+    let poly_ring = PolyRingImpl::adjoint(&F1369, "X");
+    let poly_ring = WrappingRing::new(&poly_ring);
+    let a = poly_ring.embedding()(poly_ring.base_ring().clone_ring().generator());
+    let x = poly_ring.unknown();
     let f = (0..=100).map(|i| x.pow(i) * i as i64).sum::<RingElWrapper<&_>>();
     let g = (0..=100).map(|i| x.pow(i) * (100 - i) as i64 * &a).sum::<RingElWrapper<&_>>();
     let h = (0..=100).map(|n| x.pow(n) * &a * ((100 - n) * n * (n + 1) / 2 + n * (n + 1) * (2 * n + 1) / 6) as i64).sum::<RingElWrapper<&_>>()

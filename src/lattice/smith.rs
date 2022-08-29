@@ -212,7 +212,7 @@ use super::super::primitive::*;
 
 #[test]
 fn test_partial_smith_4x2() {
-    let ring = i64::RING.bind_ring_by_value();
+    let ring = i64::WRAPPED_RING;
     #[rustfmt::skip]
     let mut A = Matrix::map(Matrix::from_array([[ 1,  1, -1, -1],
                                                 [ 1,  0, -1,  0]]), ring.wrapping_embedding());

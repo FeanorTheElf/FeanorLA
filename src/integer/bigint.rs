@@ -667,6 +667,7 @@ pub struct BigIntRing;
 
 impl BigInt {
     pub const RING: BigIntRing = BigIntRing {};
+    pub const WRAPPED_RING: WrappingRing<BigIntRing> = WrappingRing::new(Self::RING);
 }
 
 impl RingBase for BigIntRing {
@@ -1227,8 +1228,6 @@ impl CanonicalIsomorphismInfo<StaticRing<i64>> for BigIntRing {
 #[cfg(test)]
 use std::str::FromStr;
 #[cfg(test)]
-use super::super::wrapper::*;
-#[cfg(test)]
 use vector_map::VecMap;
 
 #[test]
@@ -1493,12 +1492,13 @@ fn test_cmp_small() {
 
 #[test]
 fn test_factor() {
+    let ring = WrappingRing::new(&BigInt::RING);
     let mut expected = VecMap::new();
-    expected.insert(BigInt::RING.bind_by_value(BigInt::from(7)), 2);
-    expected.insert(BigInt::RING.bind_by_value(BigInt::from(2)), 1);
+    expected.insert(ring.from(BigInt::from(7)), 2);
+    expected.insert(ring.from(BigInt::from(2)), 1);
     assert_eq!(expected, BigInt::RING.factor(BigInt::from(98)));
     expected = VecMap::new();
-    expected.insert(BigInt::RING.bind_by_value(BigInt::from(3)), 5);
+    expected.insert(ring.from(BigInt::from(3)), 5);
     assert_eq!(expected, BigInt::RING.factor(BigInt::from(243)));
 }
 

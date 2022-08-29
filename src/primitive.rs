@@ -2,6 +2,7 @@ use super::ring::*;
 use super::integer::*;
 use super::embedding::*;
 use super::ring_property::*;
+use super::wrapper::*;
 use std::ops::{ 
     Add, Mul, Sub, Neg, Div,
     AddAssign, MulAssign, SubAssign, DivAssign
@@ -222,6 +223,7 @@ pub trait RingEl:
     type Axioms: RingAxioms;
     type RingType: Ring<El = Self> + SingletonRing;
     const RING: Self::RingType;
+    const WRAPPED_RING: WrappingRing<Self::RingType>;
 
     fn pow(self, exp: u32) -> Self {
         Self::RING.pow(&self, exp)
@@ -235,6 +237,13 @@ pub trait RingEl:
     /// 
     fn ring(&self) -> Self::RingType {
         Self::RING
+    }
+
+    ///
+    /// Analogous to `ring()`
+    /// 
+    fn wrapped_ring(&self) -> WrappingRing<Self::RingType> {
+        Self::WRAPPED_RING
     }
 
     fn characteristic() -> BigInt;
@@ -260,6 +269,7 @@ impl RingEl for i8 {
     type Axioms = RingAxiomsEuclidean;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+    const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
     fn characteristic() -> BigInt { BigInt::ZERO }
 }
 
@@ -267,6 +277,7 @@ impl RingEl for i16 {
     type Axioms = RingAxiomsEuclidean;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+    const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
     fn characteristic() -> BigInt { BigInt::ZERO }
 }
 
@@ -274,6 +285,7 @@ impl RingEl for i32 {
     type Axioms = RingAxiomsEuclidean;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+    const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
     fn characteristic() -> BigInt { BigInt::ZERO }
 }
 
@@ -281,6 +293,7 @@ impl RingEl for i64 {
     type Axioms = RingAxiomsEuclidean;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+    const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
     fn characteristic() -> BigInt { BigInt::ZERO }
 }
 
@@ -288,6 +301,7 @@ impl RingEl for i128 {
     type Axioms = RingAxiomsEuclidean;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+    const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
     fn characteristic() -> BigInt { BigInt::ZERO }
 }
 
@@ -363,6 +377,7 @@ impl RingEl for f32 {
     type Axioms = RingAxiomsField;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+    const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
 
     fn pow(self, exp: u32) -> Self {
         if exp > i32::MAX as u32 {
@@ -384,6 +399,7 @@ impl RingEl for f64 {
     type Axioms = RingAxiomsField;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+    const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
 
     fn pow(self, exp: u32) -> Self {
         if exp > i32::MAX as u32 {

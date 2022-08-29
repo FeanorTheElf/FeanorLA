@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types)]
 use super::super::prelude::*;
 use super::super::eea::signed_gcd;
+use super::super::wrapper::*;
 use super::*;
 
 use std::cmp::{Ord, Ordering, PartialEq, PartialOrd};
@@ -318,6 +319,7 @@ impl RingEl for r64 {
     type Axioms = RingAxiomsField;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+    const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
     
     fn characteristic() -> BigInt { BigInt::ZERO }
 }

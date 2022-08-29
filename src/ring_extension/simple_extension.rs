@@ -4,6 +4,7 @@ use super::super::la::inversion::*;
 use super::super::poly::ops::poly_format;
 use super::super::fq::*;
 use super::super::combinatorics::iters::*;
+use super::super::wrapper::*;
 
 use std::marker::PhantomData;
 use std::iter::FromIterator;
@@ -22,11 +23,11 @@ pub struct SimpleRingExtension<R, V = VectorOwned<El<R>>, W = VectorOwned<El<R>>
 impl<R> SimpleRingExtension<R, VectorOwned<R::El>, VectorOwned<R::El>>
     where R: Ring
 {
-    pub fn adjoin_element<F>(base_ring: R, mipo: F, gen_name: &'static str) -> Self
-        where F: FnOnce(&PolyRingImpl<R>) -> El<PolyRingImpl<R>>
+    pub fn adjoin_element<P>(base_ring: R, mipo: El<P>, poly_ring: &P, gen_name: &'static str) -> Self
+        where P: PolyRing<BaseRing = R>
     {
         let ring = PolyRingImpl::adjoint(base_ring.clone(), "X");
-        let mipo = mipo(&ring);
+        let mipo = poly_ring.preimage(&ring, mipo);
         assert!(base_ring.is_one(&ring.lc(&mipo).unwrap()), "Only adjoining monic polynomials is supported");
         let degree = mipo.iter().enumerate().filter(|(_, x)| !base_ring.is_zero(x)).map(|(i, _)| i).max().unwrap();
         let mipo_values = Vector::new(
@@ -464,10 +465,28 @@ impl<R, V, W> HashableElRing for SimpleRingExtension<R, V, W>
     }
 }
 
+
+//TODO: introduce trait
+
+impl<R, V, W> WrappingRing<SimpleRingExtension<R, V, W>>
+    where  R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
+{
+    pub fn generator(&self) -> El<Self> {
+        self.from(self.wrapped_ring().generator())
+    }
+}
+
+impl<'a, R, V, W> WrappingRing<&'a SimpleRingExtension<R, V, W>>
+    where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
+{
+    pub fn generator(&self) -> El<Self> {
+        self.from(self.wrapped_ring().generator())
+    }
+}
+
+
 #[cfg(test)]
 use super::super::fq::zn_small::*;
-#[cfg(test)]
-use super::super::wrapper::*;
 
 #[test]
 fn test_format() {
@@ -502,10 +521,10 @@ fn test_mul() {
 
 #[test]
 fn test_adjoin_element() {
-    let ring = PolyRingImpl::adjoint(i64::RING, "x");
-    let x = ring.bind_by_value(ring.unknown());
+    let ring = WrappingRing::new(PolyRingImpl::adjoint(i64::RING, "x"));
+    let x = ring.unknown();
     let f = x.pow(3) + x.pow(2) + 1;
-    let ring = SimpleRingExtension::<StaticRing<i64>, Vec<_>>::adjoin_element(i64::RING, |poly_ring| poly_ring.embed(f.parent_ring(), f.val().clone()), "x");
-    let x = ring.bind_by_value(ring.generator());
+    let ring = WrappingRing::new(SimpleRingExtension::adjoin_element(i64::RING, f.val().clone(), f.parent_ring(), "x"));
+    let x = ring.generator();
     assert_eq!(x.ring().zero(), f(x));
 }

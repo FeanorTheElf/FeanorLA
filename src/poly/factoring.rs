@@ -136,11 +136,11 @@ use super::super::fq::zn_small::*;
 
 #[test]
 fn test_poly_squarefree_part() {
-    let ring = PolyRingImpl::adjoint(r64::RING, "X");
-    let x = ring.bind(ring.unknown());
+    let ring = WrappingRing::new(PolyRingImpl::adjoint(r64::RING, "X"));
+    let x = ring.unknown();
     let a = (&x + 4) * (&x + 6).pow(2) * (&x - 2).pow(2) * (&x + 8).pow(3);
     let b = (&x + 4) * (&x + 6) * (&x - 2) * (&x + 8);
-    let mut squarefree_part = ring.bind(poly_squarefree_part(&ring, a.val().clone()));
+    let mut squarefree_part = ring.from(poly_squarefree_part(ring.wrapped_ring(), a.val().clone()));
     squarefree_part.normalize();
     assert_eq!(b, squarefree_part);
 }
@@ -148,19 +148,19 @@ fn test_poly_squarefree_part() {
 #[test]
 fn test_distinct_degree_factorization() {
     let field = ZnEl::<2>::RING;
-    let ring = PolyRingImpl::adjoint(field, "X");
-    let x = ring.bind(ring.unknown());
+    let ring = WrappingRing::new(PolyRingImpl::adjoint(field, "X"));
+    let x = ring.unknown();
 
     let a = &x * (&x + 1) * (&x * &x + &x + 1) * (&x * &x * &x + &x + 1) * (&x * &x * &x + &x * &x + 1);
-    let a0 = ring.bind(ring.from_z(1));
+    let a0 = ring.from_z(1);
     let a1 = &x * (&x + 1);
     let a2 = &x * &x + &x + 1;
     let a3 = (&x * &x * &x + &x + 1) * (&x * &x * &x + &x * &x + 1);
     let expected = vec![a0, a1, a2, a3];
-    let distinct_degree_factorization = distinct_degree_factorization(ring, &BigInt::from(2), a.val().clone());
+    let distinct_degree_factorization = distinct_degree_factorization(ring.wrapped_ring(), &BigInt::from(2), a.val().clone());
     assert_eq!(expected.len(), distinct_degree_factorization.len());
     for (f, e) in distinct_degree_factorization.into_iter().zip(expected.into_iter()) {
-        let mut f = ring.bind(f);
+        let mut f = ring.from(f);
         f.normalize();
         assert_eq!(e, f);
     }
@@ -169,14 +169,14 @@ fn test_distinct_degree_factorization() {
 #[test]
 fn test_cantor_zassenhaus() {
     type Z7 = ZnEl<7>;
-    let ring = PolyRingImpl::adjoint(Z7::RING, "X");
-    let x = ring.bind(ring.unknown());
-    let incl = embedding::<WrappingRing<&StaticRing<Z7>>, WrappingRing<&PolyRingImpl<StaticRing<Z7>>>>(ring.base_ring().bind_ring(), ring.bind_ring());
+    let ring = WrappingRing::new(PolyRingImpl::adjoint(Z7::RING, "X"));
+    let x = ring.unknown();
+    let incl = ring.embedding();
 
     let f = &x * &x + 1;
     let g = &x * &x + &x + 3;
     let p = &f * &g;
-    let mut factor = ring.bind(cantor_zassenhaus(ring, &BigInt::from(7), p.val().clone(), 2));
-    factor = factor.clone() / incl(ring.base_ring().bind(ring.lc(factor.val()).unwrap().clone()));
+    let mut factor = ring.from(cantor_zassenhaus(ring.wrapped_ring(), &BigInt::from(7), p.val().clone(), 2));
+    factor.normalize();
     assert!(factor == f || factor == g);
 }

@@ -79,7 +79,7 @@ use super::super::primitive::*;
 
 #[test]
 fn test_row_triangular() {
-    let ring = i64::RING.bind_ring_by_value();
+    let ring = i64::WRAPPED_RING;
     let mut A = Matrix::map(Matrix::from_array([[ 6, 5 ], [ 4, 10 ]]), ring.wrapping_embedding());
     let expected = Matrix::map(Matrix::from_array([[ 2, -5 ], [ 0, 20 ]]), ring.wrapping_embedding());
     row_echelon_form(&mut A, |_, _, _| {});
@@ -93,7 +93,7 @@ fn test_row_triangular() {
 
 #[test]
 fn test_row_hnf() {
-    let ring = i64::RING.bind_ring_by_value();
+    let ring = i64::WRAPPED_RING;
     let A = Matrix::map(Matrix::from_array([[ 6, 5, 9 ], [ 4, 10, 11 ], [ 7, 5, 2 ]]), ring.wrapping_embedding());
     let expected = Matrix::map(Matrix::from_array([[ 1, 0, 56 ], [ 0, 5, 51 ], [ 0, 0, 63 ]]), ring.wrapping_embedding());
     let mut actual = A.clone();

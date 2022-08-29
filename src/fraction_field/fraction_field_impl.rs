@@ -308,23 +308,23 @@ impl<R> PartialEq for FractionFieldImpl<R>
 
 #[test]
 fn test_add() {
-    let rats = FractionFieldImpl::new(BigInt::RING);
-    let two = rats.bind(rats.from(BigInt::from(2)));
-    let three = rats.bind(rats.from(BigInt::from(3)));
+    let rats = WrappingRing::new(FractionFieldImpl::new(BigInt::RING));
+    let two = rats.from_z(2);
+    let three = rats.from_z(3);
     let two_thirds = two.clone() / three.clone();
-    assert_eq!(two, rats.bind(rats.from_z(2)));
-    let one_half = rats.bind(rats.one()) / two;
-    assert_eq!(rats.bind(rats.from_z(7)) / rats.bind(rats.from_z(6)), two_thirds + one_half);
+    assert_eq!(two, rats.from_z(2));
+    let one_half = rats.one() / two;
+    assert_eq!(rats.from_z(7) / rats.from_z(6), two_thirds + one_half);
 }
 
 #[test]
 fn test_mul() {
-    let rats = FractionFieldImpl::new(BigInt::RING);
-    let two = rats.bind(rats.from(BigInt::from(2)));
-    let three = rats.bind(rats.from(BigInt::from(3)));
+    let rats = WrappingRing::new(FractionFieldImpl::new(BigInt::RING));
+    let two = rats.from_z(2);
+    let three = rats.from_z(3);
     let two_thirds = two.clone() / three.clone();
-    let one_half = rats.bind(rats.one()) / two;
-    assert_eq!(rats.bind(rats.from_z(1)) / rats.bind(rats.from_z(3)), two_thirds * one_half);
+    let one_half = rats.one() / two;
+    assert_eq!(rats.from_z(1) / rats.from_z(3), two_thirds * one_half);
 }
 
 #[test]

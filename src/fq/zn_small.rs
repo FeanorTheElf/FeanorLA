@@ -184,6 +184,7 @@ impl<const N: u64> RingEl for ZnElImpl<N, true> {
     type Axioms = RingAxiomsField;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+    const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
 
     fn characteristic() -> BigInt { BigInt::RING.from_z(N as i64) }
 }
@@ -194,6 +195,7 @@ impl<const N: u64> RingEl for ZnElImpl<N, false> {
     type Axioms = RingAxiomsGeneral;
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
+    const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
 
     fn characteristic() -> BigInt { BigInt::RING.from_z(N as i64) }
 }

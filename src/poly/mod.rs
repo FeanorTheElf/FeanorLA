@@ -6,11 +6,12 @@ use super::wrapper::*;
 pub mod ops;
 pub mod factoring;
 pub mod uni_var;
-pub mod multi_var;
+// pub mod multi_var;
 pub mod sumation;
 
+use vector_map::VecMap;
 pub use uni_var::*;
-pub use multi_var::*;
+// pub use multi_var::*;
 
 pub trait PolyRing: Ring + CanonicalIsomorphismInfo<PolyRingImpl<Self::BaseRing>> + RingExtension {
 
@@ -90,6 +91,56 @@ impl<S, P> Fn<(RingElWrapper<S>, )> for RingElWrapper<P>
         (x, ): (RingElWrapper<S>, )
     ) -> Self::Output {
         let (x, ring) = x.destruct();
-        ring.bind_by_value(self.parent_ring().evaluate_at(self.val(), x, &ring))
+        RingElWrapper::new(self.parent_ring().evaluate_at(self.val(), x, &ring), ring)
+    }
+}
+
+impl<P> RingElWrapper<P>
+    where P: PolyRing
+{
+    pub fn lc(&self) -> Option<RingElWrapper<P::BaseRing>> {
+        self.parent_ring().lc(self.val()).map(|x| RingElWrapper::new(x, self.parent_ring().base_ring().clone()))
+    }
+
+    pub fn deg(&self) -> Option<usize> {
+        self.parent_ring().deg(self.val())
+    }
+
+    pub fn coefficient_at(&self, i: usize) -> RingElWrapper<P::BaseRing> {
+        RingElWrapper::new(self.parent_ring().coefficient_at(self.val(), i), self.parent_ring().base_ring().clone())
+    }
+
+    pub fn roots(self) -> VecMap<RingElWrapper<P::BaseRing>, usize>
+        where P: UfdInfoRing
+    {
+        self.factor().into_iter().filter_map(|(f, e)| {
+            if f.deg() == Some(1) {
+                Some((-f.coefficient_at(0) / f.coefficient_at(1), e))
+            } else {
+                None
+            }
+        }).collect()
+    }
+
+    pub fn normalize(&mut self) {
+        let coeff = self.lc().unwrap().inv();
+        self.parent_ring().clone().scale(&mut self.val_mut(), coeff.val());
+    }
+
+    pub fn scale(&mut self, coeff: &RingElWrapper<P::BaseRing>) {
+        self.parent_ring().clone().scale(&mut self.val_mut(), coeff.val());
+    }
+
+    pub fn scaled(mut self, coeff: &RingElWrapper<P::BaseRing>) -> RingElWrapper<P> {
+        self.scale(coeff);
+        return self;
+    }
+}
+
+impl<P> WrappingRing<P>
+    where P: PolyRing
+{
+    pub fn unknown(&self) -> El<Self> {
+        self.from(self.wrapped_ring().unknown())
     }
 }

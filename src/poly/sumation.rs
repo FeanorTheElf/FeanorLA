@@ -1,11 +1,8 @@
 use super::super::ring::*;
-use super::super::embedding::*;
 use super::*;
-use super::uni_var::*;
-use super::multi_var::*;
 
-fn rising_power_poly<R>(ring: &PolyRingImpl<R>, n: usize) -> El<PolyRingImpl<R>>
-    where R: DivisibilityInfoRing + CanonicalIsomorphismInfo<R>
+fn rising_power_poly<P>(ring: &P, n: usize) -> El<P>
+    where P: PolyRing
 {
     let mut result = ring.one();
     let x = ring.unknown();
@@ -15,27 +12,21 @@ fn rising_power_poly<R>(ring: &PolyRingImpl<R>, n: usize) -> El<PolyRingImpl<R>>
     return result;
 }
 
-fn sumation_poly<R>(ring: &PolyRingImpl<R>, f: El<PolyRingImpl<R>>) -> El<PolyRingImpl<R>> 
-    where R: DivisibilityInfoRing + CanonicalIsomorphismInfo<R>
+fn sumation_poly<P>(ring: &P, f: El<P>) -> El<P> 
+    where P: PolyRing + DivisibilityInfoRing
 {
+    assert!(ring.is_divisibility_computable().can_use());
     let mut current = f;
     let mut result = ring.zero();
-    let incl = embedding(ring.base_ring(), ring);
+    let incl = ring.embedding();
     while let Some(n) = ring.deg(&current) {
-        let coeff = current.at(n).clone();
+        let coeff = ring.coefficient_at(&current, n).clone();
         current = ring.sub(current, ring.mul(rising_power_poly(ring, n), incl(coeff.clone())));
         let xn_sum_scaled = rising_power_poly(ring, n + 1);
         let xn_sum = ring.quotient(&xn_sum_scaled, &ring.from_z(n as i64 + 1)).unwrap();
         result = ring.add(result, ring.mul(xn_sum, incl(coeff)));
     }
     return result;
-}
-
-pub fn sumation_operator<R>(ring: &MultivariatePolyRing<R>, f: El<MultivariatePolyRing<R>>, var: Var) -> El<MultivariatePolyRing<R>>
-    where R: DivisibilityInfoRing + CanonicalIsomorphismInfo<R>
-{
-    let (elevated_ring, iso, iso_inv) = ring.elevate_var(var);
-    return iso_inv(sumation_poly(&elevated_ring, iso(f)));
 }
 
 #[cfg(test)]
@@ -45,11 +36,11 @@ use super::super::rational::*;
 
 #[test]
 fn test_sumation_poly() {
-    let ring = PolyRingImpl::adjoint(r64::RING, "X");
-    let x = ring.bind(ring.unknown());
+    let ring = WrappingRing::new(PolyRingImpl::adjoint(r64::RING, "X"));
+    let x = ring.unknown();
     let sum_x_2 = x.clone() * (x.clone() + 1) / 2;
-    assert_eq!(sum_x_2, ring.bind(sumation_poly(&ring, ring.unknown())));
+    assert_eq!(sum_x_2, ring.from(sumation_poly(ring.wrapped_ring(), ring.unknown().into_val())));
 
     let sum_x_3 = x.clone() * (x.clone() + 1) * (x.clone() * 2 + 1) / 6;
-    assert_eq!(sum_x_3, ring.bind(sumation_poly(&ring, (x.clone() * x.clone()).val().clone())));
+    assert_eq!(sum_x_3, ring.from(sumation_poly(ring.wrapped_ring(), (&x * &x).into_val())));
 }

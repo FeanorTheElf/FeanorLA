@@ -31,7 +31,7 @@ use super::smith::*;
 
 #[test]
 fn test_diophantine() {
-    let ring = i64::RING.bind_ring_by_value();
+    let ring = i64::WRAPPED_RING;
     let mut A = Matrix::map(Matrix::from_array([[15, 10], [6, 7]]), ring.wrapping_embedding());
     let b = Vector::map(Vector::from_array([195, 87]), ring.wrapping_embedding());
     let (iL, iR) = partial_snf(&mut A);
@@ -41,7 +41,7 @@ fn test_diophantine() {
 
 #[test]
 fn test_diophantine_no_solution() {
-    let ring = i64::RING.bind_ring_by_value();
+    let ring = i64::WRAPPED_RING;
     let i = ring.wrapping_embedding();
     let mut A = Matrix::from_array([[i(2), i(-2)]]);
     let b = Vector::from_array([i(1)]);
@@ -52,7 +52,7 @@ fn test_diophantine_no_solution() {
 
 #[test]
 fn test_diophantine_no_solution_three_dim() {
-    let ring = i64::RING.bind_ring_by_value();
+    let ring = i64::WRAPPED_RING;
     #[rustfmt::skip]
     let mut A = Matrix::map(Matrix::from_array([[1, 2, 0], 
                                                 [1, 0, 2]]), ring.wrapping_embedding());
@@ -65,7 +65,7 @@ fn test_diophantine_no_solution_three_dim() {
 
 #[test]
 fn test_diophantine_three_dim() {
-    let ring = i64::RING.bind_ring_by_value();
+    let ring = i64::WRAPPED_RING;
     #[rustfmt::skip]
     let mut A = Matrix::map(Matrix::from_array([[1, 2, 0], 
                                                 [1, 0, 2]]), ring.wrapping_embedding());
@@ -78,7 +78,7 @@ fn test_diophantine_three_dim() {
 
 #[test]
 fn test_diophantine_unnecessary_conditions() {
-    let ring = i64::RING.bind_ring_by_value();
+    let ring = i64::WRAPPED_RING;
     #[rustfmt::skip]
     let mut A = Matrix::map(Matrix::from_array([[1, 2, 0], 
                                                 [1, 2, 0], 
@@ -93,7 +93,7 @@ fn test_diophantine_unnecessary_conditions() {
 
 #[test]
 fn test_diophantine_no_rational_solutions() {
-    let ring = i64::RING.bind_ring_by_value();
+    let ring = i64::WRAPPED_RING;
     #[rustfmt::skip]
     let mut A = Matrix::map(Matrix::from_array([[1, 2, 0], 
                                                 [1, 2, 0], 

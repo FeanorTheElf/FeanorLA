@@ -153,19 +153,6 @@ impl<R> MultivariatePolyRing<R>
         }
     }
 
-    pub fn adjoint(&mut self, var: &'static str) -> El<Self> {
-        assert!(!self.var_names.contains(&var));
-        let mut result = BTreeMap::new();
-        result.insert(
-            (0..self.var_names.len()).map(|_| 0).chain(std::iter::once(1)).collect(), 
-            self.base_ring.one()
-        );
-        self.var_names.push(var);
-
-        self.assert_valid(&result);
-        return result;
-    }
-
     ///
     /// Evaluates the given polynomial at the given values, i.e. calculates the
     /// value in the base ring of the expression one gets from replacing the
@@ -578,19 +565,26 @@ impl<R> CanonicalIsomorphismInfo<MultivariatePolyRing<R>> for MultivariatePolyRi
     }
 }
 
-#[cfg(test)]
-use super::super::wrapper::*;
+impl<R: Ring> WrappingRing<MultivariatePolyRing<R>>
+{
+    pub fn derive(&self, f: El<Self>, var: Var) -> El<Self> {
+        self.from(self.wrapped_ring().derive(f.val(), var))
+    }
+
+    pub fn evaluate_at<V>(&self, f: El<Self>, params: &V) -> El<R>
+        where V: Index<usize, Output = El<R>>
+    {
+        self.wrapped_ring().evaluate_at(f.into_val(), params)
+    }
+}
 
 #[test]
 fn test_binomial_formula() {
-    let mut ring = MultivariatePolyRing::new(i32::RING);
+    let mut ring = WrappingRing::new(MultivariatePolyRing::new(i32::RING));
     let x = ring.adjoint("X");
     let y = ring.adjoint("Y");
-    let x = ring.bind(x);
-    let y = ring.bind(y);
-    let two = ring.bind(ring.from(2));
     
-    let x2_2xy_y2 = (&x * &x) + (two * &x * &y) + (&y * &y);
+    let x2_2xy_y2 = (&x * &x) + (&x * &y * 2) + (&y * &y);
     let x_y_square = (&x + &y) * (&x + &y);
 
     assert_eq!(x2_2xy_y2, x_y_square);
@@ -608,18 +602,15 @@ fn test_eq() {
 
 #[test]
 fn test_evaluate_at() {
-    let mut ring = MultivariatePolyRing::new(i32::RING);
+    let mut ring = WrappingRing::new(MultivariatePolyRing::new(i32::RING));
     let x = ring.adjoint("X");
     let y = ring.adjoint("Y");
-    let x = ring.bind(x);
-    let y = ring.bind(y);
-    let thirteen = y.ring().from_z(13);
 
     // the polynomial x^2 y + 2 x y^2 + x + 13
-    let poly = (&x * &x * &y) + (&x * &y * &y + &x * &y * &y) + &x + thirteen;
+    let poly = (&x * &x * &y) + (&x * &y * &y + &x * &y * &y) + &x + 13;
 
-    assert_eq!(14, ring.evaluate_at(poly.val().clone(), &vec![1, 0]));
-    assert_eq!(12 + 36 + 2 + 13, ring.evaluate_at(poly.val().clone(), &vec![2, 3]));
+    assert_eq!(14, ring.evaluate_at(poly.clone(), &vec![1, 0]));
+    assert_eq!(12 + 36 + 2 + 13, ring.evaluate_at(poly, &vec![2, 3]));
 }
 
 #[test]
@@ -632,24 +623,19 @@ fn test_assumption_option_ord() {
 
 #[test]
 fn test_format_multivar_poly_ring() {
-    let mut ring = MultivariatePolyRing::new(i32::RING);
+    let mut ring = WrappingRing::new(MultivariatePolyRing::new(i32::RING));
     let x = ring.adjoint("X");
     let y = ring.adjoint("Y");
-    let x = ring.bind(x);
-    let y = ring.bind(y);
-    let one = y.ring().from_z(1);
 
-    let poly = &x * &x * &x - &y + (&one + &one) * &y * &x - &one;
+    let poly = &x * &x * &x - &y + &y * &x * 2 - 1;
     assert_eq!("-1 + -1 * Y + 2 * XY + X^3", format!("{}", poly));
 }
 
 #[test]
 fn test_div_multivar_poly_ring() {
-    let mut ring = MultivariatePolyRing::new(i32::RING);
+    let mut ring = WrappingRing::new(MultivariatePolyRing::new(i32::RING));
     let x = ring.adjoint("X");
     let y = ring.adjoint("Y");
-    let x = ring.bind(x);
-    let y = ring.bind(y);
 
     let a = &x + &y;
     let b = &x * &x * 2;
@@ -658,69 +644,62 @@ fn test_div_multivar_poly_ring() {
     let p = &a * &b * &c * &d;
     let q = &a * &c;
     let expected = &b * &d;
-    let result = ring.quotient(p.val(), q.val()).unwrap();
-    assert_eq!(expected, ring.bind(result));
+    let result = p / q;
+    assert_eq!(expected, result);
 }
 
 #[test]
 fn test_elevate_var() {
-    let mut ring = MultivariatePolyRing::new(i32::RING);
+    let mut ring = WrappingRing::new(MultivariatePolyRing::new(i32::RING));
     let x = ring.adjoint("X");
     let y = ring.adjoint("Y");
-    let x = ring.bind(x);
-    let y = ring.bind(y);
 
     let p = &x * &y + &y * &y * &x * 2 + 1 + &x;
 
-    let uni_ring = ring.elevate_var_ring(Var(1));
+    let uni_ring = WrappingRing::new(ring.wrapped_ring().elevate_var_ring(Var(1)));
 
-    let uni_y = uni_ring.bind(uni_ring.unknown());
-    let uni_x = uni_ring.bind(uni_ring.from(x.val().clone()));
-    let uni_one = uni_ring.bind(uni_ring.one());
+    let uni_y = uni_ring.unknown();
+    let uni_x = uni_ring.embedding()(x.ref_ring());
 
-    let expected = &uni_x * &uni_y + &uni_y * &uni_y * &uni_x * (&uni_one + &uni_one) + &uni_one + &uni_x;
+    let expected = &uni_x * &uni_y + &uni_y * &uni_y * &uni_x * 2 + 1 + &uni_x;
 
-    let actual = uni_ring.bind(ring.elevate_var_element(Var(1), p.val().clone()));
+    let actual = uni_ring.from(ring.wrapped_ring().elevate_var_element(Var(1), p.val().clone()));
     assert_eq!(expected, actual);
 
-    let original = ring.bind(ring.de_elevate_var(Var(1), actual.val().clone()));
+    let original = ring.from(ring.wrapped_ring().de_elevate_var(Var(1), actual.val().clone()));
     assert_eq!(p, original);
 }
 
 #[test]
 fn test_gradient() {
-    let mut ring = MultivariatePolyRing::new(i32::RING);
+    let mut ring = WrappingRing::new(MultivariatePolyRing::new(i32::RING));
     let x = ring.adjoint("X");
     let y = ring.adjoint("Y");
-    let x = ring.bind(x);
-    let y = ring.bind(y);
 
     let p = &x + &x * &x * &y + &x * &y + &x * &x * &x * 2;
     let dx = (&y + 1) + &x * &y * 2 + &x * &x * 6;
     let dy = &x * &x + &x;
 
-    assert_eq!(dx, ring.bind(ring.derive(p.val(), ring.get_var("X"))));
-    assert_eq!(dy, ring.bind(ring.derive(p.val(), ring.get_var("Y"))));
+    assert_eq!(dx, ring.derive(p.clone(), ring.wrapped_ring().get_var("X")));
+    assert_eq!(dy, ring.derive(p, ring.wrapped_ring().get_var("Y")));
 }
 
 #[test]
 fn test_quotient() {
-    let mut ring = MultivariatePolyRing::new(i32::RING);
+    let mut ring = WrappingRing::new(MultivariatePolyRing::new(i32::RING));
     let x = ring.adjoint("X");
     ring.adjoint("Y");
-    let x = ring.bind(x);
 
-    assert_eq!(None, ring.quotient(&ring.one(), (&x + 1).val()));
+    assert_eq!(None, ring.quotient(&ring.one(), &(&x + 1)));
 }
 
 #[test]
 fn test_is_unit() {
-    let mut ring = MultivariatePolyRing::new(i32::RING);
+    let mut ring = WrappingRing::new(MultivariatePolyRing::new(i32::RING));
     let x = ring.adjoint("X");
     ring.adjoint("Y");
-    let x = ring.bind(x);
 
-    assert_eq!(false, ring.is_unit(&(x + 1).val()));
+    assert_eq!(false, ring.is_unit(&(x + 1)));
     assert_eq!(false, ring.is_unit(&ring.from_z(2)));
     assert_eq!(true, ring.is_unit(&ring.from_z(-1)));
 }

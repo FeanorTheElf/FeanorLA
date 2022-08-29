@@ -29,8 +29,9 @@ pub mod lattice;
 
 #[macro_use]
 pub mod la;
-pub mod fq;
+#[macro_use]
 pub mod integer;
+pub mod fq;
 pub mod rational;
 pub mod factoring_algorithms;
 pub mod p_adic;

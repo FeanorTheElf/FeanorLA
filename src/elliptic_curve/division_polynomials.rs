@@ -17,8 +17,8 @@ impl<'a, K: Ring> DivisionPolyArray<'a, K> {
 
     pub fn new(E: &'a EllipticCurve<WrappingRing<K>>) -> Self {
         let F = E.base_field();
-        let P = PolyRingImpl::adjoint(F.wrapped_ring().clone(), "x").bind_ring_by_value();
-        let x = P.wrapped_ring().bind_by_value(P.wrapped_ring().unknown());
+        let P = WrappingRing::new(PolyRingImpl::adjoint(F.wrapped_ring().clone(), "x"));
+        let x = P.unknown();
         let i = embedding(F, &P);
     
         let mut cache = HashMap::new();
@@ -32,11 +32,11 @@ impl<'a, K: Ring> DivisionPolyArray<'a, K> {
     }
 
     fn x(&self) -> El<P<K>> {
-        self.P.wrapped_ring().bind_by_value(self.P.wrapped_ring().unknown())
+        self.P.unknown()
     }
 
-    fn i(&self) -> StandardEmbedding<&WrappingRing<K>, &P<K>> {
-        embedding(self.E.base_field(), &self.P)
+    fn i(&self) -> LiftedHom<K, PolyRingImpl<K>, StandardEmbedding<K, PolyRingImpl<K>>> {
+        self.P.embedding()
     }
 
     fn short_division_polynomial_rec(&mut self, n: usize) {
@@ -134,20 +134,20 @@ use super::super::eea::gcd;
 
 #[test]
 fn test_division_polynomials() {
-    let field = r64::RING.bind_ring();
+    let field = r64::WRAPPED_RING;
     let E = EllipticCurve::new(field, field.zero(), field.one());
     let (f, _, h) = division_polynomials(&E, 2);
-    let poly_ring = PolyRingImpl::adjoint(field.wrapped_ring().clone(), "X").bind_ring_by_value();
+    let poly_ring = WrappingRing::new(PolyRingImpl::adjoint(field.wrapped_ring().clone(), "X"));
     let x = poly_ring.from(poly_ring.wrapped_ring().unknown());
     let f_expected = x.pow(4) - &x * 8;
     let h_expected = x.pow(3) * 4 + 4;
     let d = gcd(&f.ring(), f.clone(), h.clone());
     let f = f / &d;
     let h = h / &d;
-    let base_ring = poly_ring.wrapped_ring().base_ring().bind_ring_by_value();
+    let base_ring = poly_ring.base_ring();
     let i = embedding(&base_ring, &poly_ring);
-    assert_eq!(f_expected, &f / i(f.lc().unwrap()));
-    assert_eq!(h_expected, &h / i(f.lc().unwrap()));
+    assert_eq!(f_expected, &f / i(f.lc().unwrap().ref_ring()));
+    assert_eq!(h_expected, &h / i(f.lc().unwrap().ref_ring()));
  
     let (f, _, h) = division_polynomials(&E, 3);
     let i = z_hom(&field);
@@ -159,7 +159,7 @@ fn test_division_polynomials() {
 
 #[bench]
 fn bench_division_poly(b: &mut Bencher) {
-    let ring = F49.bind_ring_by_value();
+    let ring = WrappingRing::new(F49);
     let E = EllipticCurve::new(ring.clone(), ring.zero(), ring.one());
     let mut rng = oorandom::Rand32::new(3);
     let n: i64 = 13;

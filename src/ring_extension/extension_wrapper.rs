@@ -205,7 +205,7 @@ impl<R, S, F> RingElWrapper<ExtensionWrapper<R, S, F>>
 {
     pub fn unwrap(self) -> RingElWrapper<S> {
         let (el, ring) = self.destruct();
-        return ring.into_wrapped_ring().bind_by_value(el);
+        return RingElWrapper::new(el, ring.ring);
     }
 }
 
@@ -280,7 +280,7 @@ fn test_no_embedding() {
 fn test_build_extension_wrapper() {
     let ring = ExtensionWrapper::from(i64::RING);
     let ring = ring.extend(|r| SimpleRingExtension::new(r, Vector::from_array([-1, 0]), "i") as SimpleRingExtension<_, _>);
-    let ring = ring.as_ref().extend(|r| PolyRingImpl::adjoint(r, "x")).bind_ring_by_value();
+    let ring = WrappingRing::new(ring.as_ref().extend(|r| PolyRingImpl::adjoint(r, "x")));
     let i = ring.from(ring.wrapped_ring().wrapped_ring().from(ring.wrapped_ring().wrapped_ring().base_ring().generator()));
     let x = ring.from(ring.wrapped_ring().wrapped_ring().unknown());
     assert_eq!(x.pow(2) + 1, (&x - &i) * (x + i));
