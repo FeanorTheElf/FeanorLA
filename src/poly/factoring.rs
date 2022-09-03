@@ -171,7 +171,6 @@ fn test_cantor_zassenhaus() {
     type Z7 = ZnEl<7>;
     let ring = WrappingRing::new(PolyRingImpl::adjoint(Z7::RING, "X"));
     let x = ring.unknown();
-    let incl = ring.embedding();
 
     let f = &x * &x + 1;
     let g = &x * &x + &x + 3;

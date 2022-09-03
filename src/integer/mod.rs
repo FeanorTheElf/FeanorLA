@@ -356,7 +356,7 @@ fn test_integer_ring_get_uniformly_random() {
     let ring = BigInt::RING;
     let end_exclusive = BigInt::from(18897856102); // more than 34 bits
     let mut rng = Rand32::new(0);
-    let data: Vec<BigInt> = (0..1000).map(|i| integer_ring_get_uniformly_random(&ring, || rng.rand_u32(), &end_exclusive)).collect();
+    let data: Vec<BigInt> = (0..1000).map(|_| integer_ring_get_uniformly_random(&ring, || rng.rand_u32(), &end_exclusive)).collect();
     let limit = BigInt::power_of_two(34);
     assert!(data.iter().any(|x| x > &limit)); // failure probability is less than 10^-37
     let bit_average = data.iter().map(|x| if ring.abs_is_bit_set(x, 33) { 0. } else { 1. }).sum::<f64>() / 1000.;

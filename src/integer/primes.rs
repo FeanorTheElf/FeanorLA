@@ -6,7 +6,7 @@ use super::super::square_multiply::*;
 use super::super::factoring_algorithms;
 
 use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
+use std::hash::Hasher;
 
 use oorandom;
 
