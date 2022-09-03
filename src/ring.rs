@@ -490,6 +490,30 @@ impl<'a, R> HashableElRing for &'a R
 /// 
 pub trait OrderedRing: Ring {
     fn cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering;
+
+    fn is_leq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+        self.cmp(lhs, rhs) != std::cmp::Ordering::Greater
+    }
+
+    fn is_geq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+        self.cmp(lhs, rhs) != std::cmp::Ordering::Less
+    }
+
+    fn is_lt(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+        self.cmp(lhs, rhs) == std::cmp::Ordering::Less
+    }
+
+    fn is_gt(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+        self.cmp(lhs, rhs) == std::cmp::Ordering::Greater
+    }
+
+    fn is_pos(&self, x: &Self::El) -> bool {
+        self.is_gt(x, &self.zero())
+    }
+
+    fn is_neg(&self, x: &Self::El) -> bool {
+        self.is_lt(x, &self.zero())
+    }
 }
 
 impl<'a, R> OrderedRing for &'a R

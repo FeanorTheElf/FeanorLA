@@ -1,11 +1,12 @@
+use super::super::fq::zn_big::*;
+use super::super::ring::*;
+use super::super::combinatorics::iters::*;
+use super::super::integer::*;
+use super::super::square_multiply::*;
+use super::super::factoring_algorithms;
+
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-
-use super::fq::zn_big::*;
-use super::ring::*;
-use super::combinatorics::iters::*;
-use super::integer::*;
-pub use super::factoring_algorithms;
 
 use oorandom;
 
@@ -29,27 +30,24 @@ use oorandom;
 /// most 4^(-k).
 /// 
 #[allow(non_snake_case)]
-pub fn miller_rabin(n: &BigInt, k: usize) -> bool {
-    if *n <= 2 {
-        return *n == 2;
+pub fn miller_rabin<I>(ring: I, n: &El<I>, k: usize) -> bool 
+    where I: IntegerRing + HashableElRing
+{
+    if ring.is_leq(n, &ring.from_z(2)) {
+        return ring.is_eq(n, &ring.from_z(2));
     }
 
     let mut hasher = DefaultHasher::new();
-    n.hash(&mut hasher);
+    ring.hash(&mut hasher, n);
     let mut rng = oorandom::Rand32::new(hasher.finish());
-    let n_minus_one = n.clone() - 1;
-    let s = n_minus_one.highest_dividing_power_of_two();
-    let d = BigInt::RING.euclidean_div_pow_2(n_minus_one.clone(), s as u64);
-    let Z_nZ = Zn::new(n.clone());
-
-    // Admitted, there is no calculation behind this choice
-    const STATISTICAL_DISTANCE_ERROR_BOUND: usize = 5;
+    let n_minus_one = ring.sub_ref_fst(n, ring.one());
+    let s = ring.highest_dividing_power_of_two(&n_minus_one);
+    let d = ring.euclidean_div_pow_2(n_minus_one.clone(), s as u64);
+    let Z_nZ = Zn::new(&ring, n.clone());
 
     for _i in 0..k {
-        let a = Z_nZ.project(BigInt::get_uniformly_random_oorandom(
-            &mut rng, &n_minus_one, STATISTICAL_DISTANCE_ERROR_BOUND
-        ) + 1);
-        let mut current = Z_nZ.pow_big(&a, &d);
+        let a = Z_nZ.project(ring.add(ring.get_uniformly_random_oorandom(&mut rng, &n_minus_one), ring.one()));
+        let mut current = abs_square_and_multiply(&a, &d, &ring, |a, b| Z_nZ.mul(a, b), |a, b| Z_nZ.mul_ref(a, b), Z_nZ.one());
         let mut miller_rabin_condition = Z_nZ.is_one(&current);
         for _r in 0..s {
             miller_rabin_condition |= Z_nZ.is_neg_one(&current);
@@ -84,7 +82,7 @@ pub fn calc_factor(el: &BigInt) -> Option<BigInt> {
         }
         return None;
     } else {
-        if miller_rabin(&n, IS_PRIME_ERROR_BOUND) {
+        if miller_rabin(&BigInt::RING, &n, IS_PRIME_ERROR_BOUND) {
             return None;
         } else {
             for i in 2..BigInt::RING.abs_log2_floor(&n) {

@@ -219,8 +219,8 @@ use super::super::poly::*;
 #[allow(non_snake_case)]
 #[test]
 fn test_no_embedding() {
-    let R1 = Zn::new(BigInt::from(5));
-    let R2 = Zn::new(BigInt::from(7));
+    let R1 = Zn::new(BigInt::RING, BigInt::from(5));
+    let R2 = Zn::new(BigInt::RING, BigInt::from(7));
     let S1 = ExtensionWrapper::new(R1.clone(), R1.clone(), embedding(&R1, &R1));
     let S2 = ExtensionWrapper::new(R2.clone(), R2.clone(), embedding(&R1, &R1));
     assert!(S1.has_embedding(&S1).can_use());

@@ -3,7 +3,7 @@ use super::super::embedding::*;
 use super::super::primitive::*;
 use super::super::ring_property::*;
 
-use super::super::primes;
+use super::primes;
 use super::super::integer::*;
 
 use std::cmp::Ordering;
@@ -564,69 +564,6 @@ impl BigInt {
         );
     }
 
-    ///
-    /// Generates a uniformly random number from the range 0 to end_exclusive, using
-    /// entropy from the given rng.
-    /// 
-    /// The distribution may not be perfectly uniform, but within 
-    /// l1-statistical distance 2^(-statistical_distance_bound) of a true 
-    /// uniformly random distribution
-    /// 
-    pub fn get_uniformly_random_oorandom(
-        rng: &mut oorandom::Rand32,
-        end_exclusive: &BigInt,
-        statistical_distance_bound: usize
-    ) -> BigInt {
-        Self::get_uniformly_random(|| rng.rand_u32(), end_exclusive, statistical_distance_bound)
-    }
-
-    ///
-    /// Generates a uniformly random number from the range 0 to end_exclusive, using
-    /// entropy from the given rng.
-    /// 
-    /// The distribution may not be perfectly uniform, but within 
-    /// l1-statistical distance 2^(-statistical_distance_bound) of a true 
-    /// uniformly random distribution
-    /// 
-    pub fn get_uniformly_random<G>(
-        mut rng: G, 
-        end_exclusive: &BigInt, 
-        statistical_distance_bound: usize
-    ) -> BigInt 
-        where G: FnMut() -> u32
-    {
-        assert!(*end_exclusive > 0);
-        let k = statistical_distance_bound + BigInt::RING.abs_log2_floor(&end_exclusive) as usize;
-        let random_blocks = k / Self::BLOCK_BITS + 1;
-        // generate a uniform random number in the range from 0 to 2^k 
-        // and take it modulo end_exclusive the number of bigints 
-        // between 0 and 2^k that give a fixed x differs at most by one. 
-        // Therefore the probability difference to get any to distinct 
-        // numbers is at most 1/2^k. The l1-distance
-        // between the distributions is therefore bounded 
-        // by n/2^k <= 2^(-statistical_distance_bound)
-        let mut result = BigInt {
-            data: (0..random_blocks).map(|_| ((rng() as u64) << u32::BITS) | (rng() as u64)).collect(),
-            negative: false
-        };
-        result.abs_division(&end_exclusive);
-        return result;
-    }
-
-    pub fn highest_dividing_power_of_two(&self) -> usize {
-        if let Some(d) = self.highest_set_block() {
-            for i in 0..=d {
-                if self.data[i] != 0 {
-                    return self.data[i].trailing_zeros() as usize + 
-                        i * Self::BLOCK_BITS;
-                }
-            }
-            unreachable!()
-        } else {
-            return 0;
-        }
-    }
-
     pub fn to_int(&self) -> Result<i64, ()> {
         if let Some(d) = self.highest_set_block() {
             if d == 0 && self.data[0] <= i64::MAX as u64 && self.negative {
@@ -1080,7 +1017,7 @@ impl UfdInfoRing for BigIntRing {
     }
 
     fn is_prime(&self, el: &Self::El) -> bool {
-        primes::miller_rabin(el, 10)
+        primes::miller_rabin(&BigInt::RING, el, 10)
     }
 
     fn calc_factor(&self, el: &Self::El) -> Option<Self::El> {
@@ -1146,7 +1083,7 @@ impl IntegerRing for BigIntRing {
         let add_blocks = power as usize / BigInt::BLOCK_BITS;
         let shift_amount = power as usize % BigInt::BLOCK_BITS;
         let keep_bits = BigInt::BLOCK_BITS - shift_amount;
-        let keep_mask = ((1 << keep_bits) - 1) << shift_amount;
+        let keep_mask = (1u64.checked_shl(keep_bits as u32).unwrap_or(0).wrapping_sub(1)) << shift_amount;
         let carry_mask = (1 << shift_amount) - 1;
         let mut carry = 0;
         for i in 0..el.data.len() {
@@ -1199,6 +1136,44 @@ impl IntegerRing for BigIntRing {
             }
         } else {
             false
+        }
+    }
+
+    fn get_uniformly_random<G>(
+        &self,
+        mut rng: G, 
+        end_exclusive: &BigInt
+    ) -> BigInt 
+        where G: FnMut() -> u32
+    {
+        assert!(*end_exclusive > 0);
+        let k = BigInt::RING.abs_log2_floor(&end_exclusive) as usize + 1;
+        let mut rng64 = || ((rng() as u64) << u32::BITS) | (rng() as u64);
+        loop {
+            let random_most_significant_bits = rng64() >> (BigInt::BLOCK_BITS - (k % BigInt::BLOCK_BITS));
+            let data = (0..k/BigInt::BLOCK_BITS).map(|_| rng64())
+                .chain(std::iter::once(random_most_significant_bits));
+            let result = BigInt {
+                data: data.collect(),
+                negative: false
+            };
+            if self.cmp(&result, end_exclusive) == Ordering::Less {
+                return result;
+            }
+        }
+    }
+
+    fn highest_dividing_power_of_two(&self, n: &BigInt) -> usize {
+        if let Some(d) = n.highest_set_block() {
+            for i in 0..=d {
+                if n.data[i] != 0 {
+                    return n.data[i].trailing_zeros() as usize + 
+                        i * BigInt::BLOCK_BITS;
+                }
+            }
+            unreachable!()
+        } else {
+            return 0;
         }
     }
 }
@@ -1358,16 +1333,6 @@ fn test_shift_right() {
 }
 
 #[test]
-fn test_shift_left() {
-    let x = BigInt::from_str_radix("9843a756781b34567f81394", 16).unwrap();
-    let z = BigInt::RING.mul_pow_2(x.clone(), 24);
-    assert_eq!(x.clone() * BigInt::power_of_two(24), z);
-
-    let x = BigInt::from_str_radix("-9843a756781b34567f81394", 16).unwrap();
-    let z = BigInt::RING.mul_pow_2(x.clone(), 24);
-    assert_eq!(x.clone() * BigInt::power_of_two(24), z);
-}
-#[test]
 fn test_assumptions_integer_division() {
     assert_eq!(-1, -3 / 2);
     assert_eq!(-1, 3 / -2);
@@ -1514,4 +1479,21 @@ fn test_cmp() {
     assert_eq!(false, BigInt::from(2) < BigInt::from(2));
     assert_eq!(false, BigInt::from(3) < BigInt::from(2));
     assert_eq!(true, BigInt::from(-1) > BigInt::from(-2));
+}
+
+#[test]
+fn test_mul_pow_2() {
+    assert_eq!(BigInt::from(2), BigInt::RING.mul_pow_2(BigInt::from(2), 0));
+    assert_eq!(BigInt::from(4829192 * 8), BigInt::RING.mul_pow_2(BigInt::from(4829192), 3));
+    assert_eq!(BigInt::from(4829192) * BigInt::power_of_two(64), BigInt::RING.mul_pow_2(BigInt::from(4829192), 64));
+}
+
+#[test]
+fn test_get_uniformly_random() {
+    let end_exclusive = BigInt::from(3);
+    let mut rng = Rand32::new(0);
+    let data: Vec<BigInt> = (0..100).map(|_| BigInt::RING.get_uniformly_random(|| rng.rand_u32(), &end_exclusive)).collect();
+    assert!(data.iter().any(|x| *x == 0));
+    assert!(data.iter().any(|x| *x == 1));
+    assert!(data.iter().any(|x| *x == 2));
 }

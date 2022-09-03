@@ -549,8 +549,8 @@ fn test_poly_degree() {
 }
 
 #[test]
-fn test_factor() {
-    let coeff_ring = Zn::new(BigInt::from(3));
+fn test_factor_zn() {
+    let coeff_ring = Zn::new(BigInt::RING, BigInt::from(3));
     let ring = WrappingRing::new(PolyRingImpl::adjoint(&coeff_ring, "X"));
     let x = ring.unknown();
 
@@ -590,7 +590,7 @@ fn test_factor_fq() {
 
 #[test]
 fn test_is_prime() {
-    let coeff_ring = Zn::new(BigInt::from(3));
+    let coeff_ring = Zn::new(BigInt::RING, BigInt::from(3));
     let ring = WrappingRing::new(PolyRingImpl::adjoint(&coeff_ring, "X"));
     let x = ring.unknown();
 

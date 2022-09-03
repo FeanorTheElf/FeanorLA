@@ -38,7 +38,6 @@ pub mod p_adic;
 pub mod fraction_field;
 pub mod poly;
 pub mod ring_extension;
-pub mod primes;
 pub mod elliptic_curve;
 pub mod finite_field_sqrt;
 pub mod discrete_log;

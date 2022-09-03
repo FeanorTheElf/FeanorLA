@@ -46,9 +46,7 @@ impl<R, M> MatrixDeterminant<M> for R
             let field = FieldOfFractions::new(self);
             let incl = embedding(self, field);
             let work_matrix = Matrix::from_fn(matrix.row_count(), matrix.col_count(), |i, j| incl(matrix.at(i, j).clone()));
-            println!("{}", work_matrix.display(&field));
             let result = compute_det(&field, work_matrix);
-            println!("{}", field.display(&result));
             field.in_base_ring(&result).unwrap()
         } else {
             unimplemented!()

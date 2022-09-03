@@ -1,4 +1,5 @@
 pub mod bigint;
+pub mod primes;
 
 pub use bigint::*;
 use super::ring::*;
@@ -93,8 +94,8 @@ pub trait IntegerRing: OrderedRing + EuclideanInfoRing + CanonicalIsomorphismInf
     fn bisect<F>(&self, mut f: F, mut start: Self::El, mut end: Self::El) -> Self::El
         where F: FnMut(&Self::El) -> Self::El
     {
-        assert!(self.cmp(&f(&start), &self.zero()) != Ordering::Greater);
-        assert!(self.cmp(&f(&end), &self.zero()) != Ordering::Less);
+        assert!(!self.is_pos(&f(&start)));
+        assert!(!self.is_neg(&f(&end)));
         if self.is_zero(&f(&end)) {
             return end;
         }
@@ -171,6 +172,72 @@ pub trait IntegerRing: OrderedRing + EuclideanInfoRing + CanonicalIsomorphismInf
                 |x| self.sub_ref_snd(self.pow(x, n as u32), el), 
                 self.from_float_approx(root_approx).unwrap_or(self.zero())
             );
+        }
+    }
+
+    ///
+    /// Generates a uniformly random number from the range 0 to end_exclusive, using
+    /// entropy from the given rng.
+    /// 
+    /// Uses rejection sampling.
+    /// 
+    fn get_uniformly_random_oorandom(
+        &self,
+        rng: &mut oorandom::Rand32,
+        end_exclusive: &El<Self>
+    ) -> El<Self> {
+        self.get_uniformly_random(|| rng.rand_u32(), end_exclusive)
+    }
+
+    ///
+    /// Generates a uniformly random number from the range 0 to end_exclusive, using
+    /// entropy from the given rng.
+    /// 
+    /// Uses rejection sampling.
+    /// 
+    fn get_uniformly_random<G>(
+        &self,
+        rng: G, 
+        end_exclusive: &El<Self>
+    ) -> El<Self> 
+        where G: FnMut() -> u32
+    {
+        integer_ring_get_uniformly_random(self, rng, end_exclusive)
+    }
+
+    fn highest_dividing_power_of_two(&self, el: &El<Self>) -> usize {
+        i64::RING.bisect(
+            |k| {
+                if self.is_eq(el, &self.mul_pow_2(self.euclidean_div_pow_2(el.clone(), *k as u64), *k as u64)) { -1 } else { 1 }
+            },
+            0,
+            self.abs_log2_floor(el) as i64 + 1
+        ) as usize
+    }
+}
+
+fn integer_ring_get_uniformly_random<G, I>(
+    ring: &I,
+    mut rng: G, 
+    end_exclusive: &El<I>
+) -> El<I> 
+    where I: IntegerRing, G: FnMut() -> u32
+{
+    assert!(ring.cmp(end_exclusive, &ring.zero()) == std::cmp::Ordering::Greater);
+    let block_size = u32::BITS as u64;
+    let k = ring.abs_log2_floor(&end_exclusive) + 1;
+    loop {
+        let mut i = 0;
+        let mut current = ring.zero();
+        while i + block_size < k {
+            i += block_size;
+            current = ring.add(ring.mul_pow_2(current, block_size), ring.from_z(rng() as i64));
+        }
+        let random_most_significant_bits = (rng() & ((1 << k % block_size) - 1)) as i64;
+        current = ring.add(current, ring.mul_pow_2(ring.from_z(random_most_significant_bits), k - (k % block_size)));
+        debug_assert_eq!(i + k % block_size, k);
+        if ring.cmp(&current, end_exclusive) == std::cmp::Ordering::Less {
+            return current;
         }
     }
 }
@@ -279,4 +346,19 @@ fn test_range_iter() {
         Vec::<BigInt>::new(),
         range_iter(i(1)..i(-3), BigInt::RING).collect::<Vec<_>>()
     );
+}
+
+#[cfg(test)]
+use oorandom::Rand32;
+
+#[test]
+fn test_integer_ring_get_uniformly_random() {
+    let ring = BigInt::RING;
+    let end_exclusive = BigInt::from(18897856102); // more than 34 bits
+    let mut rng = Rand32::new(0);
+    let data: Vec<BigInt> = (0..1000).map(|i| integer_ring_get_uniformly_random(&ring, || rng.rand_u32(), &end_exclusive)).collect();
+    let limit = BigInt::power_of_two(34);
+    assert!(data.iter().any(|x| x > &limit)); // failure probability is less than 10^-37
+    let bit_average = data.iter().map(|x| if ring.abs_is_bit_set(x, 33) { 0. } else { 1. }).sum::<f64>() / 1000.;
+    assert!(0.3 < bit_average && bit_average < 0.7);  // failure probability is less than 10^-34
 }
