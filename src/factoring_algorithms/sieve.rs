@@ -5,7 +5,11 @@ use super::super::integer::*;
 use super::super::primitive::*;
 use super::super::fq::zn_small::*;
 use super::super::eea::*;
+use super::super::wrapper::*;
 use super::gen_primes;
+
+type Int = RingElWrapper<BigIntRing>;
+const INT_RING: WrappingRing<BigIntRing> = BigInt::WRAPPED_RING; 
 
 fn next_around_zero(x: i64) -> i64 {
     if x < 0 {
@@ -32,30 +36,30 @@ type RelVec = Vector<VectorOwned<i32>, i32>;
 /// O(b) divisions of integers of similar size as k, where b is the length
 /// of the factor base.
 /// 
-fn check_smooth(mut k: BigInt, factor_base: &Vec<i64>) -> Option<RelVec> {
+fn check_smooth(mut k: Int, factor_base: &Vec<i64>) -> Option<RelVec> {
     let mut result = Vector::zero(factor_base.len()).into_owned();
     assert!(factor_base[0] == -1);
     if k < 0 {
         *result.at_mut(0) = 1;
         k = -k;
     }
-    let mut tmp = BigInt::ZERO;
+    let mut tmp = INT_RING.zero();
     for i in 1..factor_base.len() {
         let mut dividing_power = 0;
-        tmp.assign(&k);
+        tmp.val_mut().assign(k.val());
         loop {
-            let (quo, rem) = tmp.euclidean_div_rem_small(factor_base[i] as i64);
-            tmp = quo;
-            if rem != 0 {
-                break;
-            } else {
+            let quo = INT_RING.quotient(&tmp, &INT_RING.from_z(factor_base[i] as i64));
+            if let Some(quo) = quo {
                 dividing_power += 1;
-                k.assign(&tmp);
+                k.val_mut().assign(quo.val());
+                tmp = quo;
+            } else {
+                break;
             }
         }
         *result.at_mut(i) = dividing_power;
     }
-    if k == BigInt::RING.one() {
+    if k.is_one() {
         return Some(result);
     } else {
         return None;
@@ -69,15 +73,15 @@ fn check_smooth(mut k: BigInt, factor_base: &Vec<i64>) -> Option<RelVec> {
 /// Found relations are inserted into the given vector, and the function
 /// terminates after count relations have been found.
 /// 
-fn collect_relations<I>(
-    m: &BigInt, 
-    n: &BigInt, 
+fn collect_relations<J>(
+    m: &Int, 
+    n: &Int, 
     factor_base: &Vec<i64>, 
-    relations: &mut Vec<(BigInt, RelVec)>, 
+    relations: &mut Vec<(Int, RelVec)>, 
     count: usize, 
-    delta_it: &mut I
+    delta_it: &mut J
 )
-    where I: Iterator<Item = i64>
+    where J: Iterator<Item = i64>
 {
     assert!(relations.len() < count);
     let mut k = m.clone();
@@ -89,7 +93,7 @@ fn collect_relations<I>(
         // in absolute value.
         // This maximizes the chances to get a B-smooth square
         let d = delta_it.next().unwrap();
-        k.assign(&m);
+        k.val_mut().assign(m.val());
         k += d;
         let mut square = k.clone();
         square = square * k.clone();
@@ -119,13 +123,14 @@ type F2 = ZnEl<2>;
 /// yields a factor. If it does, the factor is returned.
 /// 
 fn check_congruent_square<V>(
-    n: &BigInt, factor_base: &Vec<i64>, 
-    relations: &Vec<(BigInt, RelVec)>, 
+    n: &Int, 
+    factor_base: &Vec<i64>, 
+    relations: &Vec<(Int, RelVec)>, 
     sol: Vector<V, F2>
-) -> Result<BigInt, ()>
+) -> Result<Int, ()>
     where V: VectorView<ZnEl<2>>
 {
-    let mut x = BigInt::RING.one();
+    let mut x = INT_RING.one();
     let mut y_powers = Vector::zero(factor_base.len()).into_owned();
     for (i, rel) in relations.iter().enumerate() {
         if *sol.at(i) == F2::ONE {
@@ -134,15 +139,15 @@ fn check_congruent_square<V>(
         }
     }
 
-    let mut y = BigInt::RING.one();
+    let mut y = INT_RING.one();
     for i in 0..factor_base.len() {
         let power = *y_powers.at(i);
         debug_assert!(power % 2 == 0);
-        y = y * BigInt::from(factor_base[i]).pow(power as u32 / 2);
+        y = y * INT_RING.from_z(factor_base[i]).pow(power as u32 / 2);
     }
 
-    let factor = gcd(&BigInt::RING, n.clone(), x.clone() - y.clone());
-    if factor != BigInt::RING.one() && factor != *n {
+    let factor = gcd(&INT_RING, n.clone(), x.clone() - y.clone());
+    if factor != INT_RING.one() && factor != *n {
         return Ok(factor);
     } else {
         return Err(());
@@ -158,9 +163,9 @@ fn check_congruent_square<V>(
 /// 
 /// This is only a proof-of-concept implementation, and very slow in practice.
 /// 
-pub fn quadratic_sieve(n: &BigInt) -> BigInt {
+pub fn quadratic_sieve(n: &Int) -> Int {
     assert!(*n >= 2);
-    let n_float = BigInt::RING.to_float_approx(n);
+    let n_float = n.to_float_approx();
     
     // we choose a factor base that consists of all primes <= B, where this
     // is B. The concrete value L_n(1/2, 1/2) is asymptotically optimal for 
@@ -201,8 +206,8 @@ pub fn quadratic_sieve(n: &BigInt) -> BigInt {
     // a given square is B-smooth is better the smaller it is.
     // We get the smallest squares modulo n by considering integers k near
     // sqrt(n) and then looking at k^2 - n
-    let m = BigInt::RING.from_float_approx(n_float.sqrt()).unwrap();
-    let mut relations: Vec<(BigInt, RelVec)> = Vec::with_capacity(
+    let m = n.ring().from_float_approx(n_float.sqrt()).unwrap();
+    let mut relations: Vec<(Int, RelVec)> = Vec::with_capacity(
         factor_base.len() + 1
     );
     let mut delta_it = around_zero_iter();
@@ -239,9 +244,9 @@ pub fn quadratic_sieve(n: &BigInt) -> BigInt {
 
 #[test]
 fn test_quadratic_sieve() {
-    let f5 = BigInt::power_of_two(32) + 1;
+    let f5 = INT_RING.from(BigInt::power_of_two(32)) + 1;
     let factor = quadratic_sieve(&f5);
     assert!(factor != f5);
     assert!(factor != 1);
-    assert!(BigInt::RING.is_divisible_by(&f5, &factor));
+    assert!(factor.divides(&f5));
 }

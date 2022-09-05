@@ -35,7 +35,7 @@ pub fn sqrt<F: FiniteRing + HashableElRing>(x: El<F>, field: F) -> Option<El<F>>
     field.hash(&mut hasher, &x);
     let mut rng = oorandom::Rand32::new(hasher.finish());
 
-    let n = BigInt::RING.quotient(&(field.size() - 1), &BigInt::from(2)).unwrap();
+    let n = BigInt::RING.quotient(&BigInt::RING.sub(field.size(), BigInt::RING.one()), &BigInt::from(2)).unwrap();
     if field.is_neg_one(&field.pow_big(&x, &n)) {
         return None;
     }

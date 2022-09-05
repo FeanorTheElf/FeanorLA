@@ -108,6 +108,10 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
         *lhs = self.add_ref(value, rhs);
     }
 
+    fn add_assign_int(&self, lhs: &mut Self::El, rhs: i64) {
+        self.add_assign(lhs, self.from_z(rhs));
+    }
+
     fn sum<I>(&self, data: I) -> Self::El
         where I: Iterator<Item = Self::El>
     {
@@ -119,6 +123,10 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     fn mul_assign(&self, lhs: &mut Self::El, rhs: Self::El) { 
         let value = std::mem::replace(lhs, self.unspecified_element());
         *lhs = self.mul(value, rhs);
+    }
+
+    fn mul_assign_int(&self, lhs: &mut Self::El, rhs: i64) {
+        self.mul_assign(lhs, self.from_z(rhs));
     }
 
     fn product<I>(&self, data: I) -> Self::El 

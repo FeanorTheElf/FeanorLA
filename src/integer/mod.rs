@@ -1,5 +1,6 @@
 pub mod bigint;
 pub mod primes;
+pub mod roots;
 
 pub use bigint::*;
 use super::ring::*;
@@ -19,7 +20,8 @@ pub trait IntegerRing: OrderedRing + EuclideanInfoRing + CanonicalIsomorphismInf
 
     fn abs_log2_floor(&self, el: &El<Self>) -> u64 {
         assert!(!self.is_zero(el));
-        i64::RING.find_zero_floor(
+        roots::find_zero_floor(
+            &i64::RING,
             |power: &i64| if *power >= 0 && self.is_zero(&self.euclidean_div_pow_2(el.clone(), *power as u64)) {
                 1
             } else {
@@ -32,43 +34,6 @@ pub trait IntegerRing: OrderedRing + EuclideanInfoRing + CanonicalIsomorphismInf
     fn abs_is_bit_set(&self, el: &El<Self>, bit: u64) -> bool {
         !self.is_zero(&self.euclidean_rem(self.euclidean_div_pow_2(el.clone(), bit), &self.from_z(2)))
     }
-    
-    ///
-    /// Given an increasing, continuous function f: R -> R that is negative for some x1 and 
-    /// positive for some x2, finds the floor of some root of f (if f is strictly increasing, 
-    /// this is unique).
-    /// 
-    /// # General case
-    /// 
-    /// This function also works in a slightly more general context. Assume that
-    /// f(x) is negative for all sufficiently small x and positive for all suffiently 
-    /// large x. Then this function will return the floor of some root of f. Note that
-    /// this might not be a root of f, even if f has integral roots.
-    /// 
-    /// # Complexity
-    /// 
-    /// This function runs in O((T + log(d)) * log(d)) where d is the error made in 
-    /// approx (i.e. the difference between the found root x and approx) and T is the
-    /// time required for computing f on a value between x - d and x + d.
-    /// 
-    fn find_zero_floor<F>(&self, mut f: F, approx: Self::El) -> Self::El
-        where F: FnMut(&Self::El) -> Self::El
-    {
-        let mut begin = approx.clone();
-        let mut step = self.one();
-        let two = self.from_z(2);
-        while self.cmp(&f(&begin), &self.zero()) == Ordering::Greater {
-            begin = self.sub_ref_snd(begin, &step);
-            self.mul_assign(&mut step, two.clone());
-        }
-        let mut end = approx;
-        step = self.one();
-        while self.cmp(&f(&end), &self.zero()) == Ordering::Less {
-            end = self.add_ref(end, &step);
-            self.mul_assign(&mut step, two.clone());
-        }
-        return self.bisect(f, begin, end);
-    }
 
     fn floor_div(&self, a: Self::El, b: &Self::El) -> Self::El {
         let (q, r) = self.euclidean_div_rem(a.clone(), b);
@@ -76,46 +41,6 @@ pub trait IntegerRing: OrderedRing + EuclideanInfoRing + CanonicalIsomorphismInf
             self.sub(q, self.one())
         } else {
             q
-        }
-    }
-
-    ///
-    /// Given a continuous function f: R -> R that is negative on `begin` and 
-    /// positive on `end`, finds the floor of some root of f. Note that even
-    /// if f has integral roots, the returned value does not have to be a root
-    /// of f.
-    /// 
-    /// # Complexity
-    /// 
-    /// This function runs in O((T + log(d)) * log(d)) where d is the difference between
-    /// begin and end and T is the time required for computing f on a value between 
-    /// begin and end. 
-    /// 
-    fn bisect<F>(&self, mut f: F, mut start: Self::El, mut end: Self::El) -> Self::El
-        where F: FnMut(&Self::El) -> Self::El
-    {
-        assert!(!self.is_pos(&f(&start)));
-        assert!(!self.is_neg(&f(&end)));
-        if self.is_zero(&f(&end)) {
-            return end;
-        }
-        let two = self.from_z(2);
-        loop {
-            let mid = self.floor_div(self.add_ref(start.clone(), &end), &two);
-            if self.is_eq(&mid, &start) {
-                return start;
-            }
-            match self.cmp(&f(&mid), &self.zero()) {
-                Ordering::Less => {
-                    start = mid;
-                },
-                Ordering::Greater => {
-                    end = mid;
-                },
-                _ => {
-                    return mid;
-                }
-            }
         }
     }
 
@@ -140,9 +65,7 @@ pub trait IntegerRing: OrderedRing + EuclideanInfoRing + CanonicalIsomorphismInf
         }
     }
 
-    fn abs(&self, el: Self::El) -> Self::El
-        where Self: OrderedRing
-    {
+    fn abs(&self, el: Self::El) -> Self::El {
         if self.cmp(&el, &self.zero()) == Ordering::Less {
             self.neg(el)
         } else {
@@ -163,12 +86,14 @@ pub trait IntegerRing: OrderedRing + EuclideanInfoRing + CanonicalIsomorphismInf
         assert!(n > 0);
         let root_approx = self.to_float_approx(el).powf(1. / n as f64);
         if n % 2 == 0 {
-            return self.find_zero_floor(
+            return roots::find_zero_floor(
+                self,
                 |x| self.sub_ref_snd(self.mul(self.abs(x.clone()), self.pow(x, (n - 1) as u32)), el), 
                 self.from_float_approx(root_approx).unwrap_or(self.zero())
             );
         } else {
-            return self.find_zero_floor(
+            return roots::find_zero_floor(
+                self,
                 |x| self.sub_ref_snd(self.pow(x, n as u32), el), 
                 self.from_float_approx(root_approx).unwrap_or(self.zero())
             );
@@ -206,7 +131,8 @@ pub trait IntegerRing: OrderedRing + EuclideanInfoRing + CanonicalIsomorphismInf
     }
 
     fn highest_dividing_power_of_two(&self, el: &El<Self>) -> usize {
-        i64::RING.bisect(
+        roots::bisect(
+            &i64::RING,
             |k| {
                 if self.is_eq(el, &self.mul_pow_2(self.euclidean_div_pow_2(el.clone(), *k as u64), *k as u64)) { -1 } else { 1 }
             },
@@ -260,6 +186,22 @@ impl<'a, R: IntegerRing> IntegerRing for &'a R {
     fn from_float_approx(&self, el: f64) -> Option<Self::El>  { (**self).from_float_approx(el) }
     fn mul_pow_2(&self, el: El<Self>, power: u64) -> El<Self> { (**self).mul_pow_2(el, power) }
     fn euclidean_div_pow_2(&self, el: El<Self>, power: u64) -> El<Self> { (**self).euclidean_div_pow_2(el, power) }
+    fn abs_log2_floor(&self, el: &El<Self>) -> u64 { (**self).abs_log2_floor(el) }
+    fn abs_is_bit_set(&self, el: &El<Self>, bit: u64) -> bool { (**self).abs_is_bit_set(el, bit) }
+    fn floor_div(&self, a: Self::El, b: &Self::El) -> Self::El { (**self).floor_div(a, b) }
+    fn abs_cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering { (**self).abs_cmp(lhs, rhs) }
+    fn root_floor(&self, el: &Self::El, n: u64) -> Self::El { (**self).root_floor(el, n) }
+    fn get_uniformly_random_oorandom(&self, rng: &mut oorandom::Rand32, end_exclusive: &El<Self>) -> El<Self> { (**self).get_uniformly_random_oorandom(rng, end_exclusive) }
+    fn highest_dividing_power_of_two(&self, el: &El<Self>) -> usize { (**self).highest_dividing_power_of_two(el) }
+    fn abs(&self, el: Self::El) -> Self::El { (**self).abs(el) }
+
+    fn get_uniformly_random<G>(
+        &self,
+        rng: G, 
+        end_exclusive: &El<Self>
+    ) -> El<Self> 
+        where G: FnMut() -> u32
+    { (**self).get_uniformly_random(rng, end_exclusive) }
 }
 
 impl IntegerRing for StaticRing<i64> {
@@ -290,6 +232,65 @@ impl IntegerRing for StaticRing<i64> {
     }
 }
 
+impl<R: IntegerRing> IntegerRing for WrappingRing<R> {
+
+    fn to_float_approx(&self, el: &Self::El) -> f64 { 
+        self.wrapped_ring().to_float_approx(el.val())
+    }
+
+    fn from_float_approx(&self, el: f64) -> Option<Self::El>  { 
+        self.wrapped_ring().from_float_approx(el).map(|x| self.from(x))
+    }
+
+    fn mul_pow_2(&self, el: El<Self>, power: u64) -> El<Self> { 
+        self.from(self.wrapped_ring().mul_pow_2(el.into_val(), power))
+    }
+
+    fn euclidean_div_pow_2(&self, el: El<Self>, power: u64) -> El<Self> { 
+        self.from(self.wrapped_ring().euclidean_div_pow_2(el.into_val(), power))
+    }
+
+    fn abs_log2_floor(&self, el: &El<Self>) -> u64 { 
+        self.wrapped_ring().abs_log2_floor(el.val())
+    }
+
+    fn abs_is_bit_set(&self, el: &El<Self>, bit: u64) -> bool { 
+        self.wrapped_ring().abs_is_bit_set(el.val(), bit)
+    }
+
+    fn abs(&self, el: Self::El) -> Self::El { 
+        self.from(self.wrapped_ring().abs(el.into_val()))
+    }
+
+    fn floor_div(&self, a: Self::El, b: &Self::El) -> Self::El {
+        self.from(self.wrapped_ring().floor_div(a.into_val(), b.val()))
+    }
+
+    fn get_uniformly_random<G>(
+        &self,
+        rng: G, 
+        end_exclusive: &El<Self>
+    ) -> El<Self> 
+        where G: FnMut() -> u32
+    { self.from(self.wrapped_ring().get_uniformly_random(rng, end_exclusive.val())) }
+
+    fn abs_cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering {
+        self.wrapped_ring().abs_cmp(lhs.val(), rhs.val())
+    }
+
+    fn root_floor(&self, el: &Self::El, n: u64) -> Self::El {
+        self.from(self.wrapped_ring().root_floor(el.val(), n))
+    }
+
+    fn get_uniformly_random_oorandom(&self, rng: &mut oorandom::Rand32, end_exclusive: &El<Self>) -> El<Self> { 
+        self.from(self.wrapped_ring().get_uniformly_random_oorandom(rng, end_exclusive.val()))
+    }
+
+    fn highest_dividing_power_of_two(&self, el: &El<Self>) -> usize { 
+        self.wrapped_ring().highest_dividing_power_of_two(el.val())
+    }
+}
+
 impl<R: IntegerRing> RingElWrapper<R> 
 {
     pub fn to_float_approx(&self) -> f64 {
@@ -299,6 +300,10 @@ impl<R: IntegerRing> RingElWrapper<R>
     pub fn root_floor(&self, n: u64) -> Self {
         let result = self.parent_ring().root_floor(self.val(), n);
         return RingElWrapper::new(result, self.parent_ring().clone());
+    }
+
+    pub fn sqrt_floor(&self) -> Self {
+        self.root_floor(2)
     }
 
     pub fn floor_div(self, rhs: &RingElWrapper<R>) -> Self {
@@ -312,21 +317,6 @@ impl<R: IntegerRing> RingElWrapper<R>
         let result = ring.euclidean_div_pow_2(el, exponent);
         return RingElWrapper::new(result, ring);
     }
-}
-
-#[test]
-fn test_find_zero_floor() {
-    let f = |x: &BigInt| BigInt::RING.mul_ref(x, x) - 234867;
-    assert_eq!(BigInt::from(484), BigInt::RING.find_zero_floor(f, BigInt::ZERO));
-
-    let f = |x: &BigInt| x.clone();
-    assert_eq!(BigInt::ZERO, BigInt::RING.find_zero_floor(f, BigInt::ZERO));
-}
-
-#[test]
-fn test_find_zero_floor_i64() {
-    let f = |x: &i64| x.pow(3) - *x + 478;
-    assert_eq!(-8, i64::RING.find_zero_floor(f, 0));
 }
 
 #[test]

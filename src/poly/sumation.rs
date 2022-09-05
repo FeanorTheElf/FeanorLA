@@ -12,7 +12,7 @@ fn rising_power_poly<P>(ring: &P, n: usize) -> El<P>
     return result;
 }
 
-fn sumation_poly<P>(ring: &P, f: El<P>) -> El<P> 
+pub fn sumation_poly<P>(ring: &P, f: El<P>) -> El<P> 
     where P: PolyRing + DivisibilityInfoRing
 {
     assert!(ring.is_divisibility_computable().can_use());

@@ -91,7 +91,7 @@ pub fn calc_factor(el: &BigInt) -> Option<BigInt> {
                     return Some(root);
                 }
             }
-            return Some(factoring_algorithms::sieve::quadratic_sieve(&n));
+            return Some(factoring_algorithms::sieve::quadratic_sieve(&BigInt::WRAPPED_RING.from(n)).into_val());
         }
     }
 }
