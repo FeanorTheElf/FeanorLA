@@ -315,7 +315,7 @@ impl EuclideanEl for i8 {
     }
 
     fn euclidean_deg(&self) -> BigInt {
-        BigInt::from(self.abs() as i64)
+        BigInt::from(self.abs() as i128)
     }
 }
 
@@ -328,7 +328,7 @@ impl EuclideanEl for i16 {
     }
 
     fn euclidean_deg(&self) -> BigInt {
-        BigInt::from(self.abs() as i64)
+        BigInt::from(self.abs() as i128)
     }
 }
 
@@ -341,7 +341,7 @@ impl EuclideanEl for i32 {
     }
 
     fn euclidean_deg(&self) -> BigInt {
-        BigInt::from(self.abs() as i64)
+        BigInt::from(self.abs() as i128)
     }
 }
 
@@ -354,7 +354,7 @@ impl EuclideanEl for i64 {
     }
 
     fn euclidean_deg(&self) -> BigInt {
-        BigInt::from(self.abs() as i64)
+        BigInt::from(self.abs() as i128)
     }
 }
 
@@ -367,9 +367,7 @@ impl EuclideanEl for i128 {
     }
 
     fn euclidean_deg(&self) -> BigInt {
-        let upper_part = BigInt::from((self.abs() >> 64) as i64);
-        let lower_part = BigInt::from((self.abs() & ((1 << 64) - 1)) as i64);
-        return BigInt::RING.add(BigInt::RING.mul(BigInt::power_of_two(64), upper_part), lower_part);
+        return BigInt::from(self.abs());
     }
 }
 
@@ -680,7 +678,7 @@ impl CanonicalEmbeddingInfo<BigIntRing> for StaticRing<i64> {
     }
 
     fn embed(&self, _from: &BigIntRing, el: BigInt) -> Self::El {
-        el.to_int().expect("Overflow when embedding BigInt into i64")
+        el.to_int().expect("Overflow when embedding BigInt into i64") as i64
     }
 }
 
@@ -691,7 +689,7 @@ impl CanonicalIsomorphismInfo<BigIntRing> for StaticRing<i64> {
     }
 
     fn preimage(&self, _from: &BigIntRing, el: i64) -> BigInt {
-        BigInt::from(el)
+        BigInt::from(el as i128)
     }
 }
 
@@ -702,10 +700,10 @@ impl UfdInfoRing for StaticRing<i64> {
     }
     
     fn is_prime(&self, el: &Self::El) -> bool {
-        BigInt::RING.is_prime(&BigInt::from(*el))
+        BigInt::RING.is_prime(&BigInt::from(*el as i128))
     }
 
     fn calc_factor(&self, el: &Self::El) -> Option<Self::El> {
-        BigInt::RING.calc_factor(&BigInt::from(*el)).map(|x| x.to_int().unwrap())
+        BigInt::RING.calc_factor(&BigInt::from(*el as i128)).map(|x| x.to_int().unwrap() as i64)
     }
 }

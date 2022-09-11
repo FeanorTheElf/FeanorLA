@@ -434,7 +434,7 @@ impl<R, V, W> FiniteRing for SimpleRingExtension<R, V, W>
     type IterFn = FiniteRingExtensionIterFn<R, V, W>;
 
     fn size(&self) -> BigInt {
-        self.base_ring().size().pow(self.degree() as u32)
+        BigInt::RING.pow(&self.base_ring().size(), self.degree() as u32)
     }
 
     fn iter_fn(&self) -> Self::IterFn {

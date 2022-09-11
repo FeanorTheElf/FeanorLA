@@ -166,6 +166,6 @@ fn bench_division_poly(b: &mut Bencher) {
     b.iter(|| {
         let (f, _, h) = division_polynomials(&E, n as usize);
         let P = E.random_affine_point(|| rng.rand_u32());
-        assert_eq!(f(P.x().unwrap().clone()) / h(P.x().unwrap().clone()), *E.mul_point(&P, &BigInt::from(n), E.base_field()).x().unwrap());
+        assert_eq!(f(P.x().unwrap().clone()) / h(P.x().unwrap().clone()), *E.mul_point(&P, &BigInt::from(n as i128), E.base_field()).x().unwrap());
     });
 }

@@ -70,14 +70,14 @@ pub fn calc_factor(el: &BigInt) -> Option<BigInt> {
     const QUADRATIC_SIEVE_BOUND: i64 = 1000000000000;
     const IS_PRIME_ERROR_BOUND: usize = 8;
 
-    let n = el.clone().abs();
+    let n = BigInt::RING.abs(el.clone());
     
     if n < QUADRATIC_SIEVE_BOUND {
-        let n_int = n.to_int().unwrap();
+        let n_int = n.to_int().unwrap() as i64;
         let potential_divisors = factoring_algorithms::gen_primes((n_int as f64).sqrt() as i64 + 1);
         for p in potential_divisors {
             if n_int % p == 0 {
-                return Some(BigInt::from(p))
+                return Some(BigInt::from(p as i128))
             }
         }
         return None;
@@ -86,7 +86,7 @@ pub fn calc_factor(el: &BigInt) -> Option<BigInt> {
             return None;
         } else {
             for i in 2..BigInt::RING.abs_log2_floor(&n) {
-                if BigInt::RING.root_floor(&n, i).pow(i as u32) == n {
+                if BigInt::RING.pow(&BigInt::RING.root_floor(&n, i), i as u32) == n {
                     let root = BigInt::RING.root_floor(&n, i);
                     return Some(root);
                 }

@@ -1,6 +1,7 @@
 pub mod bigint;
 pub mod primes;
 pub mod roots;
+pub mod bigint_soo;
 
 pub use bigint::*;
 use super::prelude::*;
@@ -15,6 +16,10 @@ pub trait IntegerRing: OrderedRing + EuclideanInfoRing + CanonicalIsomorphismInf
     fn from_float_approx(&self, el: f64) -> Option<Self::El>;
     fn mul_pow_2(&self, el: El<Self>, power: u64) -> El<Self>;
     fn euclidean_div_pow_2(&self, el: El<Self>, power: u64) -> El<Self>;
+
+    fn is_odd(&self, el: &Self::El) -> bool {
+        !self.is_eq(&self.mul_pow_2(self.euclidean_div_pow_2(el.clone(), 1), 1), el)
+    }
 
     fn abs_log2_floor(&self, el: &El<Self>) -> u64 {
         assert!(!self.is_zero(el));
@@ -194,6 +199,7 @@ impl<'a, R> IntegerRing for R
     fn get_uniformly_random_oorandom(&self, rng: &mut oorandom::Rand32, end_exclusive: &El<Self>) -> El<Self> { self.decorated_ring().get_uniformly_random_oorandom(rng, end_exclusive) }
     fn highest_dividing_power_of_two(&self, el: &El<Self>) -> usize { self.decorated_ring().highest_dividing_power_of_two(el) }
     fn abs(&self, el: Self::El) -> Self::El { self.decorated_ring().abs(el) }
+    fn is_odd(&self, el: &Self::El) -> bool { self.decorated_ring().is_odd(el) }
 
     fn get_uniformly_random<G>(
         &self,
@@ -321,7 +327,7 @@ impl<R: IntegerRing> RingElWrapper<R>
 
 #[test]
 fn test_root_floor() {
-    let n = BigInt::from(7681).pow(32);
+    let n = BigInt::RING.pow(&BigInt::from(7681), 32);
     assert_eq!(BigInt::from(7681), BigInt::RING.root_floor(&n, 32));
 }
 
@@ -347,8 +353,8 @@ fn test_integer_ring_get_uniformly_random() {
     let end_exclusive = BigInt::from(18897856102); // more than 34 bits
     let mut rng = Rand32::new(0);
     let data: Vec<BigInt> = (0..1000).map(|_| integer_ring_get_uniformly_random(&ring, || rng.rand_u32(), &end_exclusive)).collect();
-    let limit = BigInt::power_of_two(34);
-    assert!(data.iter().any(|x| x > &limit)); // failure probability is less than 10^-37
+    let limit = BigInt::RING.mul_pow_2(BigInt::RING.one(), 34);
+    assert!(data.iter().any(|x| BigInt::RING.is_geq(x, &limit))); // failure probability is less than 10^-37
     let bit_average = data.iter().map(|x| if ring.abs_is_bit_set(x, 33) { 0. } else { 1. }).sum::<f64>() / 1000.;
     assert!(0.3 < bit_average && bit_average < 0.7);  // failure probability is less than 10^-34
 }

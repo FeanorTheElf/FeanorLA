@@ -18,45 +18,45 @@ pub trait RingDecorator: Clone + std::fmt::Debug {
 impl<R: RingDecorator> RingBase for R {
     type El = El<R::DecoratedRing>;
 
-    fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { self.decorated_ring().add_ref(lhs, rhs) }
-    fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El { self.decorated_ring().mul_ref(lhs, rhs) }
-    fn add_assign(&self, lhs: &mut Self::El, rhs: Self::El) { self.decorated_ring().add_assign(lhs, rhs) }
-    fn add_assign_ref(&self, lhs: &mut Self::El, rhs: &Self::El) { self.decorated_ring().add_assign_ref(lhs, rhs) }
-    fn mul_assign(&self, lhs: &mut Self::El, rhs: Self::El) { self.decorated_ring().mul_assign(lhs, rhs) }
-    fn neg(&self, val: Self::El) -> Self::El { self.decorated_ring().neg(val) }
-    fn zero(&self) -> Self::El { self.decorated_ring().zero() }
-    fn one(&self) -> Self::El { self.decorated_ring().one() }
-    fn is_eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool { self.decorated_ring().is_eq(lhs, rhs) }
-    fn unspecified_element(&self) -> Self::El { self.decorated_ring().unspecified_element() }
-    fn sub_ref_fst(&self, lhs: &Self::El, rhs: Self::El) -> Self::El { self.decorated_ring().sub_ref_fst(lhs, rhs) }
-    fn sub_ref_snd(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { self.decorated_ring().sub_ref_snd(lhs, rhs) }
-    fn add(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.decorated_ring().add(lhs, rhs) }
-    fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.decorated_ring().mul(lhs, rhs) }
-    fn sub(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.decorated_ring().sub(lhs, rhs) }
-    fn pow(&self, basis: &Self::El, exp: u32) -> Self::El { self.decorated_ring().pow(basis, exp) }
-    fn pow_big(&self, basis: &Self::El, exp: &BigInt) -> Self::El { self.decorated_ring().pow_big(basis, exp) }
-    fn from_z(&self, x: i64) -> Self::El { self.decorated_ring().from_z(x) }
-    fn from_z_big(&self, x: &BigInt) -> Self::El { self.decorated_ring().from_z_big(x) }
-    fn is_zero(&self, val: &Self::El) -> bool { self.decorated_ring().is_zero(val) }
-    fn is_one(&self, val: &Self::El) -> bool { self.decorated_ring().is_one(val) }
-    fn is_neg_one(&self, val: &Self::El) -> bool { self.decorated_ring().is_neg_one(val) }
-    fn is_integral(&self) -> RingPropValue { self.decorated_ring().is_integral() }
-    fn characteristic(&self) -> BigInt { self.decorated_ring().characteristic() }
-    fn is_field(&self) -> RingPropValue { self.decorated_ring().is_field() }
-    fn is_noetherian(&self) -> bool { self.decorated_ring().is_noetherian() }
-    fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { self.decorated_ring().div(lhs, rhs) }
-    fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result { self.decorated_ring().format(el, f, in_prod) }
-    fn format_in_brackets(&self, el: &Self::El, f: &mut std::fmt::Formatter) -> std::fmt::Result { self.decorated_ring().format_in_brackets(el, f) }
-    fn add_assign_int(&self, lhs: &mut Self::El, rhs: i64) { self.decorated_ring().add_assign_int(lhs, rhs) }
-    fn mul_assign_int(&self, lhs: &mut Self::El, rhs: i64) { self.decorated_ring().mul_assign_int(lhs, rhs) }
+    default fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { self.decorated_ring().add_ref(lhs, rhs) }
+    default fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El { self.decorated_ring().mul_ref(lhs, rhs) }
+    default fn add_assign(&self, lhs: &mut Self::El, rhs: Self::El) { self.decorated_ring().add_assign(lhs, rhs) }
+    default fn add_assign_ref(&self, lhs: &mut Self::El, rhs: &Self::El) { self.decorated_ring().add_assign_ref(lhs, rhs) }
+    default fn mul_assign(&self, lhs: &mut Self::El, rhs: Self::El) { self.decorated_ring().mul_assign(lhs, rhs) }
+    default fn neg(&self, val: Self::El) -> Self::El { self.decorated_ring().neg(val) }
+    default fn zero(&self) -> Self::El { self.decorated_ring().zero() }
+    default fn one(&self) -> Self::El { self.decorated_ring().one() }
+    default fn is_eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool { self.decorated_ring().is_eq(lhs, rhs) }
+    default fn unspecified_element(&self) -> Self::El { self.decorated_ring().unspecified_element() }
+    default fn sub_ref_fst(&self, lhs: &Self::El, rhs: Self::El) -> Self::El { self.decorated_ring().sub_ref_fst(lhs, rhs) }
+    default fn sub_ref_snd(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { self.decorated_ring().sub_ref_snd(lhs, rhs) }
+    default fn add(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.decorated_ring().add(lhs, rhs) }
+    default fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.decorated_ring().mul(lhs, rhs) }
+    default fn sub(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.decorated_ring().sub(lhs, rhs) }
+    default fn pow(&self, basis: &Self::El, exp: u32) -> Self::El { self.decorated_ring().pow(basis, exp) }
+    default fn pow_big(&self, basis: &Self::El, exp: &BigInt) -> Self::El { self.decorated_ring().pow_big(basis, exp) }
+    default fn from_z(&self, x: i64) -> Self::El { self.decorated_ring().from_z(x) }
+    default fn from_z_big(&self, x: &BigInt) -> Self::El { self.decorated_ring().from_z_big(x) }
+    default fn is_zero(&self, val: &Self::El) -> bool { self.decorated_ring().is_zero(val) }
+    default fn is_one(&self, val: &Self::El) -> bool { self.decorated_ring().is_one(val) }
+    default fn is_neg_one(&self, val: &Self::El) -> bool { self.decorated_ring().is_neg_one(val) }
+    default fn is_integral(&self) -> RingPropValue { self.decorated_ring().is_integral() }
+    default fn characteristic(&self) -> BigInt { self.decorated_ring().characteristic() }
+    default fn is_field(&self) -> RingPropValue { self.decorated_ring().is_field() }
+    default fn is_noetherian(&self) -> bool { self.decorated_ring().is_noetherian() }
+    default fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { self.decorated_ring().div(lhs, rhs) }
+    default fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result { self.decorated_ring().format(el, f, in_prod) }
+    default fn format_in_brackets(&self, el: &Self::El, f: &mut std::fmt::Formatter) -> std::fmt::Result { self.decorated_ring().format_in_brackets(el, f) }
+    default fn add_assign_int(&self, lhs: &mut Self::El, rhs: i64) { self.decorated_ring().add_assign_int(lhs, rhs) }
+    default fn mul_assign_int(&self, lhs: &mut Self::El, rhs: i64) { self.decorated_ring().mul_assign_int(lhs, rhs) }
     
-    fn sum<I>(&self, data: I) -> Self::El
+    default fn sum<I>(&self, data: I) -> Self::El
         where I: Iterator<Item = Self::El>
     { 
         self.decorated_ring().sum(data)
     }
 
-    fn product<I>(&self, data: I) -> Self::El 
+    default fn product<I>(&self, data: I) -> Self::El 
         where I: Iterator<Item = Self::El>
     {
         self.decorated_ring().product(data)

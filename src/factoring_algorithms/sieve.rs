@@ -244,7 +244,7 @@ pub fn quadratic_sieve(n: &Int) -> Int {
 
 #[test]
 fn test_quadratic_sieve() {
-    let f5 = INT_RING.from(BigInt::power_of_two(32)) + 1;
+    let f5 = INT_RING.from(BigInt::RING.mul_pow_2(BigInt::RING.one(), 32)) + 1;
     let factor = quadratic_sieve(&f5);
     assert!(factor != f5);
     assert!(factor != 1);

@@ -232,7 +232,7 @@ impl<const N: u64> FiniteRing for StaticRing<ZnElImpl<N, true>> {
     type IterFn = StaticZnIterFn;
 
     fn size(&self) -> BigInt {
-        BigInt::from(N as i64)
+        BigInt::from(N as i128)
     }
     
     fn iter_fn(&self) -> Self::IterFn {
@@ -278,7 +278,7 @@ impl<const N: u64> FiniteRing for StaticRing<ZnElImpl<N, false>> {
     type IterFn = StaticZnIterFn;
 
     fn size(&self) -> BigInt {
-        BigInt::from(N as i64)
+        BigInt::from(N as i128)
     }
     
     fn iter_fn(&self) -> Self::IterFn {

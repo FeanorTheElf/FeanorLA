@@ -92,7 +92,7 @@ pub fn cantor_zassenhaus<P>(
 ) -> El<P>
     where P: PolyRing + EuclideanInfoRing, P::BaseRing: FiniteRing
 {
-    assert!(p.is_odd());
+    assert!(BigInt::RING.is_odd(p));
     assert!(poly_ring.base_ring().size() == *p);
     assert!(poly_ring.deg(&f).unwrap() % d == 0);
     assert!(poly_ring.deg(&f).unwrap() > d);
@@ -112,7 +112,7 @@ pub fn cantor_zassenhaus<P>(
             power_x = poly_ring.mul(power_x, poly_ring.unknown());
         }
         T = poly_ring.add(T, power_x);
-        let exp = BigInt::RING.sub(p.clone().pow(d as u32), BigInt::RING.one()).floor_div_small(2);
+        let exp = BigInt::RING.sub(BigInt::RING.pow(p, d as u32), BigInt::RING.one()).floor_div_small(2);
         let G = poly_ring.sub(pow_mod_f(&poly_ring, &T, &f, &exp), poly_ring.one());
         let g = eea(&poly_ring, f.clone(), G.clone()).2;
         if !poly_ring.is_unit(&g) && poly_ring.quotient(&g, &f).is_none() {

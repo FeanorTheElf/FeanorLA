@@ -1,10 +1,8 @@
 use super::super::ring::*;
 use super::super::embedding::*;
 use super::super::primitive::*;
-use super::super::ring_property::*;
 
 use super::primes;
-use super::roots;
 use super::super::integer::*;
 
 use std::cmp::Ordering;
@@ -37,18 +35,6 @@ impl BigInt {
     const BLOCK_BITS: usize = 64;
     pub const ZERO: BigInt = BigInt { data: Vec::new(), negative: false };
 
-    pub fn power_of_two(n: usize) -> BigInt {
-        let blocks = n / Self::BLOCK_BITS;
-        let shift = n % Self::BLOCK_BITS;
-        let mut result = Vec::with_capacity(blocks + 1);
-        result.resize(blocks, 0);
-        result.push(1 << shift);
-        return BigInt {
-            negative: false,
-            data: result
-        };
-    }
-
     ///
     /// Calculate abs(self) += rhs * (1 << BLOCK_BITS)^block_offset
     /// 
@@ -76,20 +62,10 @@ impl BigInt {
         }
     }
 
-    pub fn is_zero(&self) -> bool {
+    fn is_zero(&self) -> bool {
         self.highest_set_block().is_none()
     }
 
-    pub fn signum(&self) -> i32 {
-        if self.is_zero() {
-            return 0;
-        } else if self.negative {
-            return -1;
-        } else {
-            return 1;
-        }
-    }
-    
     fn highest_set_block(&self) -> Option<usize> {
         for i in (0..self.data.len()).rev() {
             if self.data[i] != 0 {
@@ -102,7 +78,7 @@ impl BigInt {
     ///
     /// Computes abs(self) <=> abs(rhs)
     /// 
-    pub fn abs_compare(&self, rhs: &BigInt) -> Ordering {
+    fn abs_compare(&self, rhs: &BigInt) -> Ordering {
         match (self.highest_set_block(), rhs.highest_set_block()) {
            (None, None) => return Ordering::Equal,
            (Some(_), None) => return Ordering::Greater,
@@ -496,7 +472,7 @@ impl BigInt {
         return result;
     }
 
-    pub fn euclidean_div_rem(&mut self, rhs: &BigInt) -> BigInt {
+    fn euclidean_div_rem(&mut self, rhs: &BigInt) -> BigInt {
         let mut quotient = self.abs_division(rhs);
         quotient.negative = self.negative ^ rhs.negative;
         return quotient;
@@ -507,7 +483,7 @@ impl BigInt {
     /// `self = q * rhs + r` and `|r| < |rhs|`.
     /// Returns `(q, r)`
     /// 
-    pub fn euclidean_div_rem_small(mut self, rhs: i64) -> (BigInt, i64) {
+    fn euclidean_div_rem_small(mut self, rhs: i64) -> (BigInt, i64) {
         let mut remainder = self.abs_division_small(rhs.abs() as u64) as i64;
         if self.negative {
             remainder = -remainder;
@@ -535,34 +511,16 @@ impl BigInt {
         return quo;
     }
 
-    pub fn pow(&self, power: u32) -> BigInt {
-        Self::RING.pow(self, power)
-    }
-
-    pub fn pow_big(&self, power: &BigInt) -> BigInt {
-        Self::RING.pow_big(self, power)
-    }
-
-    pub fn abs(mut self) -> BigInt {
-        self.negative = false;
-        return self;
-    }
-
-    pub fn log_floor(self, base: BigInt) -> BigInt {
-        let log_approx = BigInt::RING.to_float_approx(&self).log(BigInt::RING.to_float_approx(&base));
-        return roots::find_zero_floor(
-            &BigInt::RING,
-            |x| base.clone().pow_big(x), 
-            BigInt::RING.from_float_approx(log_approx).unwrap_or(BigInt::ZERO)
-        );
-    }
-
-    pub fn to_int(&self) -> Result<i64, ()> {
+    pub fn to_int(&self) -> Result<i128, ()> {
         if let Some(d) = self.highest_set_block() {
-            if d == 0 && self.data[0] <= i64::MAX as u64 && self.negative {
-                Ok(-(self.data[0] as i64))
+            if d == 1 && self.data[1] <= i64::MAX as u64 && self.negative {
+                Ok(-(((self.data[1] as i128) << BigInt::BLOCK_BITS) | (self.data[0] as i128)))
+            } else if d == 1 && self.data[1] <= i64::MAX as u64 && !self.negative {
+                Ok(((self.data[1] as i128) << BigInt::BLOCK_BITS) | (self.data[0] as i128))
+            } else if d == 0 && self.data[0] <= i64::MAX as u64 && self.negative {
+                Ok(-(self.data[0] as i128))
             } else if d == 0 && self.data[0] <= i64::MAX as u64 && !self.negative {
-                Ok(self.data[0] as i64)
+                Ok(self.data[0] as i128)
             } else {
                 Err(())
             }
@@ -570,23 +528,22 @@ impl BigInt {
             Ok(0)
         }
     }
-
-    pub fn is_odd(&self) -> bool {
-        BigInt::RING.abs_is_bit_set(&self, 0)
-    }
 }
 
-impl From<i64> for BigInt {
-    fn from(val: i64) -> BigInt {
+impl From<i128> for BigInt {
+
+    fn from(val: i128) -> BigInt {
         if val < 0 {
+            let val = (-val) as u128;
             BigInt {
                 negative: true,
-                data: vec![(-val) as u64]
+                data: vec![(val & ((1 << BigInt::BLOCK_BITS) - 1)) as u64, (val >> BigInt::BLOCK_BITS) as u64]
             }
         } else {
+            let val = val as u128;
             BigInt {
                 negative: false,
-                data: vec![val as u64]
+                data: vec![(val & ((1 << BigInt::BLOCK_BITS) - 1)) as u64, (val >> BigInt::BLOCK_BITS) as u64]
             }
         }
     }
@@ -696,7 +653,7 @@ impl RingBase for BigIntRing {
     }
 
     fn from_z(&self, x: i64) -> BigInt {
-        BigInt::from(x)
+        BigInt::from(x as i128)
     }
 
     fn from_z_big(&self, x: &BigInt) -> BigInt {
@@ -732,7 +689,16 @@ impl RingBase for BigIntRing {
 impl OrderedRing for BigIntRing {
 
     fn cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering {
-        lhs.cmp(rhs)
+        if lhs.is_zero() && rhs.is_zero() {
+            Ordering::Equal
+        } else {
+            match (lhs.negative, rhs.negative) {
+                (true, true) => rhs.abs_compare(lhs),
+                (true, false) => Ordering::Less,
+                (false, true) => Ordering::Greater,
+                (false, false) => lhs.abs_compare(rhs)
+            }
+        }
     }
 }
 
@@ -777,7 +743,7 @@ impl EuclideanInfoRing for BigIntRing {
     }
 
     fn euclidean_deg(&self, el: Self::El) -> BigInt {
-        el.abs()
+        BigInt::RING.abs(el)
     }
 }
 
@@ -822,38 +788,6 @@ impl PartialOrd<i64> for BigInt {
             Some(Ordering::Greater)
         } else {
             Some(self.abs_compare_small(*rhs as u64))
-        }
-    }
-}
-
-impl PartialOrd for BigInt {
-
-    fn partial_cmp(&self, rhs: &BigInt) -> Option<Ordering> {
-        Some(self.cmp(rhs))
-    }
-}
-
-impl Neg for BigInt {
-
-    type Output = BigInt;
-
-    fn neg(self) -> BigInt {
-        BigInt::RING.neg(self)
-    }
-}
-
-impl Ord for BigInt {
-
-    fn cmp(&self, rhs: &BigInt) -> Ordering {
-        if self.is_zero() && rhs.is_zero() {
-            Ordering::Equal
-        } else {
-            match (self.negative, rhs.negative) {
-                (true, true) => rhs.abs_compare(self),
-                (true, false) => Ordering::Less,
-                (false, true) => Ordering::Greater,
-                (false, false) => self.abs_compare(rhs)
-            }
         }
     }
 }
@@ -1111,7 +1045,7 @@ impl CanonicalEmbeddingInfo<StaticRing<i64>> for BigIntRing {
     }
 
     fn embed(&self, _from: &StaticRing<i64>, el: i64) -> BigInt {
-        BigInt::from(el)
+        BigInt::from(el as i128)
     }
 }
 
@@ -1122,7 +1056,7 @@ impl CanonicalIsomorphismInfo<StaticRing<i64>> for BigIntRing {
     }
 
     fn preimage(&self, _from: &StaticRing<i64>, el: BigInt) -> i64 {
-        el.to_int().expect("Overflow when embedding BigInt into i64")
+        el.to_int().expect("Overflow when embedding BigInt into i128") as i64
     }
 }
 
@@ -1141,8 +1075,25 @@ fn test_print_power_2() {
 }
 
 #[test]
+fn test_from() {
+    assert_eq!(BigInt { negative: false, data: vec![] }, BigInt::from(0));
+    assert_eq!(BigInt { negative: false, data: vec![2138479] }, BigInt::from(2138479));
+    assert_eq!(BigInt { negative: true, data: vec![2138479] }, BigInt::from(-2138479));
+    assert_eq!(BigInt { negative: false, data: vec![0x38691a350bf12fca, 0x1] }, BigInt::from(0x138691a350bf12fca));
+}
+
+#[test]
+fn test_to_int() {
+    assert_eq!(0, BigInt { negative: false, data: vec![] }.to_int().unwrap());
+    assert_eq!(2138479, BigInt { negative: false, data: vec![2138479] }.to_int().unwrap());
+    assert_eq!(-2138479, BigInt { negative: true, data: vec![2138479] }.to_int().unwrap());
+    assert_eq!(0x138691a350bf12fca, BigInt { negative: false, data: vec![0x38691a350bf12fca, 0x1] }.to_int().unwrap());
+    assert_eq!(Err(()), BigInt { negative: false, data: vec![0x38691a350bf12fca, 0x38691a350bf12fca, 0x1] }.to_int());
+}
+
+#[test]
 fn test_from_str_radix() {
-    let x = BigInt::from_str_radix("Fa3032c0ae8202135", 16).unwrap();
+    let x = BigInt::from_str_radix("fa3032c0ae8202135", 16).unwrap();
     assert_eq!("288447441784111374645", format!("{}", x));
 
     let y = BigInt::from_str_radix("1738495302390560118908327", 10).unwrap();
@@ -1374,7 +1325,7 @@ fn test_eq() {
     assert!(a == 98711);
     assert!(a == b);
     assert!(b == a);
-    assert!(a != -a.clone());
+    assert!(a != BigInt::RING.neg(a.clone()));
     assert!(calculate_hash(&a) == calculate_hash(&b));
     assert!(a != BigInt::RING.one());
     // the next line could theoretically fail, but it is very improbable and we definitly should test hash inequality
@@ -1384,11 +1335,11 @@ fn test_eq() {
 #[test]
 fn test_is_zero() {
     let zero = BigInt::from(0);
-    let nonzero = BigInt::power_of_two(83124);
+    let nonzero = BigInt::RING.mul_pow_2(BigInt::RING.one(), 83124);
     assert!(BigInt::RING.is_zero(&zero));
-    assert!(BigInt::RING.is_zero(&(-zero)));
+    assert!(BigInt::RING.is_zero(&BigInt::RING.neg(zero)));
     assert!(!BigInt::RING.is_zero(&nonzero));
-    assert!(!BigInt::RING.is_zero(&(-nonzero)));
+    assert!(!BigInt::RING.is_zero(&BigInt::RING.neg(nonzero)));
 }
 
 #[test]
@@ -1415,18 +1366,18 @@ fn test_is_prime() {
 
 #[test]
 fn test_cmp() {
-    assert_eq!(true, BigInt::from(-1) < BigInt::from(2));
-    assert_eq!(true, BigInt::from(1) < BigInt::from(2));
-    assert_eq!(false, BigInt::from(2) < BigInt::from(2));
-    assert_eq!(false, BigInt::from(3) < BigInt::from(2));
-    assert_eq!(true, BigInt::from(-1) > BigInt::from(-2));
+    assert_eq!(true, BigInt::RING.is_lt(&BigInt::from(-1), &BigInt::from(2)));
+    assert_eq!(true, BigInt::RING.is_lt(&BigInt::from(1), &BigInt::from(2)));
+    assert_eq!(false, BigInt::RING.is_lt(&BigInt::from(2), &BigInt::from(2)));
+    assert_eq!(false, BigInt::RING.is_lt(&BigInt::from(3), &BigInt::from(2)));
+    assert_eq!(true, BigInt::RING.is_gt(&BigInt::from(-1), &BigInt::from(-2)));
 }
 
 #[test]
 fn test_mul_pow_2() {
     assert_eq!(BigInt::from(2), BigInt::RING.mul_pow_2(BigInt::from(2), 0));
     assert_eq!(BigInt::from(4829192 * 8), BigInt::RING.mul_pow_2(BigInt::from(4829192), 3));
-    assert_eq!(BigInt::RING.mul(BigInt::from(4829192), BigInt::power_of_two(64)), BigInt::RING.mul_pow_2(BigInt::from(4829192), 64));
+    assert_eq!(BigInt::RING.mul(BigInt::from(4829192), BigInt::RING.mul_pow_2(BigInt::RING.one(), 64)), BigInt::RING.mul_pow_2(BigInt::from(4829192), 64));
 }
 
 #[test]

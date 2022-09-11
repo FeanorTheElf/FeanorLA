@@ -368,7 +368,7 @@ impl<R> EuclideanInfoRing for PolyRingImpl<R>
 
     fn euclidean_deg(&self, el: Self::El) -> BigInt {
         assert!(self.is_euclidean().can_use());
-        self.deg(&el).map(|x| (x + 1) as i64).map(BigInt::from).unwrap_or(BigInt::ZERO)
+        self.deg(&el).map(|x| (x + 1) as i128).map(BigInt::from).unwrap_or(BigInt::ZERO)
     }
 
     fn euclidean_div_rem(&self, mut lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) {
@@ -398,7 +398,7 @@ impl<R> UfdInfoRing for PolyRingImpl<R>
     where R: FiniteRing + DivisibilityInfoRing
 {
     fn is_ufd(&self) -> RingPropValue {
-        if self.base_ring.is_field().can_use() && self.base_ring().characteristic().is_odd() {
+        if self.base_ring.is_field().can_use() && BigInt::RING.is_odd(&self.base_ring().characteristic()) {
             return RingPropValue::True;
         } else {
             return RingPropValue::Unknown;
