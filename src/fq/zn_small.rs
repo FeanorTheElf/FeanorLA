@@ -1,7 +1,5 @@
 use super::*;
 use super::super::eea::*;
-use super::super::primitive::*;
-use super::super::prelude::*;
 
 use std::ops::{AddAssign, MulAssign, SubAssign, DivAssign, Add, Mul, Sub, Div, Neg};
 

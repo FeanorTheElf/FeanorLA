@@ -26,6 +26,7 @@ pub mod prelude;
 pub mod karatsuba;
 pub mod eea;
 pub mod lattice;
+pub mod ring_decorator;
 
 #[macro_use]
 pub mod la;

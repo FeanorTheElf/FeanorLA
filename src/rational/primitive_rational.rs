@@ -375,6 +375,10 @@ impl RingExtension for StaticRing<r64> {
     type BaseRing = StaticRing<i64>;
     type Embedding = StandardEmbedding<StaticRing<i64>, Self>;
 
+    fn is_extension(&self) -> RingPropValue {
+        RingPropValue::True
+    }
+
     fn base_ring(&self) -> &Self::BaseRing {
         &StaticRing::<i64>::RING
     }

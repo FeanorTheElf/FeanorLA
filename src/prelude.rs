@@ -4,3 +4,4 @@ pub use super::embedding::*;
 pub use super::primitive::*;
 pub use super::integer::*;
 pub use super::la::mat::*;
+pub use super::ring_decorator::*;

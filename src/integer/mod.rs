@@ -3,9 +3,7 @@ pub mod primes;
 pub mod roots;
 
 pub use bigint::*;
-use super::ring::*;
-use super::embedding::*;
-use super::primitive::*;
+use super::prelude::*;
 use super::wrapper::*;
 
 use std::cmp::Ordering;
@@ -180,20 +178,22 @@ pub fn range_iter<I: IntegerRing>(range: Range<El<I>>, ring: I) -> impl Iterator
     })
 }
 
-impl<'a, R: IntegerRing> IntegerRing for &'a R {
+impl<'a, R> IntegerRing for R 
+    where R: RingDecorator, R::DecoratedRing: IntegerRing
+{
 
-    fn to_float_approx(&self, el: &Self::El) -> f64 { (**self).to_float_approx(el) }
-    fn from_float_approx(&self, el: f64) -> Option<Self::El>  { (**self).from_float_approx(el) }
-    fn mul_pow_2(&self, el: El<Self>, power: u64) -> El<Self> { (**self).mul_pow_2(el, power) }
-    fn euclidean_div_pow_2(&self, el: El<Self>, power: u64) -> El<Self> { (**self).euclidean_div_pow_2(el, power) }
-    fn abs_log2_floor(&self, el: &El<Self>) -> u64 { (**self).abs_log2_floor(el) }
-    fn abs_is_bit_set(&self, el: &El<Self>, bit: u64) -> bool { (**self).abs_is_bit_set(el, bit) }
-    fn floor_div(&self, a: Self::El, b: &Self::El) -> Self::El { (**self).floor_div(a, b) }
-    fn abs_cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering { (**self).abs_cmp(lhs, rhs) }
-    fn root_floor(&self, el: &Self::El, n: u64) -> Self::El { (**self).root_floor(el, n) }
-    fn get_uniformly_random_oorandom(&self, rng: &mut oorandom::Rand32, end_exclusive: &El<Self>) -> El<Self> { (**self).get_uniformly_random_oorandom(rng, end_exclusive) }
-    fn highest_dividing_power_of_two(&self, el: &El<Self>) -> usize { (**self).highest_dividing_power_of_two(el) }
-    fn abs(&self, el: Self::El) -> Self::El { (**self).abs(el) }
+    fn to_float_approx(&self, el: &Self::El) -> f64 { self.decorated_ring().to_float_approx(el) }
+    fn from_float_approx(&self, el: f64) -> Option<Self::El>  { self.decorated_ring().from_float_approx(el) }
+    fn mul_pow_2(&self, el: El<Self>, power: u64) -> El<Self> { self.decorated_ring().mul_pow_2(el, power) }
+    fn euclidean_div_pow_2(&self, el: El<Self>, power: u64) -> El<Self> { self.decorated_ring().euclidean_div_pow_2(el, power) }
+    fn abs_log2_floor(&self, el: &El<Self>) -> u64 { self.decorated_ring().abs_log2_floor(el) }
+    fn abs_is_bit_set(&self, el: &El<Self>, bit: u64) -> bool { self.decorated_ring().abs_is_bit_set(el, bit) }
+    fn floor_div(&self, a: Self::El, b: &Self::El) -> Self::El { self.decorated_ring().floor_div(a, b) }
+    fn abs_cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering { self.decorated_ring().abs_cmp(lhs, rhs) }
+    fn root_floor(&self, el: &Self::El, n: u64) -> Self::El { self.decorated_ring().root_floor(el, n) }
+    fn get_uniformly_random_oorandom(&self, rng: &mut oorandom::Rand32, end_exclusive: &El<Self>) -> El<Self> { self.decorated_ring().get_uniformly_random_oorandom(rng, end_exclusive) }
+    fn highest_dividing_power_of_two(&self, el: &El<Self>) -> usize { self.decorated_ring().highest_dividing_power_of_two(el) }
+    fn abs(&self, el: Self::El) -> Self::El { self.decorated_ring().abs(el) }
 
     fn get_uniformly_random<G>(
         &self,
@@ -201,7 +201,7 @@ impl<'a, R: IntegerRing> IntegerRing for &'a R {
         end_exclusive: &El<Self>
     ) -> El<Self> 
         where G: FnMut() -> u32
-    { (**self).get_uniformly_random(rng, end_exclusive) }
+    { self.decorated_ring().get_uniformly_random(rng, end_exclusive) }
 }
 
 impl IntegerRing for StaticRing<i64> {

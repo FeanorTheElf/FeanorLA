@@ -144,6 +144,10 @@ impl<R: Ring> RingExtension for FractionFieldImpl<R> {
     type BaseRing = R;
     type Embedding = StandardEmbedding<R, FractionFieldImpl<R>>;
 
+    fn is_extension(&self) -> RingPropValue {
+        RingPropValue::True
+    }
+
     fn base_ring(&self) -> &R {
         &self.base_ring
     }

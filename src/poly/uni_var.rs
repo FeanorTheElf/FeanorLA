@@ -277,6 +277,10 @@ impl<R: Ring> RingExtension for PolyRingImpl<R> {
     type BaseRing = R;
     type Embedding = StandardEmbedding<R, Self>;
 
+    fn is_extension(&self) -> RingPropValue {
+        RingPropValue::True
+    }
+
     fn base_ring(&self) -> &R {
         &self.base_ring
     }

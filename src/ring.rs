@@ -234,40 +234,6 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     }
 }
 
-impl<'a, R: RingBase> RingBase for &'a R {
-    type El = R::El;
-
-    fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).add_ref(lhs, rhs) }
-    fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El { (**self).mul_ref(lhs, rhs) }
-    fn add_assign(&self, lhs: &mut Self::El, rhs: Self::El) { (**self).add_assign(lhs, rhs) }
-    fn add_assign_ref(&self, lhs: &mut Self::El, rhs: &Self::El) { (**self).add_assign_ref(lhs, rhs) }
-    fn mul_assign(&self, lhs: &mut Self::El, rhs: Self::El) { (**self).mul_assign(lhs, rhs) }
-    fn neg(&self, val: Self::El) -> Self::El { (**self).neg(val) }
-    fn zero(&self) -> Self::El { (**self).zero() }
-    fn one(&self) -> Self::El { (**self).one() }
-    fn is_eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool { (**self).is_eq(lhs, rhs) }
-    fn unspecified_element(&self) -> Self::El { (**self).unspecified_element() }
-    fn sub_ref_fst(&self, lhs: &Self::El, rhs: Self::El) -> Self::El { (**self).sub_ref_fst(lhs, rhs) }
-    fn sub_ref_snd(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).sub_ref_snd(lhs, rhs) }
-    fn add(&self, lhs: Self::El, rhs: Self::El) -> Self::El { (**self).add(lhs, rhs) }
-    fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El { (**self).mul(lhs, rhs) }
-    fn sub(&self, lhs: Self::El, rhs: Self::El) -> Self::El { (**self).sub(lhs, rhs) }
-    fn pow(&self, basis: &Self::El, exp: u32) -> Self::El { (**self).pow(basis, exp) }
-    fn pow_big(&self, basis: &Self::El, exp: &BigInt) -> Self::El { (**self).pow_big(basis, exp) }
-    fn from_z(&self, x: i64) -> Self::El { (**self).from_z(x) }
-    fn from_z_big(&self, x: &BigInt) -> Self::El { (**self).from_z_big(x) }
-    fn is_zero(&self, val: &Self::El) -> bool { (**self).is_zero(val) }
-    fn is_one(&self, val: &Self::El) -> bool { (**self).is_one(val) }
-    fn is_neg_one(&self, val: &Self::El) -> bool { (**self).is_neg_one(val) }
-    fn is_integral(&self) -> RingPropValue { (**self).is_integral() }
-    fn characteristic(&self) -> BigInt { (**self).characteristic() }
-    fn is_field(&self) -> RingPropValue { (**self).is_field() }
-    fn is_noetherian(&self) -> bool { (**self).is_noetherian() }
-    fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).div(lhs, rhs) }
-    fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result { (**self).format(el, f, in_prod) }
-    fn format_in_brackets(&self, el: &Self::El, f: &mut std::fmt::Formatter) -> std::fmt::Result { (**self).format_in_brackets(el, f) }
-}
-
 pub trait Ring: RingBase + CanonicalIsomorphismInfo<Self> {}
 
 impl<R: ?Sized> Ring for R
@@ -286,6 +252,7 @@ pub trait EuclideanInfoRing: DivisibilityInfoRing {
     /// functions are implemented and behave correctly.
     /// 
     fn is_euclidean(&self) -> RingPropValue;
+
     ///
     /// May panic if the ring is not euclidean (meaning `!is_euclidean().can_use()`). 
     /// The first result is the quotient and the second result the remainder. 
@@ -295,57 +262,49 @@ pub trait EuclideanInfoRing: DivisibilityInfoRing {
     ///  `euclidean_deg(rem) < euclidean_deg(rhs)`
     /// 
     fn euclidean_div_rem(&self, lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El);
+
     ///
     /// May panic if the ring is not euclidean (meaning `!is_euclidean().can_use()`).
     /// 
     fn euclidean_rem(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { 
         self.euclidean_div_rem(lhs, rhs).1 
     }
+
     ///
     /// May panic if the ring is not euclidean (meaning `!is_euclidean().can_use()`).
     /// 
     fn euclidean_div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
         self.euclidean_div_rem(lhs, rhs).0
     }
+
     fn euclidean_deg(&self, el: Self::El) -> BigInt;
 }
 
-impl<'a, R: EuclideanInfoRing> EuclideanInfoRing for &'a R {
-    
-    fn is_euclidean(&self) -> RingPropValue { (**self).is_euclidean() }
-    fn euclidean_div_rem(&self, lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) { (**self).euclidean_div_rem(lhs, rhs) }
-    fn euclidean_rem(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).euclidean_rem(lhs, rhs) }
-    fn euclidean_div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { (**self).euclidean_div(lhs, rhs) }
-    fn euclidean_deg(&self, el: Self::El) -> BigInt { (**self).euclidean_deg(el) }
-}
-
+///
+/// Trait for rings that might be a ring extension of another ring, i.e.
+/// have a canonical, injective ring homomorphism R' -> R.
+/// 
 pub trait RingExtension: Ring {
 
     type BaseRing: Ring;
     type Embedding: Fn(El<Self::BaseRing>) -> El<Self>;
 
-    fn is_extension(&self) -> RingPropValue { RingPropValue::True }
+    ///
+    /// Checks whether this ring is in fact an extension of the base ring.
+    /// 
+    fn is_extension(&self) -> RingPropValue;
+
     fn base_ring(&self) -> &Self::BaseRing;
+
     fn embedding(&self) -> Self::Embedding;
+
     fn from(&self, el: El<Self::BaseRing>) -> El<Self> {
         self.embedding()(el)
     }
 }
 
-impl<'a, K> RingExtension for &'a K
-    where K: RingExtension
-{
-    type BaseRing = K::BaseRing;
-    type Embedding = K::Embedding;
-
-    fn is_extension(&self) -> RingPropValue { (**self).is_extension() }
-    fn base_ring(&self) -> &Self::BaseRing { (**self).base_ring() }
-    fn embedding(&self) -> Self::Embedding { (**self).embedding() }
-    fn from(&self, el: El<Self::BaseRing>) -> El<Self> { (**self).from(el) }
-}
-
 ///
-/// Trait for rings in which we can provide further information about
+/// Trait for rings in which one might be able to can provide further information about
 /// a quotient a/b of ring elements.
 /// 
 pub trait DivisibilityInfoRing : Ring {
@@ -386,17 +345,8 @@ pub trait DivisibilityInfoRing : Ring {
     }
 }
 
-impl<'a, R> DivisibilityInfoRing for &'a R
-    where R: DivisibilityInfoRing
-{
-    fn is_divisibility_computable(&self) -> RingPropValue { (**self).is_divisibility_computable() }
-    fn is_divisible_by(&self, lhs: &Self::El, rhs: &Self::El) -> bool { (**self).is_divisible_by(lhs, rhs) }
-    fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> { (**self).quotient(lhs, rhs) }
-    fn is_unit(&self, el: &Self::El) -> bool { (**self).is_unit(el) }
-}
-
 ///
-/// Trait for rings that can provide additional information about prime
+/// Trait for rings that might be able to provide additional information about prime
 /// factorizations. These are assumed to be unique for implementors of this
 /// trait (provided that `is_ufd().can_use()` is true).
 /// 
@@ -404,10 +354,9 @@ pub trait UfdInfoRing : DivisibilityInfoRing {
 
     ///
     /// Determines whether elements in this ring have a unique prime factorization.
-    /// This may return false even for UFDs, if it is intractable to compute this
-    /// information or intractable to compute prime factorizations. 
     /// 
     fn is_ufd(&self) -> RingPropValue;
+
     ///
     /// Checks whether an element in this ring is prime.
     /// This may panic if `is_ufd().can_use()` returns false.
@@ -415,6 +364,7 @@ pub trait UfdInfoRing : DivisibilityInfoRing {
     fn is_prime(&self, el: &Self::El) -> bool {
         !self.is_unit(el) && self.calc_factor(el).is_none()
     }
+
     ///
     /// Returns a nontrivial factor of the given element, or None if the element is prime or a unit.
     /// This may panic if `is_ufd().can_use()` returns false.
@@ -451,20 +401,6 @@ pub trait UfdInfoRing : DivisibilityInfoRing {
     }
 }
 
-impl<'a, R> UfdInfoRing for &'a R
-    where R: UfdInfoRing
-{
-    fn is_ufd(&self) -> RingPropValue { (**self).is_ufd() }
-    fn is_prime(&self, el: &Self::El) -> bool { (**self).is_prime(el) }
-    fn calc_factor(&self, el: &Self::El) -> Option<Self::El> { (**self).calc_factor(el) }
-
-    fn factor<'b>(&'b self, el: Self::El) -> VecMap<RingElWrapper<&'b Self>, usize> { 
-        let result = (**self).factor(el);
-        let wrapping_ring = WrappingRing::new(self);
-        return result.into_iter().map(|(el, power)| (wrapping_ring.from(el.into_val()), power)).collect();
-    }
-}
-
 ///
 /// Trait for rings that are already completely determined by their type, i.e.
 /// contain no further runtime data.
@@ -480,12 +416,6 @@ pub trait SingletonRing: Ring {
 /// 
 pub trait HashableElRing: Ring {
     fn hash<H: std::hash::Hasher>(&self, h: &mut H, el: &Self::El);
-}
-
-impl<'a, R> HashableElRing for &'a R
-    where R: HashableElRing
-{
-    fn hash<H: std::hash::Hasher>(&self, h: &mut H, el: &Self::El) { (**self).hash(h, el) }
 }
 
 ///
@@ -522,28 +452,4 @@ pub trait OrderedRing: Ring {
     fn is_neg(&self, x: &Self::El) -> bool {
         self.is_lt(x, &self.zero())
     }
-}
-
-impl<'a, R> OrderedRing for &'a R
-    where R: OrderedRing
-{
-    fn cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering { (**self).cmp(lhs, rhs) }
-}
-
-#[test]
-fn test_pow() {
-    let ring = i64::RING;
-    assert_eq!(3 * 3, ring.pow(&3, 2));
-    assert_eq!(3 * 3, ring.pow_big(&3, &BigInt::from(2)));
-    assert_eq!(3 * 3 * 3 * 3 * 3, ring.pow(&3, 5));
-    assert_eq!(3 * 3 * 3 * 3 * 3, ring.pow_big(&3, &BigInt::from(5)));
-}
-
-#[test]
-fn test_from_z() {
-    let ring = i64::RING;
-    assert_eq!(5, ring.from_z(5));
-    assert_eq!(5, ring.from_z_big(&BigInt::from(5)));
-    assert_eq!(23578, ring.from_z(23578));
-    assert_eq!(23578, ring.from_z_big(&BigInt::from(23578)));
 }

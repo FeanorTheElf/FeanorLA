@@ -1,5 +1,4 @@
-use super::ring::*;
-use super::integer::*;
+use super::prelude::*;
 use super::wrapper::*;
 
 pub trait FiniteRingIterFn<R: FiniteRing>: Clone {
@@ -7,14 +6,16 @@ pub trait FiniteRingIterFn<R: FiniteRing>: Clone {
     fn next(&mut self, ring: &R) -> Option<R::El>;
 }
 
-impl<'a, R: FiniteRing, F: FiniteRingIterFn<R>> FiniteRingIterFn<&'a R> for F {
+impl<'a, R, F> FiniteRingIterFn<R> for F 
+    where R: RingDecorator, R::DecoratedRing: FiniteRing, F: FiniteRingIterFn<R::DecoratedRing>
+{
     
-    fn next(&mut self, ring: &&'a R) -> Option<R::El> {
-        <F as FiniteRingIterFn<R>>::next(self, *ring)
+    fn next(&mut self, ring: &R) -> Option<El<R>> {
+        <F as FiniteRingIterFn<R::DecoratedRing>>::next(self, ring.decorated_ring())
     }
 }
 
-pub trait FiniteRing : Ring {
+pub trait FiniteRing: Ring {
 
     type IterFn: FiniteRingIterFn<Self>;
 
@@ -24,18 +25,19 @@ pub trait FiniteRing : Ring {
         where G: FnMut() -> u32;
 }
 
-impl<'a, R> FiniteRing for &'a R
-    where R: FiniteRing
+impl<'a, R> FiniteRing for R
+    where R: RingDecorator, R::DecoratedRing: FiniteRing
 {
-    type IterFn = R::IterFn;
+    type IterFn = <R::DecoratedRing as FiniteRing>::IterFn;
 
-    fn size(&self) -> BigInt { (**self).size() }
-    fn iter_fn(&self) -> Self::IterFn { (**self).iter_fn() }
+    fn size(&self) -> BigInt { self.decorated_ring().size() }
+    fn iter_fn(&self) -> Self::IterFn { self.decorated_ring().iter_fn() }
 
     fn random_element<G>(&self, rng: G) -> El<Self> 
-        where G: FnMut() -> u32 {
-            (**self).random_element(rng)
-        }
+        where G: FnMut() -> u32 
+    {
+        self.decorated_ring().random_element(rng)
+    }
 }
 
 #[derive(Clone)]

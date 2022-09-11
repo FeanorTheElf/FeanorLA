@@ -1,7 +1,4 @@
-use super::ring::*;
-use super::primitive::*;
-use super::integer::*;
-use super::ring_property::*;
+use super::prelude::*;
 
 use std::marker::PhantomData;
 
@@ -65,75 +62,75 @@ pub trait CanonicalIsomorphismInfo<R>: CanonicalEmbeddingInfo<R>
     fn preimage(&self, from: &R, el: Self::El) -> R::El;
 }
 
-impl<'b, R, T: RingEl> CanonicalEmbeddingInfo<StaticRing<T>> for &'b R
-    where R: CanonicalEmbeddingInfo<StaticRing<T>>
+impl<R, T> CanonicalEmbeddingInfo<StaticRing<T>> for R
+    where T: RingEl, R: RingDecorator, R::DecoratedRing: CanonicalEmbeddingInfo<StaticRing<T>>
 {
     fn has_embedding(&self, from: &StaticRing<T>) -> RingPropValue {
-        (**self).has_embedding(from)
+        self.decorated_ring().has_embedding(from)
     }
 
     fn embed(&self, from: &StaticRing<T>, el: T) -> Self::El {
-        (**self).embed(from, el)
+        self.decorated_ring().embed(from, el)
     }
 }
 
-impl<'b, R> CanonicalEmbeddingInfo<BigIntRing> for &'b R
-    where R: CanonicalEmbeddingInfo<BigIntRing>
+impl<R> CanonicalEmbeddingInfo<BigIntRing> for R
+    where R: RingDecorator, R::DecoratedRing: CanonicalEmbeddingInfo<BigIntRing>
 {
     fn has_embedding(&self, from: &BigIntRing) -> RingPropValue {
-        (**self).has_embedding(from)
+        self.decorated_ring().has_embedding(from)
     }
 
     fn embed(&self, from: &BigIntRing, el: BigInt) -> Self::El {
-        (**self).embed(from, el)
+        self.decorated_ring().embed(from, el)
     }
 }
 
-impl<'a, 'b, R, S> CanonicalEmbeddingInfo<&'a R> for &'b S
-    where R: RingBase, S: CanonicalEmbeddingInfo<R>
+impl<R, S> CanonicalEmbeddingInfo<R> for S
+    where R: RingDecorator, S: RingDecorator, S::DecoratedRing: CanonicalEmbeddingInfo<R::DecoratedRing>
 {
-    fn has_embedding(&self, from: &&'a R) -> RingPropValue {
-        (**self).has_embedding(&**from)
+    fn has_embedding(&self, from: &R) -> RingPropValue {
+        self.decorated_ring().has_embedding(from.decorated_ring())
     }
 
-    fn embed(&self, from: &&'a R, el: R::El) -> Self::El {
-        (**self).embed(&**from, el)
+    fn embed(&self, from: &R, el: <R as RingBase>::El) -> Self::El {
+        self.decorated_ring().embed(from.decorated_ring(), el)
     }
 }
 
-impl<'a, 'b, R, S> CanonicalIsomorphismInfo<&'a R> for &'b S
-    where R: CanonicalIsomorphismInfo<S>, S: CanonicalIsomorphismInfo<R>
+impl<R, S> CanonicalIsomorphismInfo<R> for S
+    where R: RingDecorator, S: RingDecorator, S::DecoratedRing: CanonicalIsomorphismInfo<R::DecoratedRing>
 {
-    fn has_isomorphism(&self, from: &&'a R) -> RingPropValue {
-        (**self).has_isomorphism(&**from)
+    fn has_isomorphism(&self, from: &R) -> RingPropValue {
+        self.decorated_ring().has_isomorphism(from.decorated_ring())
     }
 
-    fn preimage(&self, from: &&'a R, el: Self::El) -> R::El {
-        (**self).preimage(&**from, el)
+    fn preimage(&self, from: &R, el: Self::El) -> <R as RingBase>::El {
+        self.decorated_ring().preimage(from.decorated_ring(), el)
     }
 }
 
-impl<'b, R, T: RingEl> CanonicalIsomorphismInfo<StaticRing<T>> for &'b R
-    where R: CanonicalIsomorphismInfo<StaticRing<T>>
+impl<R, T> CanonicalIsomorphismInfo<StaticRing<T>> for R
+    where T: RingEl, R: RingDecorator, R::DecoratedRing: CanonicalIsomorphismInfo<StaticRing<T>>
 {
     fn has_isomorphism(&self, from: &StaticRing<T>) -> RingPropValue {
-        (**self).has_embedding(from)
+        self.decorated_ring().has_embedding(from)
     }
 
     fn preimage(&self, from: &StaticRing<T>, el: Self::El) -> T {
-        (**self).preimage(from, el)
+        self.decorated_ring().preimage(from, el)
     }
 }
 
-impl<'b, R> CanonicalIsomorphismInfo<BigIntRing> for &'b R
-    where R: CanonicalIsomorphismInfo<BigIntRing>
+impl<R> CanonicalIsomorphismInfo<BigIntRing> for R
+    where R: RingDecorator, R::DecoratedRing: CanonicalIsomorphismInfo<BigIntRing>
 {
     fn has_isomorphism(&self, from: &BigIntRing) -> RingPropValue {
-        (**self).has_isomorphism(from)
+        self.decorated_ring().has_isomorphism(from)
     }
 
     fn preimage(&self, from: &BigIntRing, el: Self::El) -> BigInt {
-        (**self).preimage(from, el)
+        self.decorated_ring().preimage(from, el)
     }
 }
 

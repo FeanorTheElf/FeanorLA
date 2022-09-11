@@ -329,6 +329,10 @@ impl<R, V, W> RingExtension for SimpleRingExtension<R, V, W>
     type BaseRing = R;
     type Embedding = StandardEmbedding<R, Self>;
 
+    fn is_extension(&self) -> RingPropValue {
+        RingPropValue::True
+    }
+
     fn base_ring(&self) -> &R {
         &self.base_ring
     }
