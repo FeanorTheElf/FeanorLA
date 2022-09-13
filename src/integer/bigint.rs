@@ -103,10 +103,11 @@ impl BigInt {
     ///
     /// Computes abs(self) <=> abs(rhs)
     ///
-    fn abs_compare_small(&self, rhs: u64) -> Ordering {
+    pub fn abs_compare_small(&self, rhs: u128) -> Ordering {
         match self.highest_set_block() {
            None => 0.cmp(&rhs),
-           Some(0) => self.data[0].cmp(&rhs),
+           Some(0) => (self.data[0] as u128).cmp(&rhs),
+           Some(1) => (((self.data[1] as u128) << Self::BLOCK_BITS) | (self.data[0] as u128)).cmp(&rhs),
            Some(_) => Ordering::Greater,
         }
     }
@@ -483,7 +484,7 @@ impl BigInt {
     /// `self = q * rhs + r` and `|r| < |rhs|`.
     /// Returns `(q, r)`
     /// 
-    fn euclidean_div_rem_small(mut self, rhs: i64) -> (BigInt, i64) {
+    pub fn euclidean_div_rem_small(mut self, rhs: i64) -> (BigInt, i64) {
         let mut remainder = self.abs_division_small(rhs.abs() as u64) as i64;
         if self.negative {
             remainder = -remainder;
@@ -781,13 +782,13 @@ impl PartialOrd<i64> for BigInt {
         if self.is_zero() && *rhs == 0 {
             Some(Ordering::Equal)
         } else if self.negative && *rhs < 0 {
-            Some(self.abs_compare_small((-*rhs) as u64).reverse())
+            Some(self.abs_compare_small((-*rhs) as u128).reverse())
         } else if self.negative && *rhs >= 0 {
             Some(Ordering::Less)
         } else if !self.negative && *rhs < 0 {
             Some(Ordering::Greater)
         } else {
-            Some(self.abs_compare_small(*rhs as u64))
+            Some(self.abs_compare_small(*rhs as u128))
         }
     }
 }

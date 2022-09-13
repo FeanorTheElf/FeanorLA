@@ -358,3 +358,8 @@ fn test_integer_ring_get_uniformly_random() {
     let bit_average = data.iter().map(|x| if ring.abs_is_bit_set(x, 33) { 0. } else { 1. }).sum::<f64>() / 1000.;
     assert!(0.3 < bit_average && bit_average < 0.7);  // failure probability is less than 10^-34
 }
+
+#[test]
+fn test_i64_euclidean_div_pow_2() {
+    assert_eq!(0, i64::RING.euclidean_div_pow_2(-1, 1))
+}
