@@ -186,7 +186,6 @@ pub fn range_iter<I: IntegerRing>(range: Range<El<I>>, ring: I) -> impl Iterator
 impl<'a, R> IntegerRing for R 
     where R: RingDecorator, R::DecoratedRing: IntegerRing
 {
-
     fn to_float_approx(&self, el: &Self::El) -> f64 { self.decorated_ring().to_float_approx(el) }
     fn from_float_approx(&self, el: f64) -> Option<Self::El>  { self.decorated_ring().from_float_approx(el) }
     fn mul_pow_2(&self, el: El<Self>, power: u64) -> El<Self> { self.decorated_ring().mul_pow_2(el, power) }

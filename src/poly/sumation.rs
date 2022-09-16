@@ -30,8 +30,6 @@ pub fn sumation_poly<P>(ring: &P, f: El<P>) -> El<P>
 }
 
 #[cfg(test)]
-use super::super::prelude::*;
-#[cfg(test)]
 use super::super::rational::*;
 
 #[test]

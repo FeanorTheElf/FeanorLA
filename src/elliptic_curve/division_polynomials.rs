@@ -146,8 +146,8 @@ fn test_division_polynomials() {
     let h = h / &d;
     let base_ring = poly_ring.base_ring();
     let i = embedding(&base_ring, &poly_ring);
-    assert_eq!(f_expected, &f / i(f.lc().unwrap().ref_ring()));
-    assert_eq!(h_expected, &h / i(f.lc().unwrap().ref_ring()));
+    assert_eq!(f_expected, &f / i(f.lc().unwrap()));
+    assert_eq!(h_expected, &h / i(f.lc().unwrap()));
  
     let (f, _, h) = division_polynomials(&E, 3);
     let i = z_hom(&field);

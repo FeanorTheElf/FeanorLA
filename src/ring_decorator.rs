@@ -68,7 +68,6 @@ impl<'a, R: RingBase> RingDecorator for &'a R {
     fn decorated_ring(&self) -> &Self::DecoratedRing { *self }
 }
 
-
 impl<R> DivisibilityInfoRing for R
     where R: RingDecorator, R::DecoratedRing: DivisibilityInfoRing
 {

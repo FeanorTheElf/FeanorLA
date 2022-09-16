@@ -78,6 +78,10 @@ impl<R> PolyRing for PolyRingImpl<R>
         }
     }
 
+    fn unknwon_name(&self) -> &str {
+        self.var_name
+    }
+
     fn deg(&self, x: &El<Self>) -> Option<usize> {
         let mut it = x.iter().enumerate().filter(|(_, x)| !self.base_ring().is_zero(x)).map(|(i, _)| i);
         <_ as Iterator>::last(&mut it)
@@ -580,7 +584,7 @@ fn test_factor_fq() {
     let f = x.pow(2) + &x * 6 + 3;
     let factor = <_ as Iterator>::next(&mut ring.factor(f).into_iter()).unwrap().0.into_val();
     let coeff_ring_gen = -factor.coefficient_at(0) / factor.coefficient_at(1);
-    let a = ring.embedding()(coeff_ring_gen); // up to field automorphism, this is the generator picked by sage
+    let a = ring.embedding()(coeff_ring_gen.clone_ring()); // up to field automorphism, this is the generator picked by sage
 
     let p = x.clone().pow(14) - &x;
     let mut expected = VecMap::new();
