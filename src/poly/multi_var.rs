@@ -84,13 +84,13 @@ impl<R> MultivariatePolyRing<R>
         }
     }
 
-    pub fn evaluate_matrix_at<M>(&self, m: Matrix<M, El<Self>>, vars: VecMap<Var, &El<R>>) -> Matrix<MatrixOwned<R::El>, R::El> 
+    pub fn evaluate_matrix_at<M>(&self, m: Matrix<M, El<Self>>, vars: Vec<&El<R>>) -> Matrix<MatrixOwned<R::El>, R::El> 
         where M: MatrixView<El<Self>>
     {
         Matrix::from_fn(m.row_count(), m.col_count(), |i, j| self.evaluate_at(m.at(i, j).clone(), vars.clone(), self.base_ring()))
     }
 
-    pub fn evaluate_vector_at<M>(&self, m: Vector<M, El<Self>>, vars: VecMap<Var, &El<R>>) -> Vector<VectorOwned<R::El>, R::El> 
+    pub fn evaluate_vector_at<M>(&self, m: Vector<M, El<Self>>, vars: Vec<&El<R>>) -> Vector<VectorOwned<R::El>, R::El> 
         where M: VectorView<El<Self>>
     {
         Vector::from_fn(m.len(), |i| self.evaluate_at(m.at(i).clone(), vars.clone(), self.base_ring()))
@@ -100,38 +100,31 @@ impl<R> MultivariatePolyRing<R>
 impl<R> MultiPolyRing for MultivariatePolyRing<R>
     where R: Ring
 {
-    type Var = Var;
-
     fn unknown_count(&self) -> usize {
         self.var_names.len()
     }
 
-    fn get_unknown(&self, i: usize) -> Self::Var {
-        assert!(i < self.unknown_count());
-        Var(i)
+    fn get_var(&self, name: &str) -> usize {
+        self.var_names.iter().enumerate().filter(|(i, n)| **n == name).next().unwrap().0
     }
 
-    fn get_var(&self, name: &str) -> Self::Var {
-        Var(self.var_names.iter().enumerate().filter(|(i, n)| **n == name).next().unwrap().0)
+    fn get_name(&self, i: usize) -> &'static str {
+        self.var_names[i]
     }
 
-    fn get_name(&self, Var(i): &Self::Var) -> &'static str {
-        self.var_names[*i]
-    }
-
-    fn as_poly(&self, Var(i): &Self::Var) -> El<Self> {
+    fn as_poly(&self, i: usize) -> El<Self> {
         let mut result = BTreeMap::new();
         result.insert(
-            (0..*i).map(|_| 0).chain(std::iter::once(1)).collect(), 
+            (0..i).map(|_| 0).chain(std::iter::once(1)).collect(), 
             self.base_ring.one()
         );
         return result;
     }
 
-    fn coefficient_at(&self, x: &El<Self>, monomial: &VecMap<Self::Var, usize>) -> El<Self::BaseRing> {
-        self.base_ring().sum(self.nonzero_monomials(x)
-            .filter(|(powers, _)| (0..self.unknown_count()).all(|i| powers.get(i).unwrap_or(&0) == monomial.get(&Var(i)).unwrap_or(&0)))
-            .map(|(_, coeff)| coeff.clone()))
+    fn coefficient_at(&self, x: &El<Self>, monomial: &Vec<usize>) -> El<Self::BaseRing> {
+        self.nonzero_monomials(x)
+            .filter(|(powers, _)| (0..self.unknown_count()).all(|i| powers.get(i).unwrap_or(&0) == monomial.get(i).unwrap_or(&0)))
+            .next().unwrap().1.clone()
     }
 
     ///
@@ -147,7 +140,7 @@ impl<R> MultiPolyRing for MultivariatePolyRing<R>
     /// the number of monomials in the given polynomial, P is the highest power of a
     /// variable and T is the complexity of a multiplication in the base ring.
     /// 
-    fn evaluate_at<S: Ring + CanonicalEmbeddingInfo<Self::BaseRing>>(&self, f: El<Self>, values: VecMap<Self::Var, &El<S>>, ring: &S) -> El<S> {
+    fn evaluate_at<S: Ring + CanonicalEmbeddingInfo<Self::BaseRing>>(&self, f: El<Self>, values: Vec<&El<S>>, ring: &S) -> El<S> {
         self.assert_valid(&f);
 
         if f.len() == 0 {
@@ -165,7 +158,7 @@ impl<R> MultiPolyRing for MultivariatePolyRing<R>
                 }
                 while key[var] > current_power {
                     current_power += 1;
-                    accumulator = ring.mul_ref(&accumulator, &values[&Var(var)]);
+                    accumulator = ring.mul_ref(&accumulator, &values[var]);
                 }
                 assert!(key[var] == current_power);
                 key[var] = 0;
@@ -186,26 +179,26 @@ impl<R> MultiPolyRing for MultivariatePolyRing<R>
             .fold(ring.zero(), |a, b| ring.add(a, b));
     }
 
-    fn deg(&self, Var(i): &Self::Var, x: &El<Self>) -> Option<usize> {
-        self.nonzero_monomials(x).map(|(powers, _)| powers[*i]).max()
+    fn deg(&self, i: usize, x: &El<Self>) -> Option<usize> {
+        self.nonzero_monomials(x).map(|(powers, _)| powers[i]).max()
     }
 
     fn total_deg(&self, x: &El<Self>) -> Option<usize> {
         self.nonzero_monomials(x).map(|(powers, _)| powers.iter().sum()).max()
     }
 
-    fn elevate_var_ring<'a>(&'a self, var: &Self::Var) -> PolyRingImpl<&'a Self> {
+    fn elevate_var_ring<'a>(&'a self, var: usize) -> PolyRingImpl<&'a Self> {
         PolyRingImpl::adjoint(self, self.get_name(var))
     }
 
-    fn elevate_var<'a>(&'a self, Var(var): &Self::Var, x: El<Self>) -> El<PolyRingImpl<&'a Self>> {
+    fn elevate_var<'a>(&'a self, var: usize, x: El<Self>) -> El<PolyRingImpl<&'a Self>> {
         self.assert_valid(&x);
 
         let mut result = Vec::new();
         for (mut key, coeff) in x.into_iter() {
-            let pow = *key.get(*var).unwrap_or(&0);
-            if *var < key.len() {
-                key[*var] = 0;
+            let pow = *key.get(var).unwrap_or(&0);
+            if var < key.len() {
+                key[var] = 0;
                 Self::truncate_element_zeros(&mut key);
             }
             result.resize_with(result.len().max(pow + 1), || self.zero());
@@ -219,13 +212,13 @@ impl<R> MultiPolyRing for MultivariatePolyRing<R>
         return Vector::new(result);
     }
 
-    fn de_elevate_var<'a>(&'a self, Var(var): &Self::Var, x: El<PolyRingImpl<&'a Self>>) -> El<Self> {
+    fn de_elevate_var<'a>(&'a self, var: usize, x: El<PolyRingImpl<&'a Self>>) -> El<Self> {
         let mut result = BTreeMap::new();
         for (pow, coeff) in x.raw_data().into_iter().enumerate() {
             result.extend(coeff.into_iter().map(|(mut key, c)| {
                 if pow > 0 {
                     key.resize(key.len().max(var + 1), 0);
-                    key[*var] = pow;
+                    key[var] = pow;
                 }
                 return (key, c);
             }));
@@ -233,6 +226,26 @@ impl<R> MultiPolyRing for MultivariatePolyRing<R>
         
         self.assert_valid(&result);
         return result;
+    }
+
+    fn for_monomials<'a, F>(&'a self, x: &'a El<Self>, mut f: F)
+        where F: FnMut(&Vec<usize>, &'a El<Self::BaseRing>)
+    {
+        self.nonzero_monomials(x).for_each(|(m, c)| f(m, c))
+    }
+
+    fn lt<'a, M: MonomialOrder>(&'a self, x: &'a El<Self>, order: M) -> Option<(Vec<usize>, &'a El<Self::BaseRing>)> {
+        let mut result: Option<(&Vec<usize>, &El<Self::BaseRing>)> = None;
+        for (m, c) in self.nonzero_monomials(x) {
+            if let Some((current_m, _)) = &result {
+                if order.cmp(&m, current_m) == std::cmp::Ordering::Greater {
+                    result = Some((m, c));
+                }
+            } else {
+                result = Some((m, c));
+            }
+        }
+        return result.map(|(m, c)| (m.clone(), c));
     }
 }
 
@@ -461,11 +474,11 @@ impl<R> DivisibilityInfoRing for MultivariatePolyRing<R>
                 key.iter().enumerate().filter(|(_i, pow)| **pow != 0).map(|(i, _pow)| i).next()
             ).min() 
         {
-            let ring = self.elevate_var_ring(&Var(division_var));
-            let lhs_new = self.elevate_var(&Var(division_var), lhs.clone());
-            let rhs_new = self.elevate_var(&Var(division_var), rhs.clone());
+            let ring = self.elevate_var_ring(division_var);
+            let lhs_new = self.elevate_var(division_var, lhs.clone());
+            let rhs_new = self.elevate_var(division_var, rhs.clone());
             let result = ring.quotient(&lhs_new, &rhs_new)?;
-            return Some(self.de_elevate_var(&Var(division_var), result));
+            return Some(self.de_elevate_var(division_var, result));
         } else {
             let mut result = lhs.clone();
             // rhs is only a scalar
@@ -609,8 +622,8 @@ fn test_evaluate_at() {
     // the polynomial x^2 y + 2 x y^2 + x + 13
     let poly = (&x * &x * &y) + (&x * &y * &y + &x * &y * &y) + &x + 13;
 
-    assert_eq!(i(14), poly.clone().evaluate_at(&vec![i(1), i(0)][..]).clone_ring());
-    assert_eq!(i(12 + 36 + 2 + 13), poly.evaluate_at(&vec![i(2), i(3)][..]).clone_ring());
+    assert_eq!(i(14), poly.clone().evaluate_at(&vec![i(1), i(0)]).clone_ring());
+    assert_eq!(i(12 + 36 + 2 + 13), poly.evaluate_at(&vec![i(2), i(3)]).clone_ring());
 }
 
 #[test]
@@ -656,17 +669,17 @@ fn test_elevate_var() {
 
     let p = &x * &y + &y * &y * &x * 2 + 1 + &x;
 
-    let uni_ring = WrappingRing::new(ring.wrapped_ring().elevate_var_ring(&Var(1)));
+    let uni_ring = WrappingRing::new(ring.wrapped_ring().elevate_var_ring(1));
 
     let uni_y = uni_ring.unknown();
     let uni_x = uni_ring.embedding()(x.ref_ring());
 
     let expected = &uni_x * &uni_y + &uni_y * &uni_y * &uni_x * 2 + 1 + &uni_x;
 
-    let actual = uni_ring.from(ring.wrapped_ring().elevate_var(&Var(1), p.val().clone()));
+    let actual = uni_ring.from(ring.wrapped_ring().elevate_var(1, p.val().clone()));
     assert_eq!(expected, actual);
 
-    let original = ring.from(ring.wrapped_ring().de_elevate_var(&Var(1), actual.val().clone()));
+    let original = ring.from(ring.wrapped_ring().de_elevate_var(1, actual.val().clone()));
     assert_eq!(p, original);
 }
 

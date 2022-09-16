@@ -1,11 +1,14 @@
 use super::prelude::*;
 use super::wrapper::*;
+use monomial_order::*;
 
 pub mod ops;
 pub mod factoring;
 pub mod uni_var;
 pub mod multi_var;
 pub mod sumation;
+pub mod monomial_order;
+pub mod buchberger;
 
 use vector_map::VecMap;
 pub use uni_var::*;
@@ -13,17 +16,27 @@ pub use multi_var::*;
 
 pub trait MultiPolyRing: Ring + CanonicalIsomorphismInfo<MultivariatePolyRing<Self::BaseRing>> + RingExtension {
 
-    type Var: Eq + std::hash::Hash + std::fmt::Debug;
-
     fn unknown_count(&self) -> usize;
-    fn get_unknown(&self, i: usize) -> Self::Var;
-    fn get_name(&self, var: &Self::Var) -> &'static str;
-    fn get_var(&self, name: &str) -> Self::Var;
-    fn as_poly(&self, var: &Self::Var) -> El<Self>;
-    fn coefficient_at(&self, x: &El<Self>, monomial: &VecMap<Self::Var, usize>) -> El<Self::BaseRing>;
-    fn evaluate_at<S: Ring + CanonicalEmbeddingInfo<Self::BaseRing>>(&self, f: El<Self>, values: VecMap<Self::Var, &El<S>>, ring: &S) -> El<S>;
-    fn deg(&self, var: &Self::Var, x: &El<Self>) -> Option<usize>;
+    fn get_name(&self, var: usize) -> &'static str;
+    fn get_var(&self, name: &str) -> usize;
+    fn as_poly(&self, var: usize) -> El<Self>;
+    fn coefficient_at(&self, x: &El<Self>, monomial: &Vec<usize>) -> El<Self::BaseRing>;
+    fn evaluate_at<S: Ring + CanonicalEmbeddingInfo<Self::BaseRing>>(&self, f: El<Self>, values: Vec<&El<S>>, ring: &S) -> El<S>;
+    fn deg(&self, var: usize, x: &El<Self>) -> Option<usize>;
     fn total_deg(&self, x: &El<Self>) -> Option<usize>;
+    fn for_monomials<'a, F: FnMut(&Vec<usize>, &'a El<Self::BaseRing>)>(&'a self, x: &'a El<Self>, f: F);
+
+    fn lt<'a, M: MonomialOrder>(&'a self, x: &'a El<Self>, order: M) -> Option<(Vec<usize>, &'a El<Self::BaseRing>)> {
+        let mut result = None;
+        self.for_monomials(x, |m, c| if let Some((current_m, _)) = &result {
+            if order.cmp(&m, current_m) == std::cmp::Ordering::Greater {
+                result = Some((m.clone(), c));
+            }
+        } else {
+            result = Some((m.clone(), c));
+        });
+        return result;
+    }
 
     ///
     /// # Attention
@@ -33,9 +46,9 @@ pub trait MultiPolyRing: Ring + CanonicalIsomorphismInfo<MultivariatePolyRing<Se
     /// de-elevating since no no ring objects have to be created. After elevating all variables,
     /// use then `as_constant` to access the value as element of the base ring.
     /// 
-    fn elevate_var_ring<'a>(&'a self, var: &Self::Var) -> PolyRingImpl<&'a Self>;
-    fn elevate_var<'a>(&'a self, var: &Self::Var, x: El<Self>) -> El<PolyRingImpl<&'a Self>>;
-    fn de_elevate_var(&self, var: &Self::Var, x: El<PolyRingImpl<&Self>>) -> El<Self>;
+    fn elevate_var_ring<'a>(&'a self, var: usize) -> PolyRingImpl<&'a Self>;
+    fn elevate_var<'a>(&'a self, var: usize, x: El<Self>) -> El<PolyRingImpl<&'a Self>>;
+    fn de_elevate_var(&self, var: usize, x: El<PolyRingImpl<&Self>>) -> El<Self>;
 }
 
 impl<R, P> CanonicalEmbeddingInfo<MultivariatePolyRing<R>> for P
@@ -55,26 +68,25 @@ impl<R, P> CanonicalIsomorphismInfo<MultivariatePolyRing<R>> for P
 impl<R> MultiPolyRing for R
     where R: RingDecorator, R::DecoratedRing: MultiPolyRing
 {
-    type Var = <R::DecoratedRing as MultiPolyRing>::Var;
-
     fn unknown_count(&self) -> usize { self.decorated_ring().unknown_count() }
-    fn get_unknown(&self, i: usize) -> Self::Var { self.decorated_ring().get_unknown(i) }
-    fn get_name(&self, var: &Self::Var) -> &'static str { self.decorated_ring().get_name(var) }
-    fn get_var(&self, name: &str) -> Self::Var { self.decorated_ring().get_var(name) }
-    fn as_poly(&self, var: &Self::Var) -> El<Self> { self.decorated_ring().as_poly(var) }
-    fn coefficient_at(&self, x: &El<Self>, monomial: &VecMap<Self::Var, usize>) -> El<Self::BaseRing> { self.decorated_ring().coefficient_at(x, monomial) }
-    fn evaluate_at<S: Ring + CanonicalEmbeddingInfo<Self::BaseRing>>(&self, f: El<Self>, values: VecMap<Self::Var, &El<S>>, ring: &S) -> El<S> { self.decorated_ring().evaluate_at(f, values, ring) }
-    fn deg(&self, var: &Self::Var, x: &El<Self>) -> Option<usize> { self.decorated_ring().deg(var, x) }
+    fn get_name(&self, var: usize) -> &'static str { self.decorated_ring().get_name(var) }
+    fn get_var(&self, name: &str) -> usize { self.decorated_ring().get_var(name) }
+    fn as_poly(&self, var: usize) -> El<Self> { self.decorated_ring().as_poly(var) }
+    fn coefficient_at(&self, x: &El<Self>, monomial: &Vec<usize>) -> El<Self::BaseRing> { self.decorated_ring().coefficient_at(x, monomial) }
+    fn evaluate_at<S: Ring + CanonicalEmbeddingInfo<Self::BaseRing>>(&self, f: El<Self>, values: Vec<&El<S>>, ring: &S) -> El<S> { self.decorated_ring().evaluate_at(f, values, ring) }
+    fn deg(&self, var: usize, x: &El<Self>) -> Option<usize> { self.decorated_ring().deg(var, x) }
     fn total_deg(&self, x: &El<Self>) -> Option<usize> { self.decorated_ring().total_deg(x) }
-    fn elevate_var_ring<'a>(&'a self, var: &Self::Var) -> PolyRingImpl<&'a Self> { PolyRingImpl::adjoint(self, self.get_name(var)) }
+    fn elevate_var_ring<'a>(&'a self, var: usize) -> PolyRingImpl<&'a Self> { PolyRingImpl::adjoint(self, self.get_name(var)) }
+    fn for_monomials<'a, F: FnMut(&Vec<usize>, &'a El<Self::BaseRing>)>(&'a self, x: &'a El<Self>, f: F) { self.decorated_ring().for_monomials(x, f) }
+    fn lt<'a, M: MonomialOrder>(&'a self, x: &'a El<Self>, order: M) -> Option<(Vec<usize>, &'a El<Self::BaseRing>)> { self.decorated_ring().lt(x, order) }
 
-    fn elevate_var<'a>(&'a self, var: &Self::Var, x: El<Self>) -> El<PolyRingImpl<&'a Self>> { 
+    fn elevate_var<'a>(&'a self, var: usize, x: El<Self>) -> El<PolyRingImpl<&'a Self>> { 
         let result = self.decorated_ring().elevate_var(var, x);
         let map = self.elevate_var_ring(var).lift_hom::<_, &R::DecoratedRing>(|x| x);
         return map(result);
     }
 
-    fn de_elevate_var(&self, var: &Self::Var, x: El<PolyRingImpl<&Self>>) -> El<Self> {
+    fn de_elevate_var(&self, var: usize, x: El<PolyRingImpl<&Self>>) -> El<Self> {
         let map = self.elevate_var_ring(var).lift_hom::<_, &R::DecoratedRing>(|x| x);
         self.decorated_ring().de_elevate_var(var, map(x))
     }
@@ -84,39 +96,36 @@ impl<R> WrappingRing<R>
     where R: MultiPolyRing
 {
     pub fn unknown_count(&self) -> usize { self.wrapped_ring().unknown_count() }
-    pub fn get_unknown(&self, i: usize) -> &'static str { self.wrapped_ring().get_name(&self.wrapped_ring().get_unknown(i)) }
-    pub fn as_poly(&self, var: &str) -> El<Self> { self.from(self.wrapped_ring().as_poly(&self.wrapped_ring().get_var(var))) }
+    pub fn get_unknown(&self, i: usize) -> &'static str { self.wrapped_ring().get_name(i) }
+    pub fn as_poly(&self, var: &str) -> El<Self> { self.from(self.wrapped_ring().as_poly(self.wrapped_ring().get_var(var))) }
 
     pub fn elevate_var_ring<'a>(&'a self, var: usize) -> WrappingRing<PolyRingImpl<&'a R>> {
-        WrappingRing::new(self.wrapped_ring().elevate_var_ring(&self.wrapped_ring().get_unknown(var)))
+        WrappingRing::new(self.wrapped_ring().elevate_var_ring(var))
     }
 }
 
 impl<R> RingElWrapper<R>
     where R: MultiPolyRing
 {
-    pub fn monomial_coefficient<'a>(&'a self, monomial: &[usize]) -> RingElWrapper<&'a R::BaseRing> {
-        let monomial = monomial.iter().enumerate().map(|(i, j)| (self.parent_ring().get_unknown(i), *j)).collect();
+    pub fn monomial_coefficient<'a>(&'a self, monomial: Vec<usize>) -> RingElWrapper<&'a R::BaseRing> {
         let coeff = self.parent_ring().coefficient_at(self.val(), &monomial);
         RingElWrapper::new(coeff, self.parent_ring().base_ring())
     }
 
-    pub fn evaluate_at<'a, S>(self, values: &'a [RingElWrapper<S>]) -> RingElWrapper<&'a S> 
+    pub fn evaluate_at<'a, S>(self, values: &'a Vec<RingElWrapper<S>>) -> RingElWrapper<&'a S> 
         where S: Ring + CanonicalEmbeddingInfo<R::BaseRing>
     {
         let (el, ring) = self.destruct();
         assert_eq!(values.len(), ring.unknown_count());
-        let value_map = values.iter().enumerate().map(|(i, j)| (ring.get_unknown(i), j.val())).collect();
-        let result = ring.evaluate_at::<S>(el, value_map, values[0].parent_ring());
-        RingElWrapper::new(result, values[0].parent_ring())
+        let result = ring.evaluate_at(el, values.iter().map(|x| x.val()).collect(), values[0].parent_ring());
+        return RingElWrapper::new(result, values[0].parent_ring());
     }
 
-    pub fn var_deg(&self, var: usize) -> Option<usize> { self.parent_ring().deg(&self.parent_ring().get_unknown(var), self.val()) }
+    pub fn var_deg(&self, var: usize) -> Option<usize> { self.parent_ring().deg(var, self.val()) }
     pub fn total_deg(&self) -> Option<usize> { self.parent_ring().total_deg(self.val()) }
 
     pub fn elevate_var<'a>(&'a self, var: usize) -> RingElWrapper<PolyRingImpl<&'a R>>{
-        let var = &self.parent_ring().get_unknown(var);
-        RingElWrapper::new(self.parent_ring().elevate_var(&var, self.val().clone()), self.parent_ring().elevate_var_ring(&var))
+        RingElWrapper::new(self.parent_ring().elevate_var(var, self.val().clone()), self.parent_ring().elevate_var_ring(var))
     }
 }
 
@@ -125,7 +134,7 @@ impl<'a, R> RingElWrapper<PolyRingImpl<&'a R>>
 {
     pub fn de_elevate_var<'b>(&'b self) -> RingElWrapper<&'b R> {
         let ring = self.parent_ring().base_ring().decorated_ring();
-        RingElWrapper::new(ring.de_elevate_var(&ring.get_var(self.parent_ring().unknwon_name()), self.val().clone()), ring)
+        RingElWrapper::new(ring.de_elevate_var(ring.get_var(self.parent_ring().unknwon_name()), self.val().clone()), ring)
     }
 }
 
