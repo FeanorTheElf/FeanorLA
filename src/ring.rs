@@ -56,6 +56,7 @@ impl<'a, R> std::fmt::Display for RingElDisplay<'a, R>
 /// one should implement the default-implemented mul()-function
 /// 
 pub trait RingBase : std::fmt::Debug + std::clone::Clone {
+    
     type El: Sized + Clone + std::fmt::Debug;
 
     fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El;

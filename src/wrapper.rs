@@ -12,7 +12,6 @@ use std::ops::{
 use std::iter::Step;
 use std::marker::PhantomData;
 
-#[derive(Debug)]
 pub struct RingElWrapper<R>
     where R: Ring
 {
@@ -741,6 +740,14 @@ impl<R> std::fmt::Display for RingElWrapper<R>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         self.parent_ring().format(&self.el, f, false)
+    }
+}
+
+impl<R> std::fmt::Debug for RingElWrapper<R>
+    where R: Ring
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        <Self as std::fmt::Display>::fmt(self, f)
     }
 }
 

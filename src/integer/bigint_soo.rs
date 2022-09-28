@@ -530,6 +530,7 @@ fn test_mul_pow_2() {
 }
 
 #[test]
+#[ignore]
 fn test_size() {
     assert_eq!(std::mem::size_of::<BigInt>() + 8, std::mem::size_of::<BigIntSOO>());
 }

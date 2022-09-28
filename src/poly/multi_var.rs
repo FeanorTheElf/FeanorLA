@@ -105,7 +105,7 @@ impl<R> MultiPolyRing for MultivariatePolyRing<R>
     }
 
     fn get_var(&self, name: &str) -> usize {
-        self.var_names.iter().enumerate().filter(|(i, n)| **n == name).next().unwrap().0
+        self.var_names.iter().enumerate().filter(|(_, n)| **n == name).next().unwrap().0
     }
 
     fn get_name(&self, i: usize) -> &'static str {
@@ -234,18 +234,18 @@ impl<R> MultiPolyRing for MultivariatePolyRing<R>
         self.nonzero_monomials(x).for_each(|(m, c)| f(m, c))
     }
 
-    fn lt<'a, M: MonomialOrder>(&'a self, x: &'a El<Self>, order: M) -> Option<(Vec<usize>, &'a El<Self::BaseRing>)> {
-        let mut result: Option<(&Vec<usize>, &El<Self::BaseRing>)> = None;
+    fn lt<'a, M: MonomialOrder>(&'a self, x: &'a El<Self>, order: M) -> Option<(Cow<'a, Vec<usize>>, &'a El<Self::BaseRing>)> {
+        let mut result: Option<(Cow<'a, Vec<usize>>, &El<Self::BaseRing>)> = None;
         for (m, c) in self.nonzero_monomials(x) {
             if let Some((current_m, _)) = &result {
                 if order.cmp(&m, current_m) == std::cmp::Ordering::Greater {
-                    result = Some((m, c));
+                    result = Some((Cow::Borrowed(m), c));
                 }
             } else {
-                result = Some((m, c));
+                result = Some((Cow::Borrowed(m), c));
             }
         }
-        return result.map(|(m, c)| (m.clone(), c));
+        return result;
     }
 }
 

@@ -2,6 +2,8 @@ use super::prelude::*;
 use super::wrapper::*;
 use monomial_order::*;
 
+use std::borrow::Cow;
+
 pub mod ops;
 pub mod factoring;
 pub mod uni_var;
@@ -26,16 +28,35 @@ pub trait MultiPolyRing: Ring + CanonicalIsomorphismInfo<MultivariatePolyRing<Se
     fn total_deg(&self, x: &El<Self>) -> Option<usize>;
     fn for_monomials<'a, F: FnMut(&Vec<usize>, &'a El<Self::BaseRing>)>(&'a self, x: &'a El<Self>, f: F);
 
-    fn lt<'a, M: MonomialOrder>(&'a self, x: &'a El<Self>, order: M) -> Option<(Vec<usize>, &'a El<Self::BaseRing>)> {
-        let mut result = None;
+    ///
+    /// Computes an expression of the expression `lhs - rhs * m * a` where m is
+    /// a monomial and a a scalar. We have a dedicated function for this to allow ring
+    /// to provide very efficient implementations (in particular avoiding
+    /// intermediate objects). This function is used very frequently during
+    /// algorithms using elimination (Groebner basis), and so its performance
+    /// is somewhat critical.
+    /// 
+    fn sub_shifted(&self, lhs: El<Self>, rhs: &El<Self>, monomial: &Vec<usize>, scalar: &El<Self::BaseRing>) -> El<Self> {
+        let rhs_shifted = self.mul_ref(rhs, &self.product(
+            (0..monomial.len()).map(|i| self.pow(&self.as_poly(i), monomial[i] as u32)
+        )));
+        self.sub(lhs, self.mul(rhs_shifted, self.embedding()(scalar.clone())))
+    }
+
+    fn lt<'a, M: MonomialOrder>(&'a self, x: &'a El<Self>, order: M) -> Option<(Cow<'a, Vec<usize>>, &'a El<Self::BaseRing>)> {
+        let mut result: Option<(Cow<'a, Vec<usize>>, _)> = None;
         self.for_monomials(x, |m, c| if let Some((current_m, _)) = &result {
             if order.cmp(&m, current_m) == std::cmp::Ordering::Greater {
-                result = Some((m.clone(), c));
+                result = Some((Cow::Owned(m.clone()), c));
             }
         } else {
-            result = Some((m.clone(), c));
+            result = Some((Cow::Owned(m.clone()), c));
         });
         return result;
+    }
+
+    fn lm<'a, M: MonomialOrder>(&'a self, x: &'a El<Self>, order: M) -> Option<Cow<'a, Vec<usize>>> {
+        self.lt(x, order).map(|x| x.0)
     }
 
     ///
@@ -78,7 +99,8 @@ impl<R> MultiPolyRing for R
     fn total_deg(&self, x: &El<Self>) -> Option<usize> { self.decorated_ring().total_deg(x) }
     fn elevate_var_ring<'a>(&'a self, var: usize) -> PolyRingImpl<&'a Self> { PolyRingImpl::adjoint(self, self.get_name(var)) }
     fn for_monomials<'a, F: FnMut(&Vec<usize>, &'a El<Self::BaseRing>)>(&'a self, x: &'a El<Self>, f: F) { self.decorated_ring().for_monomials(x, f) }
-    fn lt<'a, M: MonomialOrder>(&'a self, x: &'a El<Self>, order: M) -> Option<(Vec<usize>, &'a El<Self::BaseRing>)> { self.decorated_ring().lt(x, order) }
+    fn lt<'a, M: MonomialOrder>(&'a self, x: &'a El<Self>, order: M) -> Option<(Cow<'a, Vec<usize>>, &'a El<Self::BaseRing>)> { self.decorated_ring().lt(x, order) }
+    fn sub_shifted(&self, lhs: El<Self>, rhs: &El<Self>, monomial: &Vec<usize>, scalar: &El<Self::BaseRing>) -> El<Self> { self.decorated_ring().sub_shifted(lhs, rhs, monomial, scalar) }
 
     fn elevate_var<'a>(&'a self, var: usize, x: El<Self>) -> El<PolyRingImpl<&'a Self>> { 
         let result = self.decorated_ring().elevate_var(var, x);
