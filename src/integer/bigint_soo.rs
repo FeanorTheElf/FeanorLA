@@ -221,13 +221,8 @@ impl RingBase for BigIntSOORing {
         BigIntSOO::operation(|a, b| a.checked_mul(b), |a, b| BASE_RING.mul(a, b), lhs, rhs)
     }
 
-    fn mul_assign(&self, lhs: &mut Self::El, rhs: Self::El) { 
-        let value = std::mem::replace(lhs, self.unspecified_element());
-        *lhs = self.mul(value, rhs);
-    }
-
     fn mul_assign_int(&self, lhs: &mut Self::El, rhs: i64) {
-        self.mul_assign(lhs, self.from_z(rhs));
+        self.mul_assign(lhs, &self.from_z(rhs));
     }
 
     fn product<I>(&self, data: I) -> Self::El 

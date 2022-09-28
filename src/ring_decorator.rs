@@ -22,7 +22,7 @@ impl<R: RingDecorator> RingBase for R {
     default fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El { self.decorated_ring().mul_ref(lhs, rhs) }
     default fn add_assign(&self, lhs: &mut Self::El, rhs: Self::El) { self.decorated_ring().add_assign(lhs, rhs) }
     default fn add_assign_ref(&self, lhs: &mut Self::El, rhs: &Self::El) { self.decorated_ring().add_assign_ref(lhs, rhs) }
-    default fn mul_assign(&self, lhs: &mut Self::El, rhs: Self::El) { self.decorated_ring().mul_assign(lhs, rhs) }
+    default fn mul_assign(&self, lhs: &mut Self::El, rhs: &Self::El) { self.decorated_ring().mul_assign(lhs, rhs) }
     default fn neg(&self, val: Self::El) -> Self::El { self.decorated_ring().neg(val) }
     default fn zero(&self) -> Self::El { self.decorated_ring().zero() }
     default fn one(&self) -> Self::El { self.decorated_ring().one() }

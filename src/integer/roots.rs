@@ -105,13 +105,13 @@ pub fn find_zero_floor<R, F>(ring: &R, mut f: F, approx: El<R>) ->  El<R>
     let two = ring.from_z(2);
     while ring.cmp(&f(&begin), &ring.zero()) == Ordering::Greater {
         begin = ring.sub_ref_snd(begin, &step);
-        ring.mul_assign(&mut step, two.clone());
+        ring.mul_assign(&mut step, &two.clone());
     }
     let mut end = approx;
     step = ring.one();
     while ring.cmp(&f(&end), &ring.zero()) == Ordering::Less {
         end = ring.add_ref(end, &step);
-        ring.mul_assign(&mut step, two.clone());
+        ring.mul_assign(&mut step, &two.clone());
     }
     return bisect(ring, f, begin, end);
 }

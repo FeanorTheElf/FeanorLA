@@ -120,13 +120,12 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
 
     fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.mul_ref(&lhs, &rhs) }
 
-    fn mul_assign(&self, lhs: &mut Self::El, rhs: Self::El) { 
-        let value = std::mem::replace(lhs, self.unspecified_element());
-        *lhs = self.mul(value, rhs);
+    fn mul_assign(&self, lhs: &mut Self::El, rhs: &Self::El) { 
+        *lhs = self.mul_ref(lhs, rhs);
     }
 
     fn mul_assign_int(&self, lhs: &mut Self::El, rhs: i64) {
-        self.mul_assign(lhs, self.from_z(rhs));
+        self.mul_assign(lhs, &self.from_z(rhs));
     }
 
     fn product<I>(&self, data: I) -> Self::El 

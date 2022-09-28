@@ -111,7 +111,7 @@ impl<R, V, W> SimpleRingExtension<R, V, W>
             .chain(std::iter::once(self.base_ring.neg(self.base_ring.one())))
             .scan(poly_ring.one(), |state, coeff| {
                 let result = poly_ring.mul_ref(state, &poly_ring.from(coeff));
-                poly_ring.mul_assign(state, poly_ring.unknown());
+                poly_ring.mul_assign(state, &poly_ring.unknown());
                 return Some(result);
             }).fold(poly_ring.zero(), |a, b| poly_ring.add(a, b))
     }

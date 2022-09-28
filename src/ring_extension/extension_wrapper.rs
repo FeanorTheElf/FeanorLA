@@ -27,7 +27,7 @@ impl<R, S, F> RingBase for ExtensionWrapper<R, S, F>
     fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { self.ring.add_ref(lhs, rhs) }
     fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El { self.ring.mul_ref(lhs, rhs) }
     fn add_assign(&self, lhs: &mut Self::El, rhs: Self::El) { self.ring.add_assign(lhs, rhs) }
-    fn mul_assign(&self, lhs: &mut Self::El, rhs: Self::El) { self.ring.mul_assign(lhs, rhs) }
+    fn mul_assign(&self, lhs: &mut Self::El, rhs: &Self::El) { self.ring.mul_assign(lhs, rhs) }
     fn neg(&self, val: Self::El) -> Self::El { self.ring.neg(val) }
     fn zero(&self) -> Self::El { self.ring.zero() }
     fn one(&self) -> Self::El { self.ring.one() }

@@ -388,7 +388,15 @@ impl<R> MulAssign<RingElWrapper<R>> for RingElWrapper<R>
     where R: Ring
 {
     fn mul_assign(&mut self, rhs: RingElWrapper<R>) {
-        self.ring.wrapped_ring().mul_assign(&mut self.el, rhs.into_val());
+        self.ring.wrapped_ring().mul_assign(&mut self.el, rhs.val());
+    }
+}
+
+impl<'a, R> MulAssign<&'a RingElWrapper<R>> for RingElWrapper<R>
+    where R: Ring
+{
+    fn mul_assign(&mut self, rhs: &'a RingElWrapper<R>) {
+        self.ring.wrapped_ring().mul_assign(&mut self.el, rhs.val());
     }
 }
 
