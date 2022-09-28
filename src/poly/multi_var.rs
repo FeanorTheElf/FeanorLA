@@ -406,8 +406,8 @@ impl<R> RingBase for MultivariatePolyRing<R>
             let mut monomial_it = self.nonzero_monomials(el);
             let first = monomial_it.next().unwrap();
 
-            let write_part = |key: &Vec<usize>, coeff, f: &mut std::fmt::Formatter| {
-                if !self.base_ring.is_one(coeff) {
+            let write_part = |key: &Vec<usize>, coeff, f: &mut std::fmt::Formatter, is_first: bool| {
+                if is_first || !self.base_ring.is_one(coeff) {
                     self.base_ring.format(coeff, f, true)?;
                     if key.len() > 0 {
                         write!(f, " * ")?;
@@ -425,10 +425,10 @@ impl<R> RingBase for MultivariatePolyRing<R>
                 return Ok(());
             };
             
-            write_part(first.0, first.1, f)?;
+            write_part(first.0, first.1, f, true)?;
             for el in monomial_it {
                 write!(f, " + ")?;
-                write_part(el.0, el.1, f)?;
+                write_part(el.0, el.1, f, false)?;
             }
             return Ok(());
         }

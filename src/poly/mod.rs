@@ -16,6 +16,12 @@ use vector_map::VecMap;
 pub use uni_var::*;
 pub use multi_var::*;
 
+pub fn normalized_monomial<I: DoubleEndedIterator<Item = usize>>(exponents: I) -> Vec<usize> {
+    let mut result: Vec<usize> = exponents.rev().skip_while(|x| *x == 0).collect();
+    result.reverse();
+    return result;
+}
+
 pub trait MultiPolyRing: Ring + CanonicalIsomorphismInfo<MultivariatePolyRing<Self::BaseRing>> + RingExtension {
 
     fn unknown_count(&self) -> usize;
@@ -36,11 +42,17 @@ pub trait MultiPolyRing: Ring + CanonicalIsomorphismInfo<MultivariatePolyRing<Se
     /// algorithms using elimination (Groebner basis), and so its performance
     /// is somewhat critical.
     /// 
-    fn sub_shifted(&self, lhs: El<Self>, rhs: &El<Self>, monomial: &Vec<usize>, scalar: &El<Self::BaseRing>) -> El<Self> {
-        let rhs_shifted = self.mul_ref(rhs, &self.product(
-            (0..monomial.len()).map(|i| self.pow(&self.as_poly(i), monomial[i] as u32)
-        )));
-        self.sub(lhs, self.mul(rhs_shifted, self.embedding()(scalar.clone())))
+    fn sub_scaled(&self, lhs: El<Self>, rhs: &El<Self>, monomial: &Vec<usize>, scalar: &El<Self::BaseRing>) -> El<Self> {
+        self.sub(lhs, self.scale(rhs.clone(), monomial, scalar))
+    }
+
+    fn scale(&self, x: El<Self>, monomial: &Vec<usize>, scalar: &El<Self::BaseRing>) -> El<Self> {
+        self.mul(
+            self.mul(x, self.product(
+                (0..monomial.len()).map(|i| self.pow(&self.as_poly(i), monomial[i] as u32)
+            ))),
+            self.embedding()(scalar.clone())
+        )
     }
 
     fn lt<'a, M: MonomialOrder>(&'a self, x: &'a El<Self>, order: M) -> Option<(Cow<'a, Vec<usize>>, &'a El<Self::BaseRing>)> {
@@ -100,8 +112,9 @@ impl<R> MultiPolyRing for R
     fn elevate_var_ring<'a>(&'a self, var: usize) -> PolyRingImpl<&'a Self> { PolyRingImpl::adjoint(self, self.get_name(var)) }
     fn for_monomials<'a, F: FnMut(&Vec<usize>, &'a El<Self::BaseRing>)>(&'a self, x: &'a El<Self>, f: F) { self.decorated_ring().for_monomials(x, f) }
     fn lt<'a, M: MonomialOrder>(&'a self, x: &'a El<Self>, order: M) -> Option<(Cow<'a, Vec<usize>>, &'a El<Self::BaseRing>)> { self.decorated_ring().lt(x, order) }
-    fn sub_shifted(&self, lhs: El<Self>, rhs: &El<Self>, monomial: &Vec<usize>, scalar: &El<Self::BaseRing>) -> El<Self> { self.decorated_ring().sub_shifted(lhs, rhs, monomial, scalar) }
-
+    fn sub_scaled(&self, lhs: El<Self>, rhs: &El<Self>, monomial: &Vec<usize>, scalar: &El<Self::BaseRing>) -> El<Self> { self.decorated_ring().sub_scaled(lhs, rhs, monomial, scalar) }
+    fn scale(&self, x: El<Self>, monomial: &Vec<usize>, scalar: &El<Self::BaseRing>) -> El<Self> { self.decorated_ring().scale(x, monomial, scalar) }
+    
     fn elevate_var<'a>(&'a self, var: usize, x: El<Self>) -> El<PolyRingImpl<&'a Self>> { 
         let result = self.decorated_ring().elevate_var(var, x);
         let map = self.elevate_var_ring(var).lift_hom::<_, &R::DecoratedRing>(|x| x);
