@@ -1,7 +1,10 @@
 #![allow(non_camel_case_types)]
+use crate::fraction_field::fraction_field_impl::FractionFieldImpl;
+
 use super::super::prelude::*;
 use super::super::eea::signed_gcd;
 use super::super::wrapper::*;
+use super::super::fraction_field::*;
 use super::*;
 
 use std::cmp::{Ord, Ordering, PartialEq, PartialOrd};
@@ -400,6 +403,14 @@ impl FractionField for StaticRing<r64> {
 
     fn den<'a>(&self, el: &'a El<Self>) -> &'a i64 {
         &el.denominator
+    }
+}
+
+impl ReducableElementRing for StaticRing<r64> {
+
+    fn reduce_divisor<I: Iterator<Item = r64>>(&self, elements: I) -> r64 {
+        let fraction_field = FractionFieldImpl::new(i64::RING);
+        return fraction_field.preimage(self, fraction_field.reduce_divisor(elements.map(|x| fraction_field.embed(self, x))))
     }
 }
 

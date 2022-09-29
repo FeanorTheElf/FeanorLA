@@ -134,6 +134,14 @@ impl<V, T> Vector<V, T>
     pub fn raw_data(self) -> V {
         self.data
     }
+
+    pub fn get(&self, i: usize) -> Option<&T> {
+        if i < self.len() {
+            Some(&self[i])
+        } else {
+            None
+        }
+    } 
 }
 
 impl<V, T> Vector<V, T>

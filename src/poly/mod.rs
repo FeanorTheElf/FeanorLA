@@ -1,6 +1,7 @@
 use super::prelude::*;
 use super::wrapper::*;
 use monomial_order::*;
+use super::fraction_field::ReducableElementRing;
 
 use std::borrow::Cow;
 
@@ -42,10 +43,15 @@ pub trait MultiPolyRing: Ring + CanonicalIsomorphismInfo<MultivariatePolyRing<Se
     /// algorithms using elimination (Groebner basis), and so its performance
     /// is somewhat critical.
     /// 
-    fn sub_scaled(&self, lhs: El<Self>, rhs: &El<Self>, monomial: &Vec<usize>, scalar: &El<Self::BaseRing>) -> El<Self> {
-        self.sub(lhs, self.scale(rhs.clone(), monomial, scalar))
+    fn add_scaled(&self, lhs: El<Self>, rhs: &El<Self>, monomial: &Vec<usize>, scalar: &El<Self::BaseRing>) -> El<Self> {
+        self.add(lhs, self.scale(rhs.clone(), monomial, scalar))
     }
 
+    ///
+    /// Multiplies a given polynomial by a monomial and a scalar factor. This
+    /// can be faster/easier to use than using the general `mul`-function, but
+    /// a default implementation relying on that is provided.
+    /// 
     fn scale(&self, x: El<Self>, monomial: &Vec<usize>, scalar: &El<Self::BaseRing>) -> El<Self> {
         self.mul(
             self.mul(x, self.product(
@@ -53,6 +59,29 @@ pub trait MultiPolyRing: Ring + CanonicalIsomorphismInfo<MultivariatePolyRing<Se
             ))),
             self.embedding()(scalar.clone())
         )
+    }
+
+    ///
+    /// Multiplies the polynomial by a non zero divisor in the base ring that makes the coefficients
+    /// "small" in an appropriate sense, so that the result should be more efficient to
+    /// store and work with. The concrete reduction notion is implementation defined, and
+    /// taken from an implementation of `ReducableElementRing`
+    /// 
+    fn reduced_poly(&self, x: &El<Self>) -> El<Self> 
+        where Self::BaseRing: DivisibilityInfoRing
+    {
+        let mut coefficients = Vec::new();
+        self.for_monomials(x, |_, c| {
+            coefficients.push(c.clone());
+        });
+        let d = self.base_ring().reduce_divisor(coefficients.into_iter());
+        let mut result = self.zero();
+        self.for_monomials(x, |m, c| {
+            let val = std::mem::replace(&mut result, self.unspecified_element());
+            result = self.add_scaled(val, &self.one(), m, &self.base_ring().quotient(c, &d).unwrap());
+        });
+        debug_assert!(self.is_eq(&self.mul_ref(&result, &self.embedding()(d)), x));
+        return result;
     }
 
     fn lt<'a, M: MonomialOrder>(&'a self, x: &'a El<Self>, order: M) -> Option<(Cow<'a, Vec<usize>>, &'a El<Self::BaseRing>)> {
@@ -112,7 +141,7 @@ impl<R> MultiPolyRing for R
     fn elevate_var_ring<'a>(&'a self, var: usize) -> PolyRingImpl<&'a Self> { PolyRingImpl::adjoint(self, self.get_name(var)) }
     fn for_monomials<'a, F: FnMut(&Vec<usize>, &'a El<Self::BaseRing>)>(&'a self, x: &'a El<Self>, f: F) { self.decorated_ring().for_monomials(x, f) }
     fn lt<'a, M: MonomialOrder>(&'a self, x: &'a El<Self>, order: M) -> Option<(Cow<'a, Vec<usize>>, &'a El<Self::BaseRing>)> { self.decorated_ring().lt(x, order) }
-    fn sub_scaled(&self, lhs: El<Self>, rhs: &El<Self>, monomial: &Vec<usize>, scalar: &El<Self::BaseRing>) -> El<Self> { self.decorated_ring().sub_scaled(lhs, rhs, monomial, scalar) }
+    fn add_scaled(&self, lhs: El<Self>, rhs: &El<Self>, monomial: &Vec<usize>, scalar: &El<Self::BaseRing>) -> El<Self> { self.decorated_ring().add_scaled(lhs, rhs, monomial, scalar) }
     fn scale(&self, x: El<Self>, monomial: &Vec<usize>, scalar: &El<Self::BaseRing>) -> El<Self> { self.decorated_ring().scale(x, monomial, scalar) }
     
     fn elevate_var<'a>(&'a self, var: usize, x: El<Self>) -> El<PolyRingImpl<&'a Self>> { 

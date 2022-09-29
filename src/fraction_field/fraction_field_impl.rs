@@ -133,9 +133,37 @@ impl<R> RingBase for FractionFieldImpl<R>
         (self.base_ring.from_z(x), self.base_ring.one())
     }
 
-    fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, _in_prod: bool) -> std::fmt::Result {
-        let to_format = self.base_ring().reduce(el.0.clone(), el.1.clone());
-        self.format_base(&to_format.0, &to_format.1, f)
+    default fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, _in_prod: bool) -> std::fmt::Result {
+        self.format_base(&el.0, &el.1, f)
+    }
+}
+
+impl<R> RingBase for FractionFieldImpl<R>
+    where R: DivisibilityInfoRing
+{
+    default fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, _in_prod: bool) -> std::fmt::Result {
+        if self.base_ring().is_divisibility_computable().can_use() {
+            let data = [&el.0, &el.1];
+            let d = self.base_ring().reduce_divisor(data.iter().copied().cloned());
+            let num = self.base_ring().quotient(&el.0, &d).unwrap();
+            let den = self.base_ring().quotient(&el.1, &d).unwrap();
+            self.format_base(&num, &den, f)
+        } else {
+            self.format_base(&el.0, &el.1, f)
+        }
+    }
+}
+
+impl<R: DivisibilityInfoRing> ReducableElementRing for FractionFieldImpl<R> {
+
+    fn reduce_divisor<I: Iterator<Item = El<Self>>>(&self, elements: I) -> El<Self> {
+        let values: Vec<El<Self>> = elements.collect();
+        let total_den = self.base_ring().product(values.iter().map(|(_, d)| d.clone()));
+        let num_red = self.base_ring().reduce_divisor(
+            values.iter()
+                .map(|(n, d)| self.base_ring().quotient(&self.base_ring().mul_ref(n, &total_den), d).unwrap())
+            );
+        return (num_red, total_den);
     }
 }
 
@@ -173,7 +201,10 @@ impl<R> HashableElRing for FractionFieldImpl<R>
     where R: IntegerRing + HashableElRing + OrderedRing + EuclideanInfoRing
 {
     fn hash<H: std::hash::Hasher>(&self, h: &mut H, el: &Self::El) {
-        let (mut num, mut den) = self.base_ring().reduce(el.0.clone(), el.1.clone());
+        let data = [&el.0, &el.1];
+        let d = self.base_ring().reduce_divisor(data.iter().copied().cloned());
+        let mut num = self.base_ring().quotient(&el.0, &d).unwrap();
+        let mut den = self.base_ring().quotient(&el.1, &d).unwrap();
         if self.base_ring().cmp(&den, &self.base_ring().zero()) == std::cmp::Ordering::Less {
             num = self.base_ring().neg(num);
             den = self.base_ring().neg(den);
@@ -266,7 +297,10 @@ impl<R: IntegerRing> CanonicalIsomorphismInfo<StaticRing<r64>> for FractionField
     }
 
     fn preimage(&self, _from: &StaticRing<r64>, el: Self::El) -> r64 {
-        let (num, den) = self.base_ring().reduce(el.0, el.1);
+        let data = [&el.0, &el.1];
+        let d = self.base_ring().reduce_divisor(data.iter().copied().cloned());
+        let num = self.base_ring().quotient(&el.0, &d).unwrap();
+        let den = self.base_ring().quotient(&el.1, &d).unwrap();
         r64::new(self.base_ring().preimage(&StaticRing::<i64>::RING, num), self.base_ring().preimage(&StaticRing::<i64>::RING, den))
     }
 }

@@ -1,6 +1,7 @@
 use super::super::ring::*;
 use super::super::embedding::*;
 use super::super::primitive::*;
+use super::bigint_ops;
 
 use super::primes;
 use super::super::integer::*;
@@ -12,16 +13,8 @@ use std::hash::{Hash, Hasher};
 #[derive(Debug, Clone)]
 pub struct BigInt {
     /// "digits" of the (absolute value) of the number in base 2^64
-    data: Vec<u64>,
+    data: Vector<Vec<u64>, u64>,
     negative: bool
-}
-
-fn div_rem<T>(x: T, y: T) -> (T, T) 
-    where T: std::ops::Div<Output = T> + std::ops::Rem<Output = T> + Copy
-{
-    let quot = x / y;
-    let rem = x % y;
-    (quot, rem)
 }
 
 ///
@@ -33,397 +26,25 @@ const BIG_POWER_TEN: u64 = 10000000000000000000u64;
 impl BigInt {
 
     const BLOCK_BITS: usize = 64;
-    pub const ZERO: BigInt = BigInt { data: Vec::new(), negative: false };
-
-    ///
-    /// Calculate abs(self) += rhs * (1 << BLOCK_BITS)^block_offset
-    /// 
-    /// the sign bit will be left unchanged.
-    /// 
-    fn abs_addition(&mut self, rhs: &BigInt, block_offset: usize) {
-        let mut buffer: bool = false;
-        let mut i = 0;
-        while i < rhs.data.len() || buffer {
-            let rhs_val = *rhs.data.get(i).unwrap_or(&0);
-            let j = i + block_offset;
-            while j >= self.data.len() {
-                self.data.push(0);
-            }
-            let (sum, overflow) = self.data[j].overflowing_add(rhs_val);
-            if buffer {
-                let (carry_sum, carry_overflow) = sum.overflowing_add(1);
-                self.data[j] = carry_sum;
-                buffer = overflow || carry_overflow;
-            } else {
-                self.data[j] = sum;
-                buffer = overflow;
-            }
-            i += 1;
-        }
-    }
-
-    fn is_zero(&self) -> bool {
-        self.highest_set_block().is_none()
-    }
+    pub const ZERO: BigInt = BigInt { data: Vector::new(Vec::new()), negative: false };
 
     fn highest_set_block(&self) -> Option<usize> {
-        for i in (0..self.data.len()).rev() {
-            if self.data[i] != 0 {
-                return Some(i);
-            }
-        }
-        return None;
-    }
-
-    ///
-    /// Computes abs(self) <=> abs(rhs)
-    /// 
-    fn abs_compare(&self, rhs: &BigInt) -> Ordering {
-        match (self.highest_set_block(), rhs.highest_set_block()) {
-           (None, None) => return Ordering::Equal,
-           (Some(_), None) => return Ordering::Greater,
-           (None, Some(_)) => return Ordering::Less,
-           (Some(x), Some(y)) => match x.cmp(&y) {
-                Ordering::Less => return Ordering::Less,
-                Ordering::Greater => return Ordering::Greater,
-                Ordering::Equal => {
-                    for i in (0..=x).rev() {
-                        match self.data[i].cmp(&rhs.data[i]) {
-                            Ordering::Less => return Ordering::Less,
-                            Ordering::Greater => return Ordering::Greater,
-                            _ => {}
-                        }
-                    }
-                    return Ordering::Equal;
-                }
-           }
-        };
-    }
-
-    ///
-    /// Computes abs(self) <=> abs(rhs)
-    ///
-    pub fn abs_compare_small(&self, rhs: u128) -> Ordering {
-        match self.highest_set_block() {
-           None => 0.cmp(&rhs),
-           Some(0) => (self.data[0] as u128).cmp(&rhs),
-           Some(1) => (((self.data[1] as u128) << Self::BLOCK_BITS) | (self.data[0] as u128)).cmp(&rhs),
-           Some(_) => Ordering::Greater,
-        }
-    }
-
-    ///
-    /// Calculate abs(self) -= rhs * (1 << BLOCK_BITS)^block_offset
-    /// 
-    /// the sign bit will be left unchanged.
-    /// 
-    fn abs_subtraction(&mut self, rhs: &BigInt, block_offset: usize) {
-        debug_assert!(self.abs_compare(rhs) != Ordering::Less);
-
-        let rhs_high = if let Some(d) = rhs.highest_set_block() {
-            d
-        } else {
-            return;
-        };
-        
-        let mut buffer: bool = false;
-        let mut i = 0;
-        while i <= rhs_high || buffer {
-            let rhs_val = *rhs.data.get(i).unwrap_or(&0);
-            let j = i + block_offset;
-            debug_assert!(j < self.data.len());
-            let (difference, overflow) = self.data[j].overflowing_sub(rhs_val);
-            if buffer {
-                let (carry_difference, carry_overflow) = difference.overflowing_sub(1);
-                self.data[j] = carry_difference;
-                buffer = overflow || carry_overflow;
-            } else {
-                self.data[j] = difference;
-                buffer = overflow;
-            }
-            i += 1;
-        }
-    }
-
-    fn abs_multiplication(&self, rhs: &BigInt) -> BigInt {
-        let mut result = BigInt {
-            negative: false,
-            data: Vec::with_capacity(
-                self.highest_set_block().unwrap_or(0) + 
-                rhs.highest_set_block().unwrap_or(0) + 2
-            )
-        };
-        if let Some(d) = rhs.highest_set_block() {
-            let mut val = BigInt::ZERO;
-            for i in 0..=d {
-                val.assign(self);
-                val.abs_multiplication_small(rhs.data[i]);
-                result.abs_addition(&val, i);
-            }
-        }
-        return result;
-    }
-
-    ///
-    /// Same as division_step, but for self_high == rhs_high == d
-    /// 
-    fn division_step_last(&mut self, rhs: &BigInt, d: usize, tmp: &mut BigInt) -> u64 {
-        assert!(self.data[d] != 0);
-        assert!(rhs.data[d] != 0);
-
-        let self_high_blocks: u128 = ((self.data[d] as u128) << Self::BLOCK_BITS) | 
-            (self.data[d - 1] as u128);
-        let rhs_high_blocks: u128 = ((rhs.data[d] as u128) << Self::BLOCK_BITS) | 
-            (rhs.data[d - 1] as u128);
-
-        if rhs_high_blocks == u128::MAX {
-            if self.abs_compare(&rhs) != Ordering::Less {
-                self.abs_subtraction(rhs, 0);
-                return 1;
-            } else {
-                return 0;
-            }
-        } else {
-            let mut quotient = (self_high_blocks / (rhs_high_blocks + 1)) as u64;
-            tmp.assign(rhs);
-            tmp.abs_multiplication_small(quotient);
-            self.abs_subtraction(&tmp, 0);
-            if self.abs_compare(&rhs) != Ordering::Less {
-                self.abs_subtraction(&rhs, 0);
-                quotient += 1;
-            }
-            if self.abs_compare(&rhs) != Ordering::Less {
-                self.abs_subtraction(&rhs, 0);
-                quotient += 1;
-            }
-            // we have been at most 2 away from the real quotient, so here 
-            // it must be done so far
-            debug_assert!(self.abs_compare(&rhs) == Ordering::Less);
-            return quotient;
-        }
-    }
-
-    ///
-    /// Finds some integer d such that subtracting d * rhs from self clears the top
-    /// block of self. self will be assigned the value after the subtraction and d
-    /// will be returned as d = (u * 2 ^ block_bits + l) * 2 ^ (k * block_bits) 
-    /// where the return value is (u, l, k)
-    /// 
-    /// Complexity O(log(n))
-    /// 
-    fn division_step(
-        &mut self, 
-        rhs: &BigInt, 
-        self_high: usize, 
-        rhs_high: usize, 
-        tmp: &mut BigInt
-    ) -> (u64, u64, usize) 
-    {
-        assert!(self_high > rhs_high);
-        assert!(self.data[self_high] != 0);
-        assert!(rhs.data[rhs_high] != 0);
-
-        // the best approximation of the quotient we get through 
-        // self_high_blocks / (rhs_high_blocks + 1)
-        // the +1 is required to ensure that the quotient is smaller 
-        // than the real quotient
-        // one can prove that subtracting this is at most 2 * rhs away 
-        // from the actual remainder
-        
-        // Therefore, the uppermost block may not be completely cleared. 
-        // Therefore, perform the division again with the one block shifted 
-        // rhs. Here, we only use the upper 64 bits of rhs as otherwise, 
-        // the truncating division will only yield 0 and we will get smaller 
-        // than rhs * shift, but may still have upper bits
-        // uncleared (as rhs may have upper bits uncleared)
-
-        let mut result_upper = 0;
-        let mut result_lower = 0;
-
-        {
-            let self_high_blocks: u128 = ((self.data[self_high] as u128) << Self::BLOCK_BITS) | 
-                (self.data[self_high - 1] as u128);
-            let rhs_high_blocks: u128 = ((rhs.data[rhs_high] as u128) << Self::BLOCK_BITS) | 
-                (rhs.data[rhs_high - 1] as u128);
-
-            if rhs_high_blocks != u128::MAX && self_high_blocks >= (rhs_high_blocks + 1) {
-                let mut quotient = (self_high_blocks / (rhs_high_blocks + 1)) as u64;
-                debug_assert!(quotient != 0);
-                tmp.assign(rhs);
-                tmp.abs_multiplication_small(quotient);
-                self.abs_subtraction(&tmp, self_high - rhs_high);
-
-                // we might be up to 2 away from the real quotient
-                if self.data[self_high] > rhs.data[rhs_high] {
-                    self.abs_subtraction(rhs, self_high - rhs_high - 1);
-                    quotient += 1;
-                }
-                if self.data[self_high] > rhs.data[rhs_high] {
-                    self.abs_subtraction(rhs, self_high - rhs_high - 1);
-                    quotient += 1;
-                }
-                result_upper = quotient;
-            }
-        }
-
-        {
-            let self_high_blocks: u128 = ((self.data[self_high] as u128) << Self::BLOCK_BITS) | 
-                (self.data[self_high - 1] as u128);
-
-            if self.data[self_high] != 0 {
-                let quotient = (self_high_blocks / (rhs.data[rhs_high] as u128 + 1)) as u64;
-                tmp.assign(rhs);
-                tmp.abs_multiplication_small(quotient);
-                self.abs_subtraction(&tmp, self_high - rhs_high - 1);
-                
-                result_lower = quotient;
-            }
-            debug_assert!(self.data[self_high] == 0);
-            return (result_upper, result_lower, self_high - rhs_high - 1);
-        }
-    }
-
-    ///
-    /// Calculates abs(self) = abs(self) % abs(rhs) and returns the quotient
-    /// of the division abs(self) / abs(rhs). The sign bit of self is ignored
-    /// and left unchanged.
-    /// 
-    /// Complexity O(log(n)^2)
-    /// 
-    fn abs_division(&mut self, rhs: &BigInt) -> BigInt {
-        assert!(!rhs.is_zero());
-
-        if let Some(mut d) = self.highest_set_block() {
-            let mut tmp = BigInt::ZERO;
-            let k = rhs.highest_set_block().expect("Division by zero");
-            if d < k {
-                return Self::ZERO.clone();
-            } else if k == 0 {
-                let rem = self.abs_division_small(rhs.data[0]);
-                let rem_data = vec![rem];
-                let div_data = std::mem::replace(&mut self.data, rem_data);
-                return BigInt {
-                    negative: false,
-                    data: div_data
-                };
-            } else {
-                let mut result_data = Vec::new();
-                result_data.resize(d + 1 - k, 0);
-                while d > k {
-                    if self.data[d] != 0 {
-                        let (quo_upper, quo_lower, quo_power) = self.division_step(&rhs, d, k, &mut tmp);
-                        result_data[quo_power] = quo_lower;
-                        let (new_upper_part, overflow) = 
-                            result_data[quo_power + 1].overflowing_add(quo_upper);
-                        result_data[quo_power + 1] = new_upper_part;
-                        if overflow {
-                            result_data[quo_power + 2] += 1;
-                        }
-                        debug_assert!(self.data[d] == 0);
-                    }
-                    d -= 1;
-                }
-                let quo = self.division_step_last(&rhs, d, &mut tmp);
-                result_data[0] += quo;
-                return BigInt {
-                    negative: false,
-                    data: result_data
-                };
-            }
-        } else {
-            return Self::ZERO.clone();
-        }
-    }
-
-    ///
-    /// Calculates self /= divisor and returns the remainder of the division.
-    /// This only works for positive numbers, as for negative numbers, 
-    /// as the remainder must be returned as a u64 to avoid overflow. 
-    /// Instead of throwing, this function therefore works with abs(self) 
-    /// instead of self.
-    /// 
-    /// the sign bit will be left unchanged.
-    /// 
-    fn abs_division_small(&mut self, divisor: u64) -> u64 {
-        assert!(divisor != 0);
-        let highest_block_opt = self.highest_set_block();
-        if highest_block_opt == Some(0) {
-            let (quo, rem) = div_rem(self.data[0], divisor);
-            self.data[0] = quo;
-            return rem;
-        } else if let Some(highest_block) = highest_block_opt {
-            let (quo, rem) = div_rem(self.data[highest_block], divisor);
-            let mut buffer = rem as u128;
-            self.data[highest_block] = quo;
-            for i in (0..highest_block).rev() {
-                buffer = (buffer << Self::BLOCK_BITS) | (self.data[i] as u128);
-                let (quo, rem) = div_rem(buffer, divisor as u128);
-                debug_assert!(quo <= u64::MAX as u128);
-                self.data[i] = quo as u64;
-                buffer = rem;
-            }
-            return buffer as u64;
-        } else {
-            return 0;
-        }
+        bigint_ops::highest_set_block(self.data.as_ref())
     }
 
     pub fn assign(&mut self, rhs: &BigInt) {
         self.negative = rhs.negative;
-        self.data.clear();
+        let mut data_vec = std::mem::replace(&mut self.data, Vector::new(Vec::new())).raw_data();
+        data_vec.clear();
         if let Some(d) = rhs.highest_set_block() {
-            if self.data.len() < d {
-                self.data.reserve(d - self.data.len());
+            if data_vec.len() < d {
+                data_vec.reserve(d - self.data.len());
             }
             for i in 0..=d {
-                self.data.push(rhs.data[i]);
+                data_vec.push(rhs.data[i]);
             }
         }
-    }
-
-    ///
-    /// Complexity O(log(n))
-    /// 
-    fn abs_multiplication_small(&mut self, factor: u64) {
-        if let Some(d) = self.highest_set_block() {
-            let mut buffer: u64 = 0;
-            for i in 0..=d {
-                let prod = self.data[i] as u128 * factor as u128 + buffer as u128;
-                self.data[i] = (prod & ((1u128 << Self::BLOCK_BITS) - 1)) as u64;
-                buffer = (prod >> Self::BLOCK_BITS) as u64;
-            }
-            if d + 1 < self.data.len() {
-                self.data[d + 1] = buffer;
-            } else {
-                self.data.push(buffer);
-            }
-        }
-    }
-
-    ///
-    /// Calculates abs(self) += summand * (1 << BLOCK_BITS)^block_offset
-    /// 
-    /// the sign bit will be left unchanged.
-    /// 
-    /// Amortized complexity O(1)
-    /// 
-    fn abs_addition_small(&mut self, summand: u64) {
-        if self.data.len() > 0 {
-            let (sum, mut buffer) = self.data[0].overflowing_add(summand);
-            self.data[0] = sum;
-            let mut i = 1;
-            while buffer {
-                if self.data.len() <= i {
-                    self.data.push(0);
-                }
-                let (sum, overflow) = self.data[i].overflowing_add(1);
-                buffer = overflow;
-                self.data[i] = sum;
-                i += 1;
-            }
-        } else {
-            self.data.push(summand);
-        }
+        self.data = Vector::new(data_vec);
     }
 
     ///
@@ -435,14 +56,14 @@ impl BigInt {
         where I: Iterator<Item = Result<u64, E>>
     {
         let mut result = BigInt {
-            data: Vec::with_capacity(data.size_hint().0),
+            data: Vector::new(Vec::with_capacity(data.size_hint().0)),
             negative: false
         };
         for value in data {
             let val = value?;
             debug_assert!(val < base);
-            result.abs_multiplication_small(base);
-            result.abs_addition_small(val);
+            bigint_ops::bigint_mul_small(&mut result.data, base);
+            bigint_ops::bigint_add_small(&mut result.data, val);
         }
         return Ok(result);
     }
@@ -474,9 +95,8 @@ impl BigInt {
     }
 
     fn euclidean_div_rem(&mut self, rhs: &BigInt) -> BigInt {
-        let mut quotient = self.abs_division(rhs);
-        quotient.negative = self.negative ^ rhs.negative;
-        return quotient;
+        let quotient = bigint_ops::bigint_div(&mut self.data, rhs.data.as_ref());
+        return BigInt { data: quotient, negative: self.negative ^ rhs.negative };
     }
 
     ///
@@ -485,7 +105,7 @@ impl BigInt {
     /// Returns `(q, r)`
     /// 
     pub fn euclidean_div_rem_small(mut self, rhs: i64) -> (BigInt, i64) {
-        let mut remainder = self.abs_division_small(rhs.abs() as u64) as i64;
+        let mut remainder = bigint_ops::bigint_div_small(&mut self.data, rhs.abs() as u64) as i64;
         if self.negative {
             remainder = -remainder;
         }
@@ -512,6 +132,10 @@ impl BigInt {
         return quo;
     }
 
+    pub fn abs_cmp_small(&self, rhs: u128) -> Ordering {
+        bigint_ops::bigint_cmp_small(self.data.as_ref(), rhs)
+    }
+
     pub fn to_int(&self) -> Result<i128, ()> {
         if let Some(d) = self.highest_set_block() {
             if d == 1 && self.data[1] <= i64::MAX as u64 && self.negative {
@@ -529,6 +153,11 @@ impl BigInt {
             Ok(0)
         }
     }
+
+    pub fn base_u64_repr(self) -> Vector<Vec<u64>, u64> {
+        self.data
+    }
+
 }
 
 impl From<i128> for BigInt {
@@ -538,13 +167,13 @@ impl From<i128> for BigInt {
             let val = (-val) as u128;
             BigInt {
                 negative: true,
-                data: vec![(val & ((1 << BigInt::BLOCK_BITS) - 1)) as u64, (val >> BigInt::BLOCK_BITS) as u64]
+                data: Vector::new(vec![(val & ((1 << BigInt::BLOCK_BITS) - 1)) as u64, (val >> BigInt::BLOCK_BITS) as u64])
             }
         } else {
             let val = val as u128;
             BigInt {
                 negative: false,
-                data: vec![(val & ((1 << BigInt::BLOCK_BITS) - 1)) as u64, (val >> BigInt::BLOCK_BITS) as u64]
+                data: Vector::new(vec![(val & ((1 << BigInt::BLOCK_BITS) - 1)) as u64, (val >> BigInt::BLOCK_BITS) as u64])
             }
         }
     }
@@ -564,43 +193,40 @@ impl RingBase for BigIntRing {
 
     fn add_ref(&self, mut lhs: Self::El, rhs: &Self::El) -> Self::El {
         if lhs.negative == rhs.negative {
-            lhs.abs_addition(rhs, 0);
-        } else if lhs.abs_compare(&rhs) != Ordering::Less {
-            lhs.abs_subtraction(rhs, 0);
+            bigint_ops::bigint_add(&mut lhs.data, rhs.data.as_ref(), 0);
+        } else if bigint_ops::bigint_cmp(lhs.data.as_ref(), rhs.data.as_ref()) != Ordering::Less {
+            bigint_ops::bigint_sub(&mut lhs.data, rhs.data.as_ref(), 0);
         } else {
             let mut result = rhs.clone();
-            result.abs_subtraction(&lhs, 0);
+            bigint_ops::bigint_sub(&mut result.data, lhs.data.as_ref(), 0);
             std::mem::swap(&mut lhs, &mut result);
         }
         return lhs;
     }
 
     fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El {
-        let mut result = lhs.abs_multiplication(rhs);
-        result.negative = lhs.negative ^ rhs.negative;
-        return result;
+        let result = bigint_ops::bigint_mul(lhs.data.as_ref(), rhs.data.as_ref());
+        return BigInt {
+            negative: lhs.negative ^ rhs.negative,
+            data: result
+        };
     }
 
     fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El {
-        let mut result = lhs.abs_multiplication(&rhs);
-        result.negative = lhs.negative ^ rhs.negative;
-        return result;
+        self.mul_ref(&lhs, &rhs)
     }
 
     fn add_assign_int(&self, lhs: &mut BigInt, rhs: i64) {
         if lhs.negative == (rhs < 0) {
-            lhs.abs_addition_small(rhs.abs() as u64);
+            bigint_ops::bigint_add_small(&mut lhs.data, rhs.abs() as u64);
         } else {
-            let rhs_bigint = BigInt {
-                negative: rhs < 0,
-                data: vec![rhs.abs() as u64]
-            };
+            let rhs_bigint = self.from_z(rhs);
             BigInt::RING.add_assign(lhs, rhs_bigint);
         }
     }
 
     fn mul_assign_int(&self, lhs: &mut Self::El, rhs: i64) {
-        lhs.abs_multiplication_small(rhs.abs() as u64);
+        bigint_ops::bigint_mul_small(&mut lhs.data, rhs.abs() as u64);
         lhs.negative ^= rhs < 0;
     }
 
@@ -616,7 +242,7 @@ impl RingBase for BigIntRing {
     fn one(&self) -> Self::El {
         return BigInt {
             negative: false,
-            data: vec![1]
+            data: Vector::new(vec![1])
         };
     }
 
@@ -669,8 +295,8 @@ impl RingBase for BigIntRing {
         let mut remainders: Vec<u64> = Vec::with_capacity(
             (el.highest_set_block().unwrap_or(0) + 1) * BigInt::BLOCK_BITS / 3
         );
-        while !copy.is_zero() {
-            let rem = copy.abs_division_small(BIG_POWER_TEN);
+        while !self.is_zero(&copy) {
+            let rem = bigint_ops::bigint_div_small(&mut copy.data, BIG_POWER_TEN);
             remainders.push(rem);
         }
         remainders.reverse();
@@ -690,14 +316,14 @@ impl RingBase for BigIntRing {
 impl OrderedRing for BigIntRing {
 
     fn cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering {
-        if lhs.is_zero() && rhs.is_zero() {
+        if self.is_zero(lhs) && self.is_zero(rhs) {
             Ordering::Equal
         } else {
             match (lhs.negative, rhs.negative) {
-                (true, true) => rhs.abs_compare(lhs),
+                (true, true) => bigint_ops::bigint_cmp(rhs.data.as_ref(), lhs.data.as_ref()),
                 (true, false) => Ordering::Less,
                 (false, true) => Ordering::Greater,
-                (false, false) => lhs.abs_compare(rhs)
+                (false, false) => bigint_ops::bigint_cmp(lhs.data.as_ref(), rhs.data.as_ref())
             }
         }
     }
@@ -779,16 +405,16 @@ impl PartialEq<BigInt> for BigInt {
 impl PartialOrd<i64> for BigInt {
 
     fn partial_cmp(&self, rhs: &i64) -> Option<Ordering> {
-        if self.is_zero() && *rhs == 0 {
+        if BigInt::RING.is_zero(self) && *rhs == 0 {
             Some(Ordering::Equal)
         } else if self.negative && *rhs < 0 {
-            Some(self.abs_compare_small((-*rhs) as u128).reverse())
+            Some(bigint_ops::bigint_cmp_small(self.data.as_ref(), (-*rhs) as u128).reverse())
         } else if self.negative && *rhs >= 0 {
             Some(Ordering::Less)
         } else if !self.negative && *rhs < 0 {
             Some(Ordering::Greater)
         } else {
-            Some(self.abs_compare_small(*rhs as u128))
+            Some(bigint_ops::bigint_cmp_small(self.data.as_ref(), (*rhs) as u128))
         }
     }
 }
@@ -935,48 +561,56 @@ impl IntegerRing for BigIntRing {
             }
             return Some(BigInt {
                 negative: val.is_sign_negative(),
-                data: result
+                data: Vector::new(result)
             });
         }
     }
 
-    fn mul_pow_2(&self, mut el: El<Self>, power: u64) -> El<Self> { 
+    fn mul_pow_2(&self, el: El<Self>, power: u64) -> El<Self> { 
         let add_blocks = power as usize / BigInt::BLOCK_BITS;
         let shift_amount = power as usize % BigInt::BLOCK_BITS;
         let keep_bits = BigInt::BLOCK_BITS - shift_amount;
         let keep_mask = (1u64.checked_shl(keep_bits as u32).unwrap_or(0).wrapping_sub(1)) << shift_amount;
         let carry_mask = (1 << shift_amount) - 1;
         let mut carry = 0;
-        for i in 0..el.data.len() {
-            let rotated = el.data[i].rotate_left(shift_amount as u32);
-            el.data[i] = (rotated & keep_mask) | carry;
+        let mut el_data = el.data.raw_data();
+        for i in 0..el_data.len() {
+            let rotated = el_data[i].rotate_left(shift_amount as u32);
+            el_data[i] = (rotated & keep_mask) | carry;
             carry = rotated & carry_mask;
         }
         if carry != 0 {
-            el.data.push(carry);
+            el_data.push(carry);
         }
         let mut tmp = (0..add_blocks).map(|_| 0).collect();
-        std::mem::swap(&mut tmp, &mut el.data);
-        el.data.extend(tmp.into_iter());
-        return el;
+        std::mem::swap(&mut tmp, &mut el_data);
+        el_data.extend(tmp.into_iter());
+        return BigInt {
+            negative: el.negative,
+            data: Vector::new(el_data)
+        };
     }
 
-    fn euclidean_div_pow_2(&self, mut el: El<Self>, power: u64) -> El<Self> {
+    fn euclidean_div_pow_2(&self, el: El<Self>, power: u64) -> El<Self> {
         let drop_blocks = power as usize / BigInt::BLOCK_BITS;
         let shift_amount = power as usize % BigInt::BLOCK_BITS;
         let keep_bits = BigInt::BLOCK_BITS - shift_amount;
-        if el.data.len() <= drop_blocks {
-            el = BigInt::ZERO.clone();
+        let mut el_data = el.data.raw_data();
+        if el_data.len() <= drop_blocks {
+            return BigInt::ZERO;
         } else {
-            el.data.drain(0..drop_blocks);
-            el.data[0] >>= shift_amount;
-            for i in 1..el.data.len() {
-                let rotated = el.data[i].rotate_right(shift_amount as u32);
-                el.data[i] = rotated & (u64::MAX >> shift_amount);
-                el.data[i - 1] |= rotated & u64::MAX.wrapping_shl(keep_bits as u32);
+            el_data.drain(0..drop_blocks);
+            el_data[0] >>= shift_amount;
+            for i in 1..el_data.len() {
+                let rotated = el_data[i].rotate_right(shift_amount as u32);
+                el_data[i] = rotated & (u64::MAX >> shift_amount);
+                el_data[i - 1] |= rotated & u64::MAX.wrapping_shl(keep_bits as u32);
             }
+            return BigInt {
+                negative: el.negative,
+                data: Vector::new(el_data)
+            };
         }
-        return el;
     }
 
     fn abs_log2_floor(&self, el: &BigInt) -> u64 {
@@ -1015,7 +649,7 @@ impl IntegerRing for BigIntRing {
             let data = (0..k/BigInt::BLOCK_BITS).map(|_| rng64())
                 .chain(std::iter::once(random_most_significant_bits));
             let result = BigInt {
-                data: data.collect(),
+                data: Vector::new(data.collect()),
                 negative: false
             };
             if self.cmp(&result, end_exclusive) == Ordering::Less {
@@ -1070,26 +704,26 @@ use vector_map::VecMap;
 fn test_print_power_2() {
     let x = BigInt {
         negative: false,
-        data: vec![0, 0, 1]
+        data: Vector::new(vec![0, 0, 1])
     };
     assert_eq!("340282366920938463463374607431768211456", format!("{}", x));
 }
 
 #[test]
 fn test_from() {
-    assert_eq!(BigInt { negative: false, data: vec![] }, BigInt::from(0));
-    assert_eq!(BigInt { negative: false, data: vec![2138479] }, BigInt::from(2138479));
-    assert_eq!(BigInt { negative: true, data: vec![2138479] }, BigInt::from(-2138479));
-    assert_eq!(BigInt { negative: false, data: vec![0x38691a350bf12fca, 0x1] }, BigInt::from(0x138691a350bf12fca));
+    assert_eq!(BigInt { negative: false, data: Vector::new(vec![]) }, BigInt::from(0));
+    assert_eq!(BigInt { negative: false, data: Vector::new(vec![2138479]) }, BigInt::from(2138479));
+    assert_eq!(BigInt { negative: true, data: Vector::new(vec![2138479]) }, BigInt::from(-2138479));
+    assert_eq!(BigInt { negative: false, data: Vector::new(vec![0x38691a350bf12fca, 0x1]) }, BigInt::from(0x138691a350bf12fca));
 }
 
 #[test]
 fn test_to_int() {
-    assert_eq!(0, BigInt { negative: false, data: vec![] }.to_int().unwrap());
-    assert_eq!(2138479, BigInt { negative: false, data: vec![2138479] }.to_int().unwrap());
-    assert_eq!(-2138479, BigInt { negative: true, data: vec![2138479] }.to_int().unwrap());
-    assert_eq!(0x138691a350bf12fca, BigInt { negative: false, data: vec![0x38691a350bf12fca, 0x1] }.to_int().unwrap());
-    assert_eq!(Err(()), BigInt { negative: false, data: vec![0x38691a350bf12fca, 0x38691a350bf12fca, 0x1] }.to_int());
+    assert_eq!(0, BigInt { negative: false, data: Vector::new(vec![]) }.to_int().unwrap());
+    assert_eq!(2138479, BigInt { negative: false, data: Vector::new(vec![2138479]) }.to_int().unwrap());
+    assert_eq!(-2138479, BigInt { negative: true, data: Vector::new(vec![2138479]) }.to_int().unwrap());
+    assert_eq!(0x138691a350bf12fca, BigInt { negative: false, data: Vector::new(vec![0x38691a350bf12fca, 0x1]) }.to_int().unwrap());
+    assert_eq!(Err(()), BigInt { negative: false, data: Vector::new(vec![0x38691a350bf12fca, 0x38691a350bf12fca, 0x1]) }.to_int());
 }
 
 #[test]
@@ -1106,95 +740,12 @@ fn test_from_str_radix() {
 }
 
 #[test]
-fn test_abs_subtraction() {
-    let mut x = "923645871236598172365987287530543".parse::<BigInt>().unwrap();
-    let y =      "58430657823473456743684735863478".parse::<BigInt>().unwrap();
-    let z =     "865215213413124715622302551667065".parse::<BigInt>().unwrap();
-    x.abs_subtraction(&y, 0);
-    assert_eq!(z, x);
-}
-
-#[test]
-fn test_abs_subtraction_with_carry() {
-    let mut x = BigInt::from_str_radix("1000000000000000000", 16).unwrap();
-    let y =      BigInt::from_str_radix("FFFFFFFFFFFFFFFF00", 16).unwrap();
-    x.abs_subtraction(&y, 0);
-    assert_eq!(x, 256);
-}
-
-#[test]
 fn test_sub_assign() {
     let mut x = "4294836225".parse::<BigInt>().unwrap();
     let y =     "4294967297".parse::<BigInt>().unwrap();
     let z =        "-131072".parse::<BigInt>().unwrap();
     x = BigInt::RING.sub_ref_fst(&x, y);
     assert_eq!(z, x);
-}
-
-#[test]
-fn test_abs_addition() {
-    let mut x = "923645871236598172365987287530543".parse::<BigInt>().unwrap();
-    let y =      "58430657823473456743684735863478".parse::<BigInt>().unwrap();
-    let z =     "982076529060071629109672023394021".parse::<BigInt>().unwrap();
-    x.abs_addition(&y, 0);
-    assert_eq!(z, x);
-}
-
-#[test]
-fn test_abs_addition_with_carry() {
-    let mut x =             BigInt::from_str_radix("1BC00000000000000BC", 16).unwrap();
-    let y =  BigInt::from_str_radix("FFFFFFFFFFFFFFFF0000000000000000BC", 16).unwrap();
-    let z = BigInt::from_str_radix("10000000000000000BC0000000000000178", 16).unwrap();
-    x.abs_addition(&y, 0);
-    assert_eq!(z, x);
-}
-
-#[test]
-fn test_abs_multiplication() {
-    let x = BigInt::from_str_radix("57873674586797895671345345", 10).unwrap();
-    let y = BigInt::from_str_radix("21308561789045691782534873921650342768903561413264128756389247568729346542359871235465", 10).unwrap();
-    let z = BigInt::from_str_radix("1233204770891906354921751949503652431220138020953161094405729272872607166072371117664593787957056214903826660425", 10).unwrap();
-    assert_eq!(z, x.abs_multiplication(&y));
-}
-
-#[test]
-fn test_abs_division_no_remainder() {
-    let mut x = BigInt::from_str_radix("578435387FF0582367863200000000000000000000", 16).unwrap();
-    let y =                          BigInt::from_str_radix("200000000000000000000", 16).unwrap();
-    let z = BigInt::from_str_radix("2BC21A9C3FF82C11B3C319", 16).unwrap();
-    let quotient = x.abs_division(&y);
-    assert_eq!(BigInt::ZERO, x);
-    assert_eq!(z, quotient);
-}
-
-#[test]
-fn test_abs_division_remainder() {
-    let mut x = BigInt::from_str_radix("578435387FF0582367863200000000007651437856", 16).unwrap();
-    let y =                          BigInt::from_str_radix("200000000000000000000", 16).unwrap();
-    let z = BigInt::from_str_radix("2BC21A9C3FF82C11B3C319", 16).unwrap();
-    let r = BigInt::from_str_radix("7651437856", 16).unwrap();
-    let quotient = x.abs_division(&y);
-    assert_eq!(r, x);
-    assert_eq!(z, quotient);
-}
-
-#[test]
-fn test_abs_division_big() {
-    let mut x = BigInt::from_str_radix("581239456149785691238569872349872348569871269871234657986123987237865847935698734296434575367565723846982523852347", 10).unwrap();
-    let y = BigInt::from_str_radix("903852718907268716125180964783634518356783568793426834569872365791233387356325", 10).unwrap();
-    let q = BigInt::from_str_radix("643068769934649368349591185247155725", 10).unwrap();
-    let r = BigInt::from_str_radix("265234469040774335115597728873888165088018116561138613092906563355599185141722", 10).unwrap();
-    let quotient = x.abs_division(&y);
-    assert_eq!(r, x);
-    assert_eq!(q, quotient);
-}
-
-#[test]
-fn test_abs_division_small() {
-    let mut x = BigInt::from_str_radix("891023591340178345678931246518793456983745682137459364598623489512389745698237456890239238476873429872346579", 10).unwrap();
-    let q = BigInt::from_str_radix("255380794307875708133829534685810678413226048190730686328066348384175908769916152734376393945793473738133", 10).unwrap();
-    x.abs_division_small(3489);
-    assert_eq!(q, x);
 }
 
 #[test]
@@ -1241,7 +792,7 @@ fn test_axioms() {
     let l = ns.len();
     for i in 0..l {
         assert_eq!(BigInt::ZERO, BigInt::RING.sub(ns[i].clone(), ns[i].clone()));
-        if !ns[i].is_zero() {
+        if !BigInt::RING.is_zero(&ns[i]) {
             assert_eq!(BigInt::RING.one(), BigInt::RING.euclidean_div(ns[i].clone(), &ns[i]));
         }
         assert_eq!(ns[i], BigInt::RING.add_ref(BigInt::ZERO, &ns[i]));
@@ -1249,7 +800,7 @@ fn test_axioms() {
     }
     for i in 0..l {
         for j in 0..l {
-            if !ns[j].is_zero() {
+            if !BigInt::RING.is_zero(&ns[j]) {
                 assert_eq!(ns[i], BigInt::RING.add(
                     BigInt::RING.mul_ref(
                         &BigInt::RING.euclidean_div(ns[i].clone(), &ns[j]), 
@@ -1320,9 +871,8 @@ fn test_eq() {
         s.finish()
     }
 
-    let a = "98711".parse::<BigInt>().unwrap();
-    let mut b = a.clone();
-    b.data.push(0);
+    let a = BigInt { negative: false, data: Vector::new(vec![98711]) };
+    let b = BigInt { negative: false, data: Vector::new(vec![98711, 0]) };
     assert!(a == 98711);
     assert!(a == b);
     assert!(b == a);

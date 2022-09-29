@@ -1,10 +1,11 @@
+use crate::fraction_field::fraction_field_impl::FractionFieldImpl;
+use crate::integer::bigint_soo::BigIntSOO;
+
 use super::super::prelude::*;
 use super::monomial_order::*;
 use super::*;
-use super::super::rational::*;
 
 use std::collections::BinaryHeap;
-use std::borrow::Cow;
 
 type Monomial = Vec<usize>;
 
@@ -44,8 +45,8 @@ pub fn multi_poly_div<R, M>(ring: &R, mut lhs: El<R>, rhs: &El<R>, order: M) -> 
     let (rhs_lm, rhs_lc) = ring.lt(rhs, order).unwrap();
     while let Some((lhs_lm, lhs_lc)) = ring.lt(&lhs, order) {
         if let Some(m) = monomial_divide(&lhs_lm, &rhs_lm) {
-            let factor = ring.base_ring().div(lhs_lc.clone(), rhs_lc);
-            lhs = ring.sub_scaled(lhs, rhs, &m, &factor);   
+            let factor = ring.base_ring().neg(ring.base_ring().div(lhs_lc.clone(), rhs_lc));
+            lhs = ring.add_scaled(lhs, rhs, &m, &factor);   
         } else {
             return lhs;
         }
@@ -54,7 +55,7 @@ pub fn multi_poly_div<R, M>(ring: &R, mut lhs: El<R>, rhs: &El<R>, order: M) -> 
 }
 
 pub fn buchberger<R, M>(ring: &R, mut basis: Vec<El<R>>, order: M) -> Vec<El<R>>
-    where R: MultiPolyRing, M: MonomialOrder + Copy
+    where R: MultiPolyRing, R::BaseRing: DivisibilityInfoRing, M: MonomialOrder + Copy
 {
     let mut ij_pairs = BinaryHeap::new();
     for i in 0..basis.len() {
@@ -76,8 +77,9 @@ pub fn buchberger<R, M>(ring: &R, mut basis: Vec<El<R>>, order: M) -> Vec<El<R>>
         }
         if !ring.is_zero(&result) {
             let m = ring.lm(&result, order).unwrap();
-            println!("{}", ring.display(&result));
             ij_pairs.extend((0..basis.len()).map(|i| (monomial_correlation(&ring.lm(&basis[i], order).unwrap(), &m), i, basis.len())));
+            result = ring.reduced_poly(&result);
+            println!("{}", ring.display(&result));
             basis.push(result);
         }
     }
@@ -104,11 +106,11 @@ fn test_multi_poly_divide() {
 
 #[test]
 fn test_groebner() {
-    let ring = MultivariatePolyRing::new(r64::RING, vec!["X", "Y"]);
+    let ring = MultivariatePolyRing::new(FractionFieldImpl::new(BigIntSOO::RING), vec!["X", "Y"]);
     let ring = WrappingRing::new(&ring);
     let x= ring.as_poly("X");
     let y = ring.as_poly("Y");
-;
+
     let f = &y * x.pow(5); // x^5 y
     let g = &y * x.pow(2) + y.pow(2) * &x * 2 + 1; // x^2 y + 2x y^2 + 1
     let gb = buchberger(ring.wrapped_ring(), vec![f.into_val(), g.into_val()], Lex {});

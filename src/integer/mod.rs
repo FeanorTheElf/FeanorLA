@@ -1,3 +1,4 @@
+pub mod bigint_ops;
 pub mod bigint;
 pub mod primes;
 pub mod roots;

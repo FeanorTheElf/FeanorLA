@@ -345,8 +345,8 @@ impl OrderedRing for BigIntSOORing {
             (BigIntSOO::SOO(lhs), BigIntSOO::SOO(rhs)) => lhs.cmp(rhs),
             (BigIntSOO::SOO(_), BigIntSOO::BigInt(_)) => BigIntSOO::RING.cmp(rhs, lhs).reverse(),
             (BigIntSOO::BigInt(lhs), BigIntSOO::SOO(rhs)) => match (BigInt::RING.is_neg(lhs), *rhs < 0) {
-                (true, true) => lhs.abs_compare_small((-rhs) as u128).reverse(),
-                (false, false) => lhs.abs_compare_small(*rhs as u128),
+                (true, true) => lhs.abs_cmp_small((-rhs) as u128).reverse(),
+                (false, false) => lhs.abs_cmp_small(*rhs as u128),
                 (true, false) => Ordering::Less,
                 (false, true) => Ordering::Greater
             }
