@@ -80,7 +80,7 @@ pub trait MultiPolyRing: Ring + CanonicalIsomorphismInfo<MultivariatePolyRing<Se
             let val = std::mem::replace(&mut result, self.unspecified_element());
             result = self.add_scaled(val, &self.one(), m, &self.base_ring().quotient(c, &d).unwrap());
         });
-        debug_assert!(self.is_eq(&self.mul_ref(&result, &self.embedding()(d)), x));
+        debug_assert!(self.is_eq(&self.mul_ref(&result, &self.embedding()(d.clone())), x));
         return result;
     }
 

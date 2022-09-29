@@ -159,7 +159,7 @@ fn find_smallest_gcd_entry_in_pivot_row<R, M>(A: Matrix<M, RingElWrapper<R>>, ri
     where R: IntegerRing, M: MatrixViewMut<RingElWrapper<R>>
 {
     find_min_by_key(0..A.col_count(), |col: &usize| 
-        signed_gcd(A.at(0, 0).clone(), A.at(0, *col).clone(), ring)
+        signed_gcd(ring, A.at(0, 0).clone(), A.at(0, *col).clone())
     ).unwrap()
 }
 
@@ -167,7 +167,7 @@ fn find_smallest_gcd_entry_in_pivot_col<R, M>(A: Matrix<M, RingElWrapper<R>>, ri
     where R: IntegerRing, M: MatrixViewMut<RingElWrapper<R>>
 {
     find_min_by_key(0..A.row_count(), |row: &usize| 
-        signed_gcd(A.at(0, 0).clone(), A.at(*row, 0).clone(), ring)
+        signed_gcd(ring, A.at(0, 0).clone(), A.at(*row, 0).clone())
     ).unwrap()
 }
 

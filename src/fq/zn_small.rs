@@ -269,7 +269,7 @@ impl<const N: u64> DivisibilityInfoRing for StaticRing<ZnElImpl<N, false>> {
     }
 
     fn is_unit(&self, el: &Self::El) -> bool {
-        signed_gcd(N as i64, el.repr as i64, &i64::RING) == 1
+        signed_gcd(&i64::RING, N as i64, el.repr as i64) == 1
     }
 }
 

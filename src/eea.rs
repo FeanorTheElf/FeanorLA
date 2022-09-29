@@ -51,12 +51,12 @@ pub fn eea<R>(ring: &R, fst: R::El, snd: R::El) -> (R::El, R::El, R::El)
 /// ```
 /// # use feanor_la::eea::signed_gcd;
 /// # use feanor_la::primitive::RingEl;
-/// assert_eq!(2, signed_gcd(6, 8, &i64::RING));
-/// assert_eq!(0, signed_gcd(0, 0, &i64::RING)); 
-/// assert_eq!(5, signed_gcd(0, -5, &i64::RING));
-/// assert_eq!(-5, signed_gcd(-5, 0, &i64::RING)); 
-/// assert_eq!(-1, signed_gcd(-1, 1, &i64::RING));
-/// assert_eq!(1, signed_gcd(1, -1, &i64::RING));
+/// assert_eq!(2, signed_gcd(&i64::RING, 6, 8));
+/// assert_eq!(0, signed_gcd(&i64::RING, 0, 0)); 
+/// assert_eq!(5, signed_gcd(&i64::RING, 0, -5));
+/// assert_eq!(-5, signed_gcd(&i64::RING, -5, 0)); 
+/// assert_eq!(-1, signed_gcd(&i64::RING, -1, 1));
+/// assert_eq!(1, signed_gcd(&i64::RING, 1, -1));
 /// ```
 /// and therefore `signed_eea(6, 8) == (-1, 1, 2)`, 
 /// `signed_eea(-6, 8) == (-1, -1, -2)`, 
@@ -145,11 +145,17 @@ pub fn gcd<R>(ring: &R, a: R::El, b: R::El) -> R::El
 /// sign of b is irrelevant
 /// gcd(0, 0) = 0
 /// 
-pub fn signed_gcd<R>(a: R::El, b: R::El, ring: &R) -> R::El
+pub fn signed_gcd<R>(ring: &R, a: R::El, b: R::El) -> R::El
     where R: EuclideanInfoRing + OrderedRing
 {
     let (_, _, d) = signed_eea(a, b, ring);
     return d;
+}
+
+pub fn signed_lcm<R>(ring: &R, fst: R::El, snd: R::El) -> R::El
+    where R: EuclideanInfoRing + OrderedRing
+{
+    ring.mul(ring.euclidean_div(fst.clone(), &signed_gcd(ring, fst, snd.clone())), snd)
 }
 
 pub fn lcm<R>(ring: &R, fst: R::El, snd: R::El) -> R::El
@@ -160,20 +166,20 @@ pub fn lcm<R>(ring: &R, fst: R::El, snd: R::El) -> R::El
 
 #[test]
 fn test_gcd() {
-    assert_eq!(3, signed_gcd(15, 6, &i64::RING));
-    assert_eq!(3, signed_gcd(6, 15, &i64::RING));
+    assert_eq!(3, signed_gcd(&i64::RING, 15, 6));
+    assert_eq!(3, signed_gcd(&i64::RING, 6, 15));
 
-    assert_eq!(7, signed_gcd(0, 7, &i64::RING));
-    assert_eq!(7, signed_gcd(7, 0, &i64::RING));
-    assert_eq!(0, signed_gcd(0, 0, &i64::RING));
+    assert_eq!(7, signed_gcd(&i64::RING, 0, 7));
+    assert_eq!(7, signed_gcd(&i64::RING, 7, 0));
+    assert_eq!(0, signed_gcd(&i64::RING, 0, 0));
 
-    assert_eq!(1, signed_gcd(9, 1, &i64::RING));
-    assert_eq!(1, signed_gcd(1, 9, &i64::RING));
+    assert_eq!(1, signed_gcd(&i64::RING, 9, 1));
+    assert_eq!(1, signed_gcd(&i64::RING, 1, 9));
 
-    assert_eq!(1, signed_gcd(13, 300, &i64::RING));
-    assert_eq!(1, signed_gcd(300, 13, &i64::RING));
+    assert_eq!(1, signed_gcd(&i64::RING, 13, 300));
+    assert_eq!(1, signed_gcd(&i64::RING, 300, 13));
 
-    assert_eq!(-3, signed_gcd(-15, 6, &i64::RING));
-    assert_eq!(3, signed_gcd(6, -15, &i64::RING));
-    assert_eq!(-3, signed_gcd(-6, -15, &i64::RING));
+    assert_eq!(-3, signed_gcd(&i64::RING, -15, 6));
+    assert_eq!(3, signed_gcd(&i64::RING, 6, -15));
+    assert_eq!(-3, signed_gcd(&i64::RING, -6, -15));
 }

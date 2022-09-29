@@ -243,7 +243,7 @@ impl<I: IntegerRing> DivisibilityInfoRing for Zn<I> {
     }
 
     fn is_unit(&self, FactorRingZEl(el): &Self::El) -> bool {
-        self.integer_ring.is_one(&signed_gcd(el.clone(), self.modulus.clone(), &self.integer_ring))
+        self.integer_ring.is_one(&signed_gcd(&self.integer_ring, el.clone(), self.modulus.clone()))
     }
 }
 

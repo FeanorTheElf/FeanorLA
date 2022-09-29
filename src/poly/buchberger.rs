@@ -78,7 +78,7 @@ pub fn buchberger<R, M>(ring: &R, mut basis: Vec<El<R>>, order: M) -> Vec<El<R>>
         if !ring.is_zero(&result) {
             let m = ring.lm(&result, order).unwrap();
             ij_pairs.extend((0..basis.len()).map(|i| (monomial_correlation(&ring.lm(&basis[i], order).unwrap(), &m), i, basis.len())));
-            result = ring.reduced_poly(&result);
+            // result = ring.reduced_poly(&result);
             println!("{}", ring.display(&result));
             basis.push(result);
         }
@@ -112,7 +112,7 @@ fn test_groebner() {
     let y = ring.as_poly("Y");
 
     let f = &y * x.pow(5); // x^5 y
-    let g = &y * x.pow(2) + y.pow(2) * &x * 2 + 1; // x^2 y + 2x y^2 + 1
+    let g = &y * x.pow(2) + y.pow(2) * &x + 1; // x^2 y + x y^2 + 1
     let gb = buchberger(ring.wrapped_ring(), vec![f.into_val(), g.into_val()], Lex {});
     for h in &gb {
         println!("{}", ring.wrapped_ring().display(h))
