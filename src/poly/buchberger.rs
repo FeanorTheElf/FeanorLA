@@ -54,16 +54,33 @@ pub fn multi_poly_div<R, M>(ring: &R, mut lhs: El<R>, rhs: &El<R>, order: M) -> 
     return lhs;
 }
 
+fn reduce_basis<R, M>(ring: &R, basis: &mut Vec<El<R>>, order: M)
+    where R: MultiPolyRing, R::BaseRing: DivisibilityInfoRing, M: MonomialOrder + Copy
+{
+    for i in 0..basis.len() {
+        let mut current = std::mem::replace(&mut basis[i], ring.zero());
+        for j in 0..basis.len() {
+            if !ring.is_zero(&basis[j]) {
+                current = multi_poly_div(ring, current, &basis[j], order);
+            }
+        }
+        basis[i] = ring.reduced_poly(&current);
+    }
+}
+
 pub fn buchberger<R, M>(ring: &R, mut basis: Vec<El<R>>, order: M) -> Vec<El<R>>
     where R: MultiPolyRing, R::BaseRing: DivisibilityInfoRing, M: MonomialOrder + Copy
 {
-    let mut ij_pairs = BinaryHeap::new();
+    let mut ij_pairs = Vec::new();
     for i in 0..basis.len() {
         for j in (i + 1)..basis.len() {
-            ij_pairs.push((monomial_correlation(&ring.lm(&basis[i], order).unwrap(), &ring.lm(&basis[j], order).unwrap()), i, j));
+            ij_pairs.push((i, j));
         }
     }
-    while let Some((_, i, j)) = ij_pairs.pop() {
+    while let Some((i, j)) = ij_pairs.pop() {
+        if ring.is_zero(&basis[i]) || ring.is_zero(&basis[j]) {
+            continue;
+        }
         let (lhs_lm, lhs_lc) = ring.lt(&basis[i], order).unwrap();
         let (rhs_lm, rhs_lc) = ring.lt(&basis[j], order).unwrap();
         let (a, b) = monomial_lcm_combine(&lhs_lm, &rhs_lm);
@@ -73,14 +90,15 @@ pub fn buchberger<R, M>(ring: &R, mut basis: Vec<El<R>>, order: M) -> Vec<El<R>>
         );
         let mut result = S;
         for b in &basis {
-            result = multi_poly_div(ring, result, b, order);
+            if !ring.is_zero(b) {
+                result = multi_poly_div(ring, result, b, order);
+            }
         }
         if !ring.is_zero(&result) {
-            let m = ring.lm(&result, order).unwrap();
-            ij_pairs.extend((0..basis.len()).map(|i| (monomial_correlation(&ring.lm(&basis[i], order).unwrap(), &m), i, basis.len())));
-            // result = ring.reduced_poly(&result);
-            println!("{}", ring.display(&result));
+            ij_pairs.extend((0..basis.len()).map(|i| (i, basis.len())));
+            result = ring.reduced_poly(&result);
             basis.push(result);
+            reduce_basis(ring, &mut basis, order);
         }
     }
     return basis;
@@ -111,10 +129,8 @@ fn test_groebner() {
     let x= ring.as_poly("X");
     let y = ring.as_poly("Y");
 
-    let f = &y * x.pow(5); // x^5 y
-    let g = &y * x.pow(2) + y.pow(2) * &x + 1; // x^2 y + x y^2 + 1
+    let f = &y * x.pow(5);
+    let g = &y * x.pow(2) + y.pow(2) * &x + 1;
     let gb = buchberger(ring.wrapped_ring(), vec![f.into_val(), g.into_val()], Lex {});
-    for h in &gb {
-        println!("{}", ring.wrapped_ring().display(h))
-    }
+    assert!(gb.iter().any(|x| ring.wrapped_ring().is_one(x)));
 }
