@@ -6,7 +6,7 @@ pub trait FiniteRingIterFn<R: FiniteRing>: Clone {
     fn next(&mut self, ring: &R) -> Option<R::El>;
 }
 
-impl<'a, R, F> FiniteRingIterFn<R> for F 
+impl<R, F> FiniteRingIterFn<R> for F 
     where R: RingDecorator, R::DecoratedRing: FiniteRing, F: FiniteRingIterFn<R::DecoratedRing>
 {
     
@@ -25,6 +25,14 @@ pub trait FiniteRing: Ring {
         where G: FnMut() -> u32;
 }
 
+pub trait IntegerQuotientRing: FiniteRing {
+
+    type LiftingRing: IntegerRing;
+
+    fn lifting_ring(&self) -> Self::LiftingRing;
+    fn lift(&self, x: &El<Self>, ring: &Self::LiftingRing) -> El<Self::LiftingRing>;
+}
+
 impl<'a, R> FiniteRing for R
     where R: RingDecorator, R::DecoratedRing: FiniteRing
 {
@@ -38,6 +46,15 @@ impl<'a, R> FiniteRing for R
     {
         self.decorated_ring().random_element(rng)
     }
+}
+
+impl<R> IntegerQuotientRing for R
+    where R: RingDecorator, R::DecoratedRing: IntegerQuotientRing
+{
+    type LiftingRing = <R::DecoratedRing as IntegerQuotientRing>::LiftingRing;
+
+    fn lifting_ring(&self) -> Self::LiftingRing { self.decorated_ring().lifting_ring() }
+    fn lift(&self, x: &El<Self>, ring: &Self::LiftingRing) -> El<Self::LiftingRing> { self.decorated_ring().lift(x, ring) }
 }
 
 #[derive(Clone)]

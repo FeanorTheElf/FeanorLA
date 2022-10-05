@@ -299,6 +299,32 @@ impl<const N: u64> FiniteRing for StaticRing<ZnElImpl<N, false>> {
     }
 }
 
+impl<const N: u64> IntegerQuotientRing for StaticRing<ZnElImpl<N, true>> {
+
+    type LiftingRing = StaticRing<i64>;
+
+    fn lifting_ring(&self) -> Self::LiftingRing {
+        i64::RING
+    }
+
+    fn lift(&self, x: &El<Self>, _ring: &Self::LiftingRing) -> El<Self::LiftingRing> {
+        x.repr as i64
+    }
+}
+
+impl<const N: u64> IntegerQuotientRing for StaticRing<ZnElImpl<N, false>> {
+
+    type LiftingRing = StaticRing<i64>;
+
+    fn lifting_ring(&self) -> Self::LiftingRing {
+        i64::RING
+    }
+
+    fn lift(&self, x: &El<Self>, _ring: &Self::LiftingRing) -> El<Self::LiftingRing> {
+        x.repr as i64
+    }
+}
+
 pub type ZnEl<const N: u64> = ZnElImpl<N, {is_prime(N)}>;
 
 #[test]
