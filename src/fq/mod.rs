@@ -136,3 +136,13 @@ impl<R> WrappingRing<R>
         finite_field_elements(&self)
     }
 }
+
+impl<R> RingElWrapper<R>
+    where R: IntegerQuotientRing
+{
+    pub fn lift(&self) -> RingElWrapper<R::LiftingRing> {
+        let ring = self.parent_ring().lifting_ring();
+        let x = self.parent_ring().lift(self.val(), &ring);
+        return RingElWrapper::new(x, ring);
+    }
+}
