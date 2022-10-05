@@ -1,11 +1,6 @@
-use crate::fraction_field::fraction_field_impl::FractionFieldImpl;
-use crate::integer::bigint_soo::BigIntSOO;
-
 use super::super::prelude::*;
 use super::monomial_order::*;
 use super::*;
-
-use std::collections::BinaryHeap;
 
 type Monomial = Vec<usize>;
 
@@ -16,11 +11,6 @@ fn monomial_divide(lhs: &Monomial, rhs: &Monomial) -> Option<Monomial> {
         return None;
     }
     Some(normalized_monomial((0..lhs.len()).map(|i| lhs[i] - rhs.get(i).unwrap_or(&0))))
-}
-
-fn monomial_correlation(lhs: &Monomial, rhs: &Monomial) -> i64 {
-    let inner_prod = |l: &Monomial, r: &Monomial| l.iter().zip(r.iter()).map(|(a, b)| a * b).sum::<usize>() as i64;
-    (inner_prod(lhs, rhs) * inner_prod(lhs, rhs)) / (inner_prod(lhs, lhs) * inner_prod(rhs, rhs))
 }
 
 ///
@@ -84,11 +74,11 @@ pub fn buchberger<R, M>(ring: &R, mut basis: Vec<El<R>>, order: M) -> Vec<El<R>>
         let (lhs_lm, lhs_lc) = ring.lt(&basis[i], order).unwrap();
         let (rhs_lm, rhs_lc) = ring.lt(&basis[j], order).unwrap();
         let (a, b) = monomial_lcm_combine(&lhs_lm, &rhs_lm);
-        let S = ring.sub(
+        let s_poly = ring.sub(
             ring.scale(basis[i].clone(), &a, rhs_lc),
             ring.scale(basis[j].clone(), &b, lhs_lc)
         );
-        let mut result = S;
+        let mut result = s_poly;
         for b in &basis {
             if !ring.is_zero(b) {
                 result = multi_poly_div(ring, result, b, order);
@@ -124,7 +114,7 @@ fn test_multi_poly_divide() {
 
 #[test]
 fn test_groebner() {
-    let ring = MultivariatePolyRing::new(FractionFieldImpl::new(BigIntSOO::RING), vec!["X", "Y"]);
+    let ring = MultivariatePolyRing::new(r64::RING, vec!["X", "Y"]);
     let ring = WrappingRing::new(&ring);
     let x= ring.as_poly("X");
     let y = ring.as_poly("Y");
