@@ -147,6 +147,11 @@ impl<M, T> Matrix<M, T>
         assert!(self.col_count() == 1);
         Vector::new(MatrixCol::new(self.data, 0))
     }
+
+    pub fn as_el(&self) -> &T {
+        assert!(self.col_count() == 1 && self.row_count() == 1);
+        return self.at(0, 0);
+    }
 }
 
 impl<M, T> Matrix<M, T>
