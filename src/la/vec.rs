@@ -257,6 +257,14 @@ impl<V, T> Vector<V, T>
         return result;
     }
 
+    pub fn scaled<R>(self, rhs: &El<R>, ring: &R) -> Vector<VectorOwned<T>, T>
+        where R: Ring<El = T>
+    {
+        let mut result = self.into_owned();
+        result.scale(rhs, ring);
+        return result;
+    }
+
     pub fn sub<R, W>(self, rhs: Vector<W, T>, ring: &R) -> Vector<VectorOwned<T>, T>
         where R: Ring<El = T>, W: VectorView<T>
     {
