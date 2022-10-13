@@ -212,6 +212,19 @@ impl<I: IntegerRing> RingBase for Zn<I> {
     }
 }
 
+impl<I: IntegerRing> IntegerQuotientRing for Zn<I> {
+
+    type LiftingRing = I;
+
+    fn lifting_ring(&self) -> Self::LiftingRing {
+        self.integer_ring.clone()
+    }
+
+    fn lift(&self, x: &El<Self>, _ring: &Self::LiftingRing) -> El<Self::LiftingRing> {
+        x.0.clone()
+    }
+}
+
 impl<I: IntegerRing> RingBase for Zn<I>
     where I: UfdInfoRing
 {
