@@ -405,11 +405,6 @@ fn test_add() {
 }
 
 #[test]
-fn test_add_small() {
-    let mut x = BigInt::from_str_radix("1", 16).unwrap().base_u64_repr();
-}
-
-#[test]
 fn test_add_with_carry() {
     let mut x = BigInt::from_str_radix("1BC00000000000000BC", 16).unwrap().base_u64_repr();
     let y =  BigInt::from_str_radix("FFFFFFFFFFFFFFFF0000000000000000BC", 16).unwrap().base_u64_repr();

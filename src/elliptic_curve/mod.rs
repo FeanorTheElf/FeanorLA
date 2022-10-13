@@ -45,7 +45,9 @@ impl<K> std::fmt::Display for EllipticCurve<K>
     }
 }
 
+#[allow(type_alias_bounds)]
 pub type CoordRing<K: Ring> = WrappingRing<SimpleRingExtension<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>>;
+#[allow(type_alias_bounds)]
 pub type FunctionField<K: Ring> = WrappingRing<ExtensionWrapper<
     K, 
     FractionFieldImpl<SimpleRingExtension<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>>,

@@ -1,11 +1,6 @@
-use crate::fraction_field::fraction_field_impl::FractionFieldImpl;
-use crate::integer::bigint_soo::BigIntSOO;
-
 use super::super::prelude::*;
 use super::monomial_order::*;
 use super::*;
-
-use std::collections::BinaryHeap;
 
 type Monomial = Vec<usize>;
 
@@ -16,11 +11,6 @@ fn monomial_divide(lhs: &Monomial, rhs: &Monomial) -> Option<Monomial> {
         return None;
     }
     Some(normalized_monomial((0..lhs.len()).map(|i| lhs[i] - rhs.get(i).unwrap_or(&0))))
-}
-
-fn monomial_correlation(lhs: &Monomial, rhs: &Monomial) -> i64 {
-    let inner_prod = |l: &Monomial, r: &Monomial| l.iter().zip(r.iter()).map(|(a, b)| a * b).sum::<usize>() as i64;
-    (inner_prod(lhs, rhs) * inner_prod(lhs, rhs)) / (inner_prod(lhs, lhs) * inner_prod(rhs, rhs))
 }
 
 ///
@@ -57,28 +47,27 @@ pub fn multi_poly_div<R, M>(ring: &R, mut lhs: El<R>, rhs: &El<R>, order: M) -> 
 pub fn buchberger<R, M>(ring: &R, mut basis: Vec<El<R>>, order: M) -> Vec<El<R>>
     where R: MultiPolyRing, R::BaseRing: DivisibilityInfoRing, M: MonomialOrder + Copy
 {
-    let mut ij_pairs = BinaryHeap::new();
+    let mut ij_pairs = Vec::new();
     for i in 0..basis.len() {
         for j in (i + 1)..basis.len() {
-            ij_pairs.push((monomial_correlation(&ring.lm(&basis[i], order).unwrap(), &ring.lm(&basis[j], order).unwrap()), i, j));
+            ij_pairs.push((i, j));
         }
     }
-    while let Some((_, i, j)) = ij_pairs.pop() {
+    while let Some((i, j)) = ij_pairs.pop() {
         let (lhs_lm, lhs_lc) = ring.lt(&basis[i], order).unwrap();
         let (rhs_lm, rhs_lc) = ring.lt(&basis[j], order).unwrap();
         let (a, b) = monomial_lcm_combine(&lhs_lm, &rhs_lm);
-        let S = ring.sub(
+        let s_poly = ring.sub(
             ring.scale(basis[i].clone(), &a, rhs_lc),
             ring.scale(basis[j].clone(), &b, lhs_lc)
         );
-        let mut result = S;
+        let mut result = s_poly;
         for b in &basis {
             result = multi_poly_div(ring, result, b, order);
         }
         if !ring.is_zero(&result) {
-            let m = ring.lm(&result, order).unwrap();
-            ij_pairs.extend((0..basis.len()).map(|i| (monomial_correlation(&ring.lm(&basis[i], order).unwrap(), &m), i, basis.len())));
-            // result = ring.reduced_poly(&result);
+            ij_pairs.extend((0..basis.len()).map(|i| (i, basis.len())));
+            result = ring.reduced_poly(&result);
             println!("{}", ring.display(&result));
             basis.push(result);
         }
@@ -88,6 +77,10 @@ pub fn buchberger<R, M>(ring: &R, mut basis: Vec<El<R>>, order: M) -> Vec<El<R>>
 
 #[cfg(test)]
 use super::super::rational::r64;
+#[cfg(test)]
+use crate::fraction_field::fraction_field_impl::FractionFieldImpl;
+#[cfg(test)]
+use crate::integer::bigint_soo::BigIntSOO;
 
 #[test]
 fn test_multi_poly_divide() {

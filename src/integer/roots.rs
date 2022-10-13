@@ -28,26 +28,26 @@ impl<'a, R: IntegerRing + OrderedRing + EuclideanInfoRing> IntegralCubic<'a, R> 
     fn calc_integral_roots<F>(&self, mut f: F)
         where F: FnMut(R::El)
     {
-        let Z = &self.ring;
-        let mut process_potential_root = |x: R::El| if Z.is_zero(&self.eval(&x)) { f(x) };
-        let diff_disc = Z.mul(Z.from_z(-12), self.p.clone());
-        if Z.cmp(&diff_disc, &Z.zero()) != Ordering::Greater {
+        let int_ring = &self.ring;
+        let mut process_potential_root = |x: R::El| if int_ring.is_zero(&self.eval(&x)) { f(x) };
+        let diff_disc = int_ring.mul(int_ring.from_z(-12), self.p.clone());
+        if int_ring.cmp(&diff_disc, &int_ring.zero()) != Ordering::Greater {
             // zero or one maximum/minimum, so there can be at most one root
-            process_potential_root(find_zero_floor(&Z, |x| self.eval(x), Z.zero()));
+            process_potential_root(find_zero_floor(&int_ring, |x| self.eval(x), int_ring.zero()));
         } else {
-            let root_size_bound = if Z.abs_cmp(&self.p, &self.q) == std::cmp::Ordering::Less {
-                Z.abs(self.q.clone())
+            let root_size_bound = if int_ring.abs_cmp(&self.p, &self.q) == std::cmp::Ordering::Less {
+                int_ring.abs(self.q.clone())
             } else {
-                Z.abs(self.p.clone())
+                int_ring.abs(self.p.clone())
             };
-            let extremum_floor = Z.floor_div(Z.root_floor(&diff_disc, 2), &Z.from_z(6));
+            let extremum_floor = int_ring.floor_div(int_ring.root_floor(&diff_disc, 2), &int_ring.from_z(6));
             // on the intervals [a0, a1], [b0, b1], [c0, c1], the function is monotonous, 
             // hence has at most one root
-            let a0 = Z.neg(root_size_bound.clone());
-            let a1 = Z.neg(extremum_floor.clone());
-            let b0 = Z.sub_ref_fst(&a1, Z.one());
+            let a0 = int_ring.neg(root_size_bound.clone());
+            let a1 = int_ring.neg(extremum_floor.clone());
+            let b0 = int_ring.sub_ref_fst(&a1, int_ring.one());
             let b1 = extremum_floor;
-            let c0 = Z.add_ref(Z.one(), &b1);
+            let c0 = int_ring.add_ref(int_ring.one(), &b1);
             let c1 = root_size_bound;
             let a0_val = self.eval(&a0);
             let a1_val = self.eval(&a1);
@@ -55,15 +55,15 @@ impl<'a, R: IntegerRing + OrderedRing + EuclideanInfoRing> IntegralCubic<'a, R> 
             let b1_val = self.eval(&b1);
             let c0_val = self.eval(&c0);
             let c1_val = self.eval(&c1);
-            let zero = Z.zero();
-            if Z.cmp(&a0_val, &zero) != Ordering::Greater && Z.cmp(&a1_val, &zero) != Ordering::Less {
-                process_potential_root(bisect(&Z, |x| self.eval(&x), a0, a1));
+            let zero = int_ring.zero();
+            if int_ring.cmp(&a0_val, &zero) != Ordering::Greater && int_ring.cmp(&a1_val, &zero) != Ordering::Less {
+                process_potential_root(bisect(&int_ring, |x| self.eval(&x), a0, a1));
             }
-            if Z.cmp(&b0_val, &zero) != Ordering::Less && Z.cmp(&b1_val, &zero) != Ordering::Greater {
-                process_potential_root(bisect(&Z, |x| Z.neg(self.eval(&x)), b0, b1));
+            if int_ring.cmp(&b0_val, &zero) != Ordering::Less && int_ring.cmp(&b1_val, &zero) != Ordering::Greater {
+                process_potential_root(bisect(&int_ring, |x| int_ring.neg(self.eval(&x)), b0, b1));
             }
-            if Z.cmp(&c0_val, &zero) != Ordering::Greater && Z.cmp(&c1_val, &zero) != Ordering::Less {
-                process_potential_root(bisect(&Z, |x| self.eval(&x), c0, c1));
+            if int_ring.cmp(&c0_val, &zero) != Ordering::Greater && int_ring.cmp(&c1_val, &zero) != Ordering::Less {
+                process_potential_root(bisect(&int_ring, |x| self.eval(&x), c0, c1));
             }
         }
     }

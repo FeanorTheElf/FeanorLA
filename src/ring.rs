@@ -240,6 +240,7 @@ impl<R: ?Sized> Ring for R
     where R: RingBase + CanonicalIsomorphismInfo<R>
 {}
 
+#[allow(type_alias_bounds)]
 pub type El<R: Ring> = <R as RingBase>::El;
 
 ///

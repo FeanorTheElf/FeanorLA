@@ -23,6 +23,7 @@ use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssi
 /// and a debug output may print a non-reduced fraction. Display output will
 /// always print a correctly reduced form of this fraction.
 ///
+#[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct r64 {
     numerator: i64,

@@ -5,6 +5,7 @@ use super::*;
 
 use std::collections::HashMap;
 
+#[allow(type_alias_bounds)]
 type P<K: Ring> = WrappingRing<PolyRingImpl<K>>;
 
 pub struct DivisionPolyArray<'a, K: Ring> {
