@@ -96,10 +96,6 @@ pub fn buchberger<R, M>(ring: &R, mut basis: Vec<El<R>>, order: M) -> Vec<El<R>>
 
 #[cfg(test)]
 use super::super::rational::r64;
-#[cfg(test)]
-use crate::fraction_field::fraction_field_impl::FractionFieldImpl;
-#[cfg(test)]
-use crate::integer::bigint_soo::BigIntSOO;
 
 #[test]
 fn test_multi_poly_divide() {

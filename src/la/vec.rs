@@ -327,14 +327,6 @@ impl<T> Vector<VectorOwned<T>, T> {
         Vector::new((0..len).map(f).collect())
     }
 
-    pub fn unit_vector_ring<R>(i: usize, len: usize, ring: &R) -> Self 
-        where R: Ring<El = T>, T: std::fmt::Debug + Clone
-    {
-        let mut result = Vector::zero_ring(len, ring).into_owned();
-        *result.at_mut(i) = ring.one();
-        return result;
-    }
-
     pub fn map<U, S, F>(vector: Vector<U, S>, f: F) -> Self
         where U: VectorView<S>, F: FnMut(S) -> T, S: Clone
     {
@@ -424,6 +416,15 @@ impl<T> Vector<UnitVectorView<T>, T>
 {
     pub fn unit_vector(i: usize, len: usize) -> Self {
         Vector::new(UnitVectorView::new(len, i, T::zero(), T::one()))
+    }
+}
+
+impl<T> Vector<UnitVectorView<T>, T> {
+    
+    pub fn unit_vector_ring<R>(i: usize, len: usize, ring: &R) -> Self 
+        where R: Ring<El = T>, T: std::fmt::Debug + Clone
+    {
+        Vector::new(UnitVectorView::new(len, i, ring.zero(), ring.one()))
     }
 }
 
