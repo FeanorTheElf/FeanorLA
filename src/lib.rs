@@ -17,20 +17,21 @@ extern crate vector_map;
 
 pub mod ring_property;
 pub mod ring;
-pub mod square_multiply;
 pub mod primitive;
 pub mod embedding;
 pub mod wrapper;
+pub mod static_ring;
 pub mod float;
-pub mod prelude;
+pub mod ring_decorator;
+
+pub mod square_multiply;
 pub mod karatsuba;
 pub mod eea;
 pub mod lattice;
-pub mod ring_decorator;
 
-#[macro_use]
+pub mod prelude;
+
 pub mod la;
-#[macro_use]
 pub mod integer;
 pub mod fq;
 pub mod rational;
