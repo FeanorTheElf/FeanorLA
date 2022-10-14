@@ -203,6 +203,17 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
         }
     }
 
+    fn from_z_gen<I>(&self, x: El<I>, ring: &I) -> Self::El 
+        where I: IntegerRing
+    {
+        let result = abs_square_and_multiply(&self.one(), &x, ring, |x, y| self.add(x, y), |x, y| self.add_ref(x.clone(), y), self.zero());
+        if ring.is_neg(&x) {
+            return self.neg(result);
+        } else {
+            return result;
+        }
+    }
+
     ///
     /// Writes a textual representation of the element to the formatter.
     /// If in_prod is set, then the representation will be chosen such that
