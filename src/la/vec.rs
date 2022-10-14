@@ -257,6 +257,12 @@ impl<V, T> Vector<V, T>
         return result;
     }
 
+    pub fn dot<R, W>(self, rhs: Vector<W, T>, ring: &R) -> T
+        where R: Ring<El = T>, W: VectorView<T>
+    {
+        Matrix::new(RowVector::new(self.data)).mul(Matrix::new(ColumnVector::new(rhs.data)), ring).at(0, 0)
+    }
+
     pub fn scaled<R>(self, rhs: &El<R>, ring: &R) -> Vector<VectorOwned<T>, T>
         where R: Ring<El = T>
     {
