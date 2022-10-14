@@ -10,7 +10,7 @@ pub fn diophantine_solve<R, M, N, K, V>(partial_snf: Matrix<M, RingElWrapper<R>>
     where R: IntegerRing, M: MatrixView<RingElWrapper<R>>, N: MatrixView<RingElWrapper<R>>, K: MatrixView<RingElWrapper<R>>, V: VectorView<RingElWrapper<R>>
 {
     let ring = partial_snf.at(0, 0).ring().clone();
-    let b = left_inv.mul(Matrix::col_vec(b), &ring).into_col_vec();
+    let b = left_inv.mul(Matrix::col_vec(b), &ring).compute().into_col_vec();
     let mut x = Vector::zero_ring(partial_snf.col_count(), &ring).into_owned();
     for i in 0..min(partial_snf.row_count(), partial_snf.col_count()) {
         *x.at_mut(i) = ring.quotient(b.at(i), partial_snf.at(i, i))?;
@@ -20,7 +20,7 @@ pub fn diophantine_solve<R, M, N, K, V>(partial_snf: Matrix<M, RingElWrapper<R>>
             return None;
         }
     }
-    let x = right_inv.mul(Matrix::col_vec(x), &ring).into_col_vec();
+    let x = right_inv.mul(Matrix::col_vec(x), &ring).compute().into_col_vec();
     return Some(x);
 }
 

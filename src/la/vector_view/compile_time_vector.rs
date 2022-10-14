@@ -36,7 +36,8 @@ macro_rules! gen_const_vector {
             fn at(&self, i: usize) -> &$value_type {
                 &Self::DATA[i]
             }
-            fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+            
+            fn create_subvector(self, from: usize, to: usize) -> Self::Subvector {
                 Subvector::new(from, to, self)
             }
         }

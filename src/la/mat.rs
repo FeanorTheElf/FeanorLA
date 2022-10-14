@@ -1,7 +1,9 @@
 use super::super::ring::*;
 use super::super::primitive::*;
+use super::mat_fn::*;
 use super::ops::*;
 
+pub use super::mat_fn::MatFn;
 pub use super::matrix_view::*;
 pub use super::matrix_view::constant_value_matrix::*;
 pub use super::matrix_view::matrix_transpose::*;
@@ -296,28 +298,29 @@ impl<M, T> Matrix<M, T>
 impl<M, T> Matrix<M, T>
     where M: MatrixViewMut<T>, T: Clone
 {
-    pub fn assign<N>(&mut self, rhs: Matrix<N, T>) 
-        where N: MatrixView<T>
+    pub fn assign<N>(&mut self, rhs: N) 
+        where N: MatFn<T>
     {
-        <T as MatrixAssign<M, N>>::assign_matrix(&mut self.data, rhs.data)
+        rhs.assign_to(self)
     }
 }
 
 impl<M, T> Matrix<M, T>
     where M: MatrixView<T>, T: Clone + std::fmt::Debug
 {
-    pub fn mul<R, N>(self, rhs: Matrix<N, T>, ring: &R) -> Matrix<MatrixOwned<T>, T>
+    pub fn mul<R, N>(self, rhs: Matrix<N, T>, ring: R) -> MatrixProd<R, M, N>
         where R: Ring<El = T>, N: MatrixView<T>
     {
-        Matrix::new(<R as MatrixMul<M, N>>::mul_matrix(ring, self.data, rhs.data))
+        assert_eq!(self.col_count(), rhs.row_count());
+        MatrixProd::new(self, rhs, ring)
     }
 
-    pub fn add<R, N>(self, rhs: Matrix<N, T>, ring: &R) -> Matrix<MatrixOwned<T>, T>
+    pub fn add<R, N>(self, rhs: Matrix<N, T>, ring: R) -> MatrixSum<R, Matrix<M, T>, Matrix<N, T>>
         where R: Ring<El = T>, N: MatrixView<T>
     {
-        let mut result = self.into_owned();
-        result.add_assign(rhs, ring);
-        return result;
+        assert_eq!(self.row_count(), rhs.row_count());
+        assert_eq!(self.col_count(), rhs.col_count());
+        MatrixSum::new(self, rhs, ring)
     }
 
     pub fn sub<R, N>(self, rhs: Matrix<N, T>, ring: &R) -> Matrix<MatrixOwned<T>, T>
@@ -389,16 +392,16 @@ impl<M, T> Matrix<M, T>
         }
     }
 
-    pub fn add_assign<R, N>(&mut self, rhs: Matrix<N, T>, ring: &R)
-        where R: Ring<El = T>, N: MatrixView<T>
+    pub fn add_assign<R, N>(&mut self, rhs: N, ring: &R)
+        where R: Ring<El = T>, N: MatFn<T>
     {
-        <R as MatrixAddAssign<M, N>>::add_assign_matrix(ring, &mut self.data, rhs.data);
+        rhs.add_to(self, ring);
     }
 
-    pub fn sub_assign<R, N>(&mut self, rhs: Matrix<N, T>, ring: &R)
-        where R: Ring<El = T>, N: MatrixView<T>
+    pub fn sub_assign<R, N>(&mut self, rhs: N, ring: &R)
+        where R: Ring<El = T>, N: MatFn<T>
     {
-        <R as MatrixAddAssign<M, N>>::sub_assign_matrix(ring, &mut self.data, rhs.data);
+        MatrixNeg::new(rhs, ring).add_to(self, ring)
     }
 
     pub fn scale<R>(&mut self, rhs: &T, ring: &R)
@@ -451,7 +454,7 @@ impl<M, N, T> Add<Matrix<N, T>> for Matrix<M, T>
     type Output = Matrix<MatrixOwned<T>, T>;
 
     fn add(self, rhs: Matrix<N, T>) -> Self::Output {
-        self.add(rhs, &T::RING)
+        self.add(rhs, &T::RING).compute()
     }
 }
 
@@ -471,7 +474,7 @@ impl<M, N, T> Mul<Matrix<N, T>> for Matrix<M, T>
     type Output = Matrix<MatrixOwned<T>, T>;
 
     fn mul(self, rhs: Matrix<N, T>) -> Self::Output {
-        self.mul(rhs, &T::RING)
+        self.mul(rhs, &T::RING).compute()
     }
 }
 
@@ -610,7 +613,6 @@ fn test_mul_matrix() {
     assert_eq!(2, *res.at(1, 0));
     assert_eq!(5, *res.at(1, 1));
 }
-
 
 #[test]
 fn test_row_iter() {

@@ -221,5 +221,5 @@ fn test_partial_smith_4x2() {
     let mut iR = Matrix::identity_ring(4, 4, &ring);
     partial_smith(A.as_mut(), iL.as_mut(), iR.as_mut(), 0);
 
-    assert_eq!(A, iL.mul(A_copy, &ring).mul(iR, &ring));
+    assert_eq!(A, iL.mul(A_copy, &ring).compute().mul(iR, &ring).compute());
 }

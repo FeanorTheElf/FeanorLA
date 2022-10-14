@@ -53,7 +53,7 @@ where M: MatrixView<T>
         self.matrix.at(i, j)
     }
 
-    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+    fn create_subvector(self, from: usize, to: usize) -> Self::Subvector {
         Subvector::new(from, to, self)
     }
 }

@@ -1,6 +1,6 @@
 use super::super::ring::*;
 use super::super::primitive::*;
-use super::ops::*;
+use super::mat::*;
 
 pub use super::vector_view::*;
 pub use super::vector_view::compile_time_vector::*;
@@ -70,7 +70,7 @@ impl<V, T> Vector<V, T>
         assert!(begin <= end);
         assert!(end <= self.len());
         return Vector::new(
-            self.data.subvector(begin, end)
+            self.data.create_subvector(begin, end)
         )
     }
 
@@ -103,11 +103,11 @@ impl<V, T> Vector<V, T>
         });
         if begin >= end {
             return Vector::new(
-                self.data.subvector(0, 0)
+                self.data.create_subvector(0, 0)
             );
         } else {
             return Vector::new(
-                self.data.subvector(begin, end)
+                self.data.create_subvector(begin, end)
             );
         }
     }
@@ -150,7 +150,7 @@ impl<V, T> Vector<V, T>
     pub fn assign<W>(&mut self, rhs: Vector<W, T>) 
         where W: VectorView<T>
     {
-        <T as MatrixAssign<_, _>>::assign_matrix(&mut ColumnVector::new(self.as_mut().data), ColumnVector::new(rhs.as_ref().data))
+        Matrix::new(ColumnVector::new(self.as_mut().data)).assign(Matrix::new(ColumnVector::new(rhs.as_ref().data)));
     }
 }
 
@@ -230,19 +230,19 @@ impl<V, T> Vector<V, T>
     pub fn scale<R>(&mut self, rhs: &T, ring: &R) 
         where R: Ring<El = T>
     {
-        <R as MatrixScale<_>>::scale_matrix(ring, rhs, &mut ColumnVector::new(self.as_mut().data));
+        Matrix::new(ColumnVector::new(self.as_mut().data)).scale(rhs, ring);
     }
 
     pub fn add_assign<R, W>(&mut self, rhs: Vector<W, T>, ring: &R)
         where R: Ring<El = T>, W: VectorView<T>
     {
-        <R as MatrixAddAssign<_, _>>::add_assign_matrix(ring, &mut ColumnVector::new(self.as_mut().data), ColumnVector::new(rhs.as_ref().data));
+        Matrix::new(ColumnVector::new(self.as_mut().data)).add_assign(Matrix::new(ColumnVector::new(rhs.data)), ring);
     }
 
     pub fn sub_assign<R, W>(&mut self, rhs: Vector<W, T>, ring: &R)
         where R: Ring<El = T>, W: VectorView<T>
     {
-        <R as MatrixAddAssign<_, _>>::sub_assign_matrix(ring, &mut ColumnVector::new(self.as_mut().data), ColumnVector::new(rhs.as_ref().data));
+        Matrix::new(ColumnVector::new(self.as_mut().data)).sub_assign(Matrix::new(ColumnVector::new(rhs.data)), ring);
     }
 }
 
@@ -253,7 +253,7 @@ impl<V, T> Vector<V, T>
         where R: Ring<El = T>, W: VectorView<T>
     {
         let mut result = self.into_owned();
-        <R as MatrixAddAssign<_, _>>::add_assign_matrix(ring, &mut ColumnVector::new(result.as_mut().data), ColumnVector::new(rhs.as_ref().data));
+        result.add_assign(rhs, ring);
         return result;
     }
 
@@ -269,28 +269,20 @@ impl<V, T> Vector<V, T>
         where R: Ring<El = T>, W: VectorView<T>
     {
         let mut result = self.into_owned();
-        <R as MatrixAddAssign<_, _>>::sub_assign_matrix(ring, &mut ColumnVector::new(result.as_mut().data), ColumnVector::new(rhs.as_ref().data));
-        return result;
-    }
-
-    pub fn neg<R>(self, ring: &R) -> Vector<VectorOwned<T>, T>
-        where R: Ring<El = T>
-    {
-        let mut result = self.into_owned();
-        <R as MatrixScale<_>>::negate_matrix(ring, &mut ColumnVector::new(result.as_mut().data));
+        result.sub_assign(rhs, ring);
         return result;
     }
 
     pub fn eq<R, W>(self, rhs: Vector<W, T>, ring: &R) -> bool
         where R: Ring<El = T>, W: VectorView<T>
     {
-        <R as MatrixEq<_, _>>::eq_matrix(ring, ColumnVector::new(self.as_ref().data), ColumnVector::new(rhs.as_ref().data))
+        Matrix::new(ColumnVector::new(self.data)).eq(Matrix::new(ColumnVector::new(rhs.data)), ring)
     }
 
     pub fn l2_norm_square<R>(self, ring: &R) -> R::El
         where R: Ring<El = T>
     {
-        <R as MatrixFrobenius<_>>::calc_matrix_frobenius_norm_square(ring, ColumnVector::new(self.as_ref().data))
+        Matrix::new(ColumnVector::new(self.data)).frobenius_norm_square(ring)
     }
 }
 
@@ -455,4 +447,11 @@ fn test_subvector_subvector_same_type() {
     let v = Vector::from_array([1, 2]);
     let a: Vector<Subvector<&VectorArray<i64, 2>, i64>, i64> = v.subvector(..);
     let _: Vector<Subvector<&VectorArray<i64, 2>, i64>, i64> = a.into_subvector(..);
+}
+
+#[test]
+fn test_subvector_sub() {
+    let a = Vector::from_array([2, 0, 2, 3, 7]);
+    let b = Vector::from_array([-2, 0, -2]);
+    assert_eq!(Vector::from_array([2, 2, 5]), a.subvector(1..4) - b);
 }

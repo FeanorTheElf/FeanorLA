@@ -11,7 +11,7 @@ pub trait VectorView<T>: Sized {
     
     fn len(&self) -> usize;
     fn at(&self, index: usize) -> &T;
-    fn subvector(self, from: usize, to: usize) -> Self::Subvector;
+    fn create_subvector(self, from: usize, to: usize) -> Self::Subvector;
 
     fn assert_in_range(&self, index: usize) {
         assert!(index < self.len(), "Vector index {} out of range 0..{}", index, self.len());
@@ -64,7 +64,7 @@ impl<T> VectorView<T> for VectorOwned<T> {
         &self[index]
     }
 
-    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+    fn create_subvector(self, from: usize, to: usize) -> Self::Subvector {
         Subvector::new(from, to, self)
     }
 }
@@ -103,7 +103,7 @@ impl<'a, T> VectorView<T> for &'a [T] {
         &self[index]
     }
 
-    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+    fn create_subvector(self, from: usize, to: usize) -> Self::Subvector {
         Subvector::new(from, to, self)
     }
 }
@@ -120,7 +120,7 @@ impl<'a, T> VectorView<T> for &'a mut [T] {
         &self[index]
     }
 
-    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+    fn create_subvector(self, from: usize, to: usize) -> Self::Subvector {
         Subvector::new(from, to, self)
     }
 }
@@ -160,7 +160,7 @@ impl<'a, T, V> VectorView<T> for &'a V
         (**self).at(i)
     }
 
-    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+    fn create_subvector(self, from: usize, to: usize) -> Self::Subvector {
         Subvector::new(from, to, self)
     }
 }
@@ -178,7 +178,7 @@ impl<'a, T, V> VectorView<T> for &'a mut V
         (**self).at(i)
     }
 
-    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+    fn create_subvector(self, from: usize, to: usize) -> Self::Subvector {
         Subvector::new(from, to, self)
     }
 }
@@ -227,7 +227,7 @@ impl<T, const N: usize> VectorView<T> for VectorArray<T, N> {
         &self.0[i]
     }
 
-    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+    fn create_subvector(self, from: usize, to: usize) -> Self::Subvector {
         Subvector::new(from, to, self)
     }
 }
@@ -355,7 +355,7 @@ impl<V, T> VectorView<T> for Subvector<V, T>
         self.view.at(index + self.from)
     }
 
-    fn subvector(mut self, from: usize, to: usize) -> Self::Subvector {
+    fn create_subvector(mut self, from: usize, to: usize) -> Self::Subvector {
         assert!(to <= self.len());
         self.to = self.from + to;
         self.from = self.from + from;

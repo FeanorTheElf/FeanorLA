@@ -41,7 +41,7 @@ impl<T> VectorView<T> for ConstantVectorView<T> {
         &self.constant
     }
 
-    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+    fn create_subvector(self, from: usize, to: usize) -> Self::Subvector {
         assert!(to < self.len());
         ConstantVectorView::new(from - to, self.constant)
     }
@@ -95,7 +95,7 @@ impl<T> VectorView<T> for UnitVectorView<T> {
         }
     }
     
-    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+    fn create_subvector(self, from: usize, to: usize) -> Self::Subvector {
         assert!(to < self.len());
         assert!(from <= to);
         let new_index = if self.index >= from {
