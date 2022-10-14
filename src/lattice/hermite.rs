@@ -99,5 +99,5 @@ fn test_row_hnf() {
     let mut actual = A.clone();
     let Uinv = row_hnf(&mut actual);
     assert_eq!(expected, actual);
-    assert_eq!(actual, Uinv.mul(A, &ring));
+    assert_eq!(actual, Uinv.mul(A, &ring).compute());
 }

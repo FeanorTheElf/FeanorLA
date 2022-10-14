@@ -3,4 +3,5 @@ pub mod matrix_view;
 pub mod ops;
 pub mod vec;
 pub mod mat;
+pub mod mat_fn;
 pub mod inversion;

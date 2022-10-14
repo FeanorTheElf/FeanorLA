@@ -48,7 +48,7 @@ impl<T, M> VectorView<T> for MatrixRow<T, M>
         self.matrix.at(self.row, i)
     }
 
-    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+    fn create_subvector(self, from: usize, to: usize) -> Self::Subvector {
         Subvector::new(from, to, self)
     }
 }
@@ -166,7 +166,7 @@ impl<T, M> VectorView<T> for MatrixCol<T, M>
         self.matrix.at(i, self.col)
     }
 
-    fn subvector(self, from: usize, to: usize) -> Self::Subvector {
+    fn create_subvector(self, from: usize, to: usize) -> Self::Subvector {
         Subvector::new(from, to, self)
     }
 }

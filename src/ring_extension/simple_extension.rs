@@ -478,6 +478,10 @@ impl<R, V, W> WrappingRing<SimpleRingExtension<R, V, W>>
     pub fn generator(&self) -> El<Self> {
         self.from(self.wrapped_ring().generator())
     }
+
+    pub fn degree(&self) -> usize {
+        self.wrapped_ring().degree()
+    }
 }
 
 impl<'a, R, V, W> WrappingRing<&'a SimpleRingExtension<R, V, W>>
