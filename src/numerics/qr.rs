@@ -14,24 +14,16 @@ fn householder_left<V, M, T>(y: Vector<V, T>, mut A: Matrix<M, T>)
     where V: VectorView<T>, M: MatrixViewMut<T>, T: Float + Clone
 {
     assert_eq!(y.len(), A.row_count());
-    let yTA = Matrix::row_vec(y.as_ref()) * A.as_ref();
-    for i in 0..A.row_count() {
-        for j in 0..A.col_count() {
-            *A.at_mut(i, j) -= two::<T>() * y.at(i).clone() * yTA.at(0, j).clone();
-        }
-    }
+    let yTA = (Matrix::row_vec(y.as_ref()) * A.as_ref()).compute();
+    A -= (Matrix::col_vec(y) * yTA).scaled(two(), T::RING);
 }
 
 fn householder_right<V, M, T>(y: Vector<V, T>, mut A: Matrix<M, T>)
     where V: VectorView<T>, M: MatrixViewMut<T>, T: Float + Clone
 {
     assert_eq!(y.len(), A.col_count());
-    let Ay = A.as_ref() * Matrix::col_vec(y.as_ref());
-    for i in 0..A.row_count() {
-        for j in 0..A.col_count() {
-            *A.at_mut(i, j) -= two::<T>() * Ay.at(i, 0).clone() * y.at(j).clone();
-        }
-    }
+    let Ay = (A.as_ref() * Matrix::col_vec(y.as_ref())).compute();
+    A -= (Ay * Matrix::row_vec(y)).scaled(two(), T::RING);
 }
 
 fn abs<T>(val: T) -> T

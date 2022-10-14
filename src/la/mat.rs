@@ -315,20 +315,20 @@ impl<M, T> Matrix<M, T>
         MatrixProd::new(self, rhs, ring)
     }
 
-    pub fn add<R, N>(self, rhs: Matrix<N, T>, ring: R) -> MatrixSum<R, Matrix<M, T>, Matrix<N, T>>
-        where R: Ring<El = T>, N: MatrixView<T>
+    pub fn add<R, N>(self, rhs: N, ring: R) -> MatrixSum<R, Matrix<M, T>, N>
+        where R: Ring<El = T>, N: MatFn<T>
     {
         assert_eq!(self.row_count(), rhs.row_count());
         assert_eq!(self.col_count(), rhs.col_count());
         MatrixSum::new(self, rhs, ring)
     }
 
-    pub fn sub<R, N>(self, rhs: Matrix<N, T>, ring: &R) -> Matrix<MatrixOwned<T>, T>
-        where R: Ring<El = T>, N: MatrixView<T>
+    pub fn sub<R, N>(self, rhs: N, ring: R) -> MatrixSum<R, Matrix<M, T>, MatrixNeg<R, N>>
+        where R: Ring<El = T>, N: MatFn<T>
     {
-        let mut result = self.into_owned();
-        result.sub_assign(rhs, ring);
-        return result;
+        assert_eq!(self.row_count(), rhs.row_count());
+        assert_eq!(self.col_count(), rhs.col_count());
+        MatrixSum::new(self, MatrixNeg::new(rhs, ring.clone()), ring)
     }
 
     pub fn eq<R, N>(self, rhs: Matrix<N, T>, ring: &R) -> bool
@@ -432,49 +432,49 @@ impl<M, T> Eq for Matrix<M, T>
     where M: MatrixView<T>, T: Eq
 {}
 
-impl<M, N, T> AddAssign<Matrix<N, T>> for Matrix<M, T>
-    where M: MatrixViewMut<T>, N: MatrixView<T>, T: RingEl
+impl<M, N, T> Add<N> for Matrix<M, T>
+    where M: MatrixView<T>, N: MatFn<T>, T: RingEl
 {
-    fn add_assign(&mut self, rhs: Matrix<N, T>) {
+    type Output = MatrixSum<T::RingType, Matrix<M, T>, N>;
+
+    fn add(self, rhs: N) -> Self::Output {
+        self.add(rhs, T::RING)
+    }
+}
+
+impl<M, N, T> Sub<N> for Matrix<M, T>
+    where M: MatrixView<T>, N: MatFn<T>, T: RingEl
+{
+    type Output = MatrixSum<T::RingType, Matrix<M, T>, MatrixNeg<T::RingType, N>>;
+
+    fn sub(self, rhs: N) -> Self::Output {
+        self.sub(rhs, T::RING)
+    }
+}
+
+impl<M, N, T> AddAssign<N> for Matrix<M, T>
+    where M: MatrixViewMut<T>, N: MatFn<T>, T: RingEl
+{
+    fn add_assign(&mut self, rhs: N) {
         self.add_assign(rhs, &T::RING)
     }
 }
 
-impl<M, N, T> SubAssign<Matrix<N, T>> for Matrix<M, T>
-    where M: MatrixViewMut<T>, N: MatrixView<T>, T: RingEl
+impl<M, N, T> SubAssign<N> for Matrix<M, T>
+    where M: MatrixViewMut<T>, N: MatFn<T>, T: RingEl
 {
-    fn sub_assign(&mut self, rhs: Matrix<N, T>) {
+    fn sub_assign(&mut self, rhs: N) {
         self.sub_assign(rhs, &T::RING)
-    }
-}
-
-impl<M, N, T> Add<Matrix<N, T>> for Matrix<M, T>
-    where M: MatrixViewMut<T>, N: MatrixView<T>, T: RingEl
-{
-    type Output = Matrix<MatrixOwned<T>, T>;
-
-    fn add(self, rhs: Matrix<N, T>) -> Self::Output {
-        self.add(rhs, &T::RING).compute()
-    }
-}
-
-impl<M, N, T> Sub<Matrix<N, T>> for Matrix<M, T>
-    where M: MatrixView<T>, N: MatrixView<T>, T: RingEl
-{
-    type Output = Matrix<MatrixOwned<T>, T>;
-
-    fn sub(self, rhs: Matrix<N, T>) -> Self::Output {
-        self.sub(rhs, &T::RING)
     }
 }
 
 impl<M, N, T> Mul<Matrix<N, T>> for Matrix<M, T>
     where M: MatrixView<T>, N: MatrixView<T>, T: RingEl
 {
-    type Output = Matrix<MatrixOwned<T>, T>;
+    type Output = MatrixProd<T::RingType, M, N>;
 
     fn mul(self, rhs: Matrix<N, T>) -> Self::Output {
-        self.mul(rhs, &T::RING).compute()
+        self.mul(rhs, T::RING)
     }
 }
 
@@ -589,7 +589,6 @@ impl<M, T, R> std::fmt::Display for DisplayMatrix<M, T, R>
     }
 }
 
-
 impl<M, T> Matrix<M, T> 
     where M: MatrixView<T>, T: std::fmt::Debug + Clone
 {
@@ -606,7 +605,7 @@ impl<M, T> Matrix<M, T>
 #[test]
 fn test_mul_matrix() {
     let a: Matrix<_, i32> = Matrix::from_array([[0, 1], [1, 2]]);
-    let res = a.as_ref() * a.as_ref();
+    let res = (a.as_ref() * a.as_ref()).compute();
 
     assert_eq!(1, *res.at(0, 0));
     assert_eq!(2, *res.at(0, 1));
@@ -639,7 +638,7 @@ fn test_mul() {
     let b = Matrix::from_array([[0, 2, 1], [2, 0, 1]]);
     let c = Matrix::from_array([[4, 2, 3], [2, 0, 1]]);
 
-    assert_eq!(c, a * b);
+    assert_eq!(c, (a * b).compute());
 }
 
 #[test]

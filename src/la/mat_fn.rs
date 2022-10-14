@@ -34,6 +34,12 @@ pub trait MatFn<T>: Sized {
     fn compute(self) -> Matrix<MatrixOwned<T>, T> {
         Matrix::from_fn(self.row_count(), self.col_count(), |i, j| self.at(i, j))
     }
+
+    fn scaled<R>(self, coeff: El<R>, ring: R) -> MatrixScaled<R, Self> 
+        where R: Ring<El = T>
+    {
+        MatrixScaled::new(self, coeff, ring)
+    }
 }
 
 impl<M, T> MatFn<T> for Matrix<M, T>
@@ -182,5 +188,37 @@ impl<R, M1, M2> MatFn<El<R>> for MatrixProd<R, M1, M2>
         self.ring.sum(
             (0..self.lhs.col_count()).map(|k| self.ring.mul_ref(self.lhs.at(i, k), self.rhs.at(k, j)))
         )
+    }
+}
+
+pub struct MatrixScaled<R, M> 
+    where R: Ring, M: MatFn<El<R>>
+{
+    ring: R,
+    coeff: El<R>,
+    val: M
+}
+
+impl<R, M> MatrixScaled<R, M>
+    where R: Ring, M: MatFn<El<R>>
+{
+    pub fn new(val: M, coeff: El<R>, ring: R) -> Self {
+        MatrixScaled { ring, coeff, val }
+    }
+}
+
+impl<R, M> MatFn<El<R>> for MatrixScaled<R, M>
+    where R: Ring, M: MatFn<El<R>>
+{
+    fn row_count(&self) -> usize {
+        self.val.row_count()
+    }
+
+    fn col_count(&self) -> usize {
+        self.val.col_count()
+    }
+
+    fn at(&self, i: usize, j: usize) -> El<R> {
+        self.ring.mul_ref(&self.val.at(i, j), &self.coeff)
     }
 }
