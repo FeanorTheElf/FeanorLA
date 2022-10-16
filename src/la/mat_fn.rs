@@ -268,3 +268,39 @@ impl<R, M> MatFn<El<R>> for MatrixScaled<R, M>
         self.ring.mul_ref(&self.val.at(i, j), &self.coeff)
     }
 }
+
+pub struct MatrixKronecker<R, M1, M2>
+    where R: Ring, M1: MatrixView<El<R>>, M2: MatrixView<El<R>>
+{
+    ring: R,
+    lhs: Matrix<M1, El<R>>,
+    rhs: Matrix<M2, El<R>>
+}
+
+impl<R, M1, M2> MatrixKronecker<R, M1, M2>
+    where R: Ring, M1: MatrixView<El<R>>, M2: MatrixView<El<R>>
+{
+    pub fn new(lhs: Matrix<M1, El<R>>, rhs: Matrix<M2, El<R>>, ring: R) -> Self {
+        MatrixKronecker { ring, lhs, rhs }
+    }
+}
+
+impl<R, M1, M2> MatFn<El<R>> for MatrixKronecker<R, M1, M2>
+    where R: Ring, M1: MatrixView<El<R>>, M2: MatrixView<El<R>>
+{
+    fn row_count(&self) -> usize {
+        self.lhs.row_count() * self.rhs.row_count()
+    }
+
+    fn col_count(&self) -> usize {
+        self.rhs.col_count() * self.lhs.col_count()
+    }
+
+    fn at(&self, i: usize, j: usize) -> El<R> {
+        let lhs_i = i / self.lhs.row_count();
+        let rhs_i = i % self.lhs.row_count();
+        let lhs_j = i / self.lhs.col_count();
+        let rhs_j = j / self.rhs.col_count();
+        return self.ring.mul_ref(self.lhs.at(lhs_i, lhs_j), self.rhs.at(rhs_i, rhs_j));
+    }
+}

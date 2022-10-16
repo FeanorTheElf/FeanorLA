@@ -315,6 +315,12 @@ impl<M, T> Matrix<M, T>
         MatrixProd::new(self, rhs, ring)
     }
 
+    pub fn kronecker<R, N>(self, rhs: Matrix<N, T>, ring: R) -> MatrixKronecker<R, M, N>
+        where R: Ring<El = T>, N: MatrixView<T>
+    {
+        MatrixKronecker::new(self, rhs, ring)
+    }
+
     pub fn eq<R, N>(self, rhs: Matrix<N, T>, ring: &R) -> bool
         where R: Ring<El = T>, N: MatrixView<T>
     {
