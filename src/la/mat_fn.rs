@@ -294,14 +294,25 @@ impl<R, M1, M2> MatFn<El<R>> for MatrixKronecker<R, M1, M2>
     }
 
     fn col_count(&self) -> usize {
-        self.rhs.col_count() * self.lhs.col_count()
+        self.lhs.col_count() * self.rhs.col_count()
     }
 
     fn at(&self, i: usize, j: usize) -> El<R> {
-        let lhs_i = i / self.lhs.row_count();
-        let rhs_i = i % self.lhs.row_count();
-        let lhs_j = i / self.lhs.col_count();
-        let rhs_j = j / self.rhs.col_count();
+        let lhs_i = i / self.rhs.row_count();
+        let rhs_i = i % self.rhs.row_count();
+        let lhs_j = j / self.rhs.col_count();
+        let rhs_j = j % self.rhs.col_count();
         return self.ring.mul_ref(self.lhs.at(lhs_i, lhs_j), self.rhs.at(rhs_i, rhs_j));
     }
+}
+
+#[test]
+fn test_kronecker() {
+    let a = Matrix::from_array([[1, 2], [3, 4]]);
+    let b = Matrix::from_array([[1, 1, 0]]);
+    let b2 = Matrix::from_array([[1], [1], [0]]);
+    let c = Matrix::from_array([[1, 1, 0, 2, 2, 0], [3, 3, 0, 4, 4, 0]]);
+    let c2 = Matrix::from_array([[1, 2], [1, 2], [0, 0], [3, 4], [3, 4], [0, 0]]);
+    assert_eq!(c, MatrixKronecker::new(a.clone(), b, i64::RING).compute());
+    assert_eq!(c2, MatrixKronecker::new(a, b2, i64::RING).compute());
 }
