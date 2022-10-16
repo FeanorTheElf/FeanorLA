@@ -132,7 +132,8 @@ impl<R, M1, M2> MatrixSum<R, M1, M2>
     where R: Ring, M1: MatFn<El<R>>, M2: MatFn<El<R>>
 {
     pub fn new(lhs: M1, rhs: M2, ring: R) -> Self {
-        assert_eq!(lhs.col_count(), rhs.row_count());
+        assert_eq!(lhs.row_count(), rhs.row_count());
+        assert_eq!(lhs.col_count(), rhs.col_count());
         MatrixSum { ring, lhs, rhs }
     }
 }
