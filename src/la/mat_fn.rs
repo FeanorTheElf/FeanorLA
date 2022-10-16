@@ -35,10 +35,56 @@ pub trait MatFn<T>: Sized {
         Matrix::from_fn(self.row_count(), self.col_count(), |i, j| self.at(i, j))
     }
 
-    fn scaled<R>(self, coeff: El<R>, ring: R) -> MatrixScaled<R, Self> 
+    fn scaled_ring<R>(self, coeff: El<R>, ring: R) -> MatrixScaled<R, Self> 
         where R: Ring<El = T>
     {
         MatrixScaled::new(self, coeff, ring)
+    }
+
+    fn scaled(self, coeff: T) -> MatrixScaled<T::RingType, Self> 
+        where T: RingEl
+    {
+        self.scaled_ring(coeff, T::RING)
+    }
+
+    fn neg_ring<R>(self, ring: R) -> MatrixNeg<R, Self> 
+        where R: Ring<El = T>
+    {
+        MatrixNeg::new(self, ring)
+    }
+
+    fn neg(self) -> MatrixNeg<T::RingType, Self> 
+        where T: RingEl
+    {
+        self.neg_ring(T::RING)
+    }
+
+    fn add_ring<R, N>(self, rhs: N, ring: R) -> MatrixSum<R, Self, N>
+        where R: Ring<El = T>, N: MatFn<T>
+    {
+        assert_eq!(self.row_count(), rhs.row_count());
+        assert_eq!(self.col_count(), rhs.col_count());
+        MatrixSum::new(self, rhs, ring)
+    }
+
+    fn add<N>(self, rhs: N) -> MatrixSum<T::RingType, Self, N>
+        where T: RingEl, N: MatFn<T>
+    {
+        self.add_ring(rhs, T::RING)
+    }
+
+    fn sub_ring<R, N>(self, rhs: N, ring: R) -> MatrixSum<R, Self, MatrixNeg<R, N>>
+        where R: Ring<El = T>, N: MatFn<T>
+    {
+        assert_eq!(self.row_count(), rhs.row_count());
+        assert_eq!(self.col_count(), rhs.col_count());
+        self.add_ring(rhs.neg_ring(ring.clone()), ring)
+    }
+
+    fn sub<N>(self, rhs: N) -> MatrixSum<T::RingType, Self, MatrixNeg<T::RingType, N>>
+        where T: RingEl, N: MatFn<T>
+    {
+        self.sub_ring(rhs, T::RING)
     }
 }
 
