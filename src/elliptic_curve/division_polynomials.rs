@@ -154,7 +154,7 @@ fn test_division_polynomials() {
     let i = z_hom(&field);
     let point = EllipticCurvePoint::Affine(i(2), i(3));
     assert!(E.is_on_curve(&point, &field));
-    let point_3 = E.mul_point(&point, &BigInt::from(3), &field);
+    let point_3 = E.mul_point(&point, &StdInt::from(3), &field);
     assert_eq!(*point_3.x().unwrap(), f(i(2)) / h(i(2)));
 }
 
@@ -167,6 +167,6 @@ fn bench_division_poly(b: &mut Bencher) {
     b.iter(|| {
         let (f, _, h) = division_polynomials(&E, n as usize);
         let P = E.random_affine_point(|| rng.rand_u32());
-        assert_eq!(f(P.x().unwrap().clone()) / h(P.x().unwrap().clone()), *E.mul_point(&P, &BigInt::from(n as i128), E.base_field()).x().unwrap());
+        assert_eq!(f(P.x().unwrap().clone()) / h(P.x().unwrap().clone()), *E.mul_point(&P, &StdInt::from(n), E.base_field()).x().unwrap());
     });
 }

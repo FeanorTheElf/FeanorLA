@@ -1,7 +1,6 @@
 use super::*;
 use super::super::eea::*;
 use super::super::rational::*;
-use super::super::integer::*;
 use super::super::integer::roots;
 
 use std::collections::HashSet;
@@ -10,7 +9,6 @@ impl<QType> EllipticCurve<WrappingRing<QType>>
     where QType: RationalField + HashableElRing + SingletonRing, 
         QType::BaseRing: SingletonRing + UfdInfoRing + EuclideanInfoRing
 {
-
     ///
     /// Returns an isomorphic elliptic curve E': y^2 = x^3 + Ax + B with A, B in Z
     /// with minimal discriminant (in absolute value) and isomorphisms f: E -> E' 
@@ -101,7 +99,7 @@ impl<QType> EllipticCurve<WrappingRing<QType>>
                 let x = Z.from(x);
                 let point = EllipticCurvePoint::Affine(i(x), i(y.clone()));
                 // it is a theorem that the torsion group has order dividing 24
-                if E.points_eq(&E.mul_point::<QType>(&point, &BigInt::from(24), &Q), &EllipticCurvePoint::Infinity) {
+                if E.points_eq(&E.mul_point::<QType>(&point, &StdInt::from(24), &Q), &EllipticCurvePoint::Infinity) {
                     result.insert(finv(point.clone()));
                     result.insert(finv(E.inv_point(point)));
                 }
@@ -114,7 +112,7 @@ impl<QType> EllipticCurve<WrappingRing<QType>>
 
 #[test]
 fn test_isomorphic_curve_over_z() {
-    let Q = WrappingRing::new(FractionFieldImpl::<BigIntRing>::singleton());
+    let Q = WrappingRing::new(FractionFieldImpl::<BigIntSOORing>::singleton());
     let i = z_hom(&Q);
     let A = i(3).pow(5) / i(2).pow(4);
     let B = i(3).pow(6) / i(2).pow(6);
@@ -130,7 +128,7 @@ fn test_isomorphic_curve_over_z() {
 
 #[test]
 fn test_compute_torsion_group() {
-    let Q = WrappingRing::new(FractionFieldImpl::<BigIntRing>::singleton());
+    let Q = WrappingRing::new(FractionFieldImpl::<BigIntSOORing>::singleton());
     let i = z_hom(&Q);
     let E = EllipticCurve::new(Q.clone(), i(0), i(3));
     let mut torsion_group = HashSet::new();

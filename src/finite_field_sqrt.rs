@@ -1,6 +1,5 @@
 use super::prelude::*;
 use super::fq::*;
-use super::integer::*;
 use super::la::vec::*;
 use super::finite_extension::finite_extension_impl::*;
 
@@ -37,7 +36,7 @@ pub fn sqrt<F: FiniteRing + HashableElRing>(x: El<F>, field: F) -> Option<El<F>>
     field.hash(&mut hasher, &x);
     let mut rng = oorandom::Rand32::new(hasher.finish());
 
-    let n = BigInt::RING.quotient(&BigInt::RING.sub(field.size(), BigInt::RING.one()), &BigInt::from(2)).unwrap();
+    let n = (field.size() - 1) / 2;
     if field.is_neg_one(&field.pow_big(&x, &n)) {
         return None;
     }

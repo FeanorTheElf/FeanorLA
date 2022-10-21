@@ -5,7 +5,8 @@ use super::super::la::vec::*;
 use super::bigint_ops;
 
 use super::primes;
-use super::super::integer::*;
+use super::*;
+use super::bigint_soo::*;
 
 use std::cmp::Ordering;
 use std::ops::*;
@@ -121,7 +122,7 @@ impl BigInt {
     /// # Example
     /// 
     /// ```
-    /// # use feanor_la::integer::BigInt;
+    /// # use feanor_la::integer::bigint::BigInt;
     /// assert_eq!(BigInt::from(-1), BigInt::from(-1).floor_div_small(2));
     /// ```
     /// 
@@ -271,7 +272,7 @@ impl RingBase for BigIntRing {
         val.highest_set_block() == None
     }
 
-    fn characteristic(&self) -> BigInt { BigInt::ZERO }
+    fn characteristic(&self) -> StdInt { StdInt::zero() }
     fn is_noetherian(&self) -> bool { true }
     fn is_integral(&self) -> RingPropValue { RingPropValue::True }
     fn is_field(&self) -> RingPropValue { RingPropValue::False }
@@ -284,8 +285,8 @@ impl RingBase for BigIntRing {
         BigInt::from(x as i128)
     }
 
-    fn from_z_big(&self, x: &BigInt) -> BigInt {
-        x.clone()
+    fn from_z_big(&self, x: &StdInt) -> BigInt {
+        x.clone().into_val().to_bigint()
     }
 
     fn format(&self, el: &BigInt, f: &mut std::fmt::Formatter, _in_prod: bool) -> std::fmt::Result {
@@ -370,17 +371,8 @@ impl EuclideanInfoRing for BigIntRing {
         (quo, lhs)
     }
 
-    fn euclidean_deg(&self, el: Self::El) -> BigInt {
-        BigInt::RING.abs(el)
-    }
-}
-
-impl BigIntRing {
-
-    pub fn z_embedding<'a, R>(&self, target: &'a R) -> impl 'a + FnMut(BigInt) -> R::El
-        where R: Ring
-    {
-        move |x| target.from_z_big(&x)
+    fn euclidean_deg(&self, el: Self::El) -> StdInt {
+        StdInt::RING.from(BigIntSOO::from(el)).abs()
     }
 }
 
@@ -509,7 +501,8 @@ impl UfdInfoRing for BigIntRing {
     }
 
     fn calc_factor(&self, el: &Self::El) -> Option<Self::El> {
-        primes::calc_factor(el)
+        primes::calc_factor(&StdInt::RING.from(self.preimage(&BigIntSOO::RING, el.clone())))
+            .map(|x| self.embed(&BigIntSOO::RING, x.into_val()))
     }
 }
 
@@ -693,6 +686,28 @@ impl CanonicalIsomorphismInfo<StaticRing<i64>> for BigIntRing {
 
     fn preimage(&self, _from: &StaticRing<i64>, el: BigInt) -> i64 {
         el.to_int().expect("Overflow when embedding BigInt into i128") as i64
+    }
+}
+
+impl CanonicalEmbeddingInfo<BigIntSOORing> for BigIntRing {
+
+    fn has_embedding(&self, _from: &BigIntSOORing) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embed(&self, _from: &BigIntSOORing, el: BigIntSOO) -> BigInt {
+        el.to_bigint()
+    }
+}
+
+impl CanonicalIsomorphismInfo<BigIntSOORing> for BigIntRing {
+
+    fn has_isomorphism(&self, _from: &BigIntSOORing) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn preimage(&self, _from: &BigIntSOORing, el: BigInt) -> BigIntSOO {
+        BigIntSOO::from(el)
     }
 }
 

@@ -4,16 +4,14 @@ pub mod primes;
 pub mod roots;
 pub mod bigint_soo;
 
-use bigint::*;
-use bigint_soo::BigIntSOORing;
-
+use bigint_soo::*;
 use super::prelude::*;
 use super::wrapper::*;
 
 use std::cmp::Ordering;
 use std::ops::Range;
 
-pub trait IntegerRing: OrderedRing + EuclideanInfoRing + CanonicalIsomorphismInfo<StaticRing<i64>> + CanonicalIsomorphismInfo<BigIntRing> {
+pub trait IntegerRing: OrderedRing + EuclideanInfoRing + CanonicalIsomorphismInfo<BigIntSOORing> + CanonicalIsomorphismInfo<StaticRing<i64>> {
 
     fn to_float_approx(&self, el: &Self::El) -> f64;
     fn from_float_approx(&self, el: f64) -> Option<Self::El>;
@@ -149,6 +147,19 @@ pub trait IntegerRing: OrderedRing + EuclideanInfoRing + CanonicalIsomorphismInf
 }
 
 pub type StdInt = RingElWrapper<BigIntSOORing>;
+
+impl RingEl for StdInt {
+
+    type Axioms = RingAxiomsEuclidean;
+    type RingType = WrappingRing<BigIntSOORing>;
+    const RING: Self::RingType = WrappingRing::new(BigIntSOO::RING);
+    const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
+
+    fn characteristic() -> StdInt {
+        StdInt::zero()
+    }
+}
+
 
 fn integer_ring_get_uniformly_random<G, I>(
     ring: &I,
@@ -355,7 +366,25 @@ impl<R: IntegerRing> RingElWrapper<R>
         let result = ring.euclidean_div_pow_2(el, exponent);
         return RingElWrapper::new(result, ring);
     }
+
+    pub fn is_odd(&self) -> bool {
+        self.parent_ring().is_odd(self.val())
+    }
+
+    pub fn to_i128(self) -> Result<i128, ()> {
+        let (el, ring) = self.destruct();
+        ring.preimage(&BigIntSOO::RING, el).to_i128()
+    }
+
+    pub fn mul_pow_2(self, power: u64) -> Self {
+        let (el, ring) = self.destruct();
+        let result = ring.mul_pow_2(el, power);
+        WrappingRing::new(ring).from(result)
+    }
 }
+
+#[cfg(test)]
+use bigint::*;
 
 #[test]
 fn test_root_floor() {

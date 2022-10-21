@@ -37,5 +37,5 @@ pub fn fermat<I: IntegerRing>(n: &El<I>, ring: &I) -> El<I>
 
 #[test]
 fn test_fermat_factorization() {
-    assert_eq!(BigInt::from(9851), fermat(&BigInt::from(99997501), &BigInt::RING));
+    assert_eq!(StdInt::from(9851), fermat(&StdInt::from(99997501), &StdInt::RING));
 }

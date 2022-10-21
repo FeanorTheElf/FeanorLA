@@ -3,7 +3,6 @@ use super::ops::*;
 use super::factoring;
 use super::super::la::vec::*;
 use super::super::fq::*;
-use super::super::integer::*;
 use super::*;
 
 use vector_map::VecMap;
@@ -245,7 +244,7 @@ impl<R> RingBase for PolyRingImpl<R>
         self.base_ring.is_integral()
     }
 
-    fn characteristic(&self) -> BigInt {
+    fn characteristic(&self) -> StdInt {
         self.base_ring().characteristic()
     }
     
@@ -261,7 +260,7 @@ impl<R> RingBase for PolyRingImpl<R>
         self.from(self.base_ring().from_z(x))
     }
 
-    fn from_z_big(&self, x: &BigInt) -> Self::El {
+    fn from_z_big(&self, x: &StdInt) -> Self::El {
         self.from(self.base_ring().from_z_big(x))
     }
     
@@ -372,9 +371,11 @@ impl<R> EuclideanInfoRing for PolyRingImpl<R>
         }
     }
 
-    fn euclidean_deg(&self, el: Self::El) -> BigInt {
+    fn euclidean_deg(&self, el: Self::El) -> StdInt {
         assert!(self.is_euclidean().can_use());
-        self.deg(&el).map(|x| (x + 1) as i128).map(BigInt::from).unwrap_or(BigInt::ZERO)
+        self.deg(&el).map(|x| x + 1)
+            .map(|x| StdInt::RING.from_z(x as i64))
+            .unwrap_or(StdInt::zero())
     }
 
     fn euclidean_div_rem(&self, mut lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) {
@@ -404,7 +405,7 @@ impl<R> UfdInfoRing for PolyRingImpl<R>
     where R: FiniteRing + DivisibilityInfoRing
 {
     fn is_ufd(&self) -> RingPropValue {
-        if self.base_ring.is_field().can_use() && BigInt::RING.is_odd(&self.base_ring().characteristic()) {
+        if self.base_ring.is_field().can_use() && self.base_ring().characteristic().is_odd() {
             return RingPropValue::True;
         } else {
             return RingPropValue::Unknown;
@@ -501,6 +502,8 @@ impl<R> UfdInfoRing for PolyRingImpl<R>
 use super::super::fq::zn_big::*;
 #[cfg(test)]
 use super::super::fq::fq_small::*;
+#[cfg(test)]
+use super::super::integer::bigint::*;
 #[cfg(test)]
 use test::Bencher;
 

@@ -43,6 +43,13 @@ impl BigIntSOO {
         }
     }
 
+    pub fn assign(&mut self, rhs: &BigIntSOO) {
+        match (self, rhs) {
+            (BigIntSOO::BigInt(lhs), BigIntSOO::BigInt(rhs)) => lhs.assign(rhs),
+            (self_ref, rhs) => *self_ref = rhs.clone()
+        }
+    }
+
     fn operation<F, G>(f: F, g: G, lhs: BigIntSOO, rhs: BigIntSOO) -> BigIntSOO
         where F: FnOnce(i128, i128) -> Option<i128>, G: FnOnce(BigInt, BigInt) -> BigInt
     {
@@ -270,11 +277,17 @@ impl RingBase for BigIntSOORing {
     }
 
     fn from_z_big(&self, x: &StdInt) -> Self::El {
-        x.into_val()
+        x.val().clone()
     }
 
     fn from_z(&self, x: i64) -> Self::El {
         BigIntSOO::SOO(x as i128)
+    }
+
+    fn from_z_gen<I>(&self, x: El<I>, ring: &I) -> Self::El
+        where I: IntegerRing
+    {
+        ring.preimage(&BigIntSOO::RING, x)
     }
 
     fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
@@ -289,6 +302,16 @@ impl SingletonRing for BigIntSOORing {
     
     fn singleton() -> Self {
         BigIntSOO::RING
+    }
+}
+
+impl HashableElRing for BigIntSOORing {
+
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H, el: &Self::El) {
+        match el {
+            BigIntSOO::BigInt(x) => BigInt::RING.hash(h, x),
+            BigIntSOO::SOO(x) => <i128 as std::hash::Hash>::hash(x, h)
+        }
     }
 }
 
@@ -415,7 +438,23 @@ impl EuclideanInfoRing for BigIntSOORing {
     }
 
     fn euclidean_deg(&self, el: Self::El) -> StdInt {
-        BigIntSOO::WRAPPED_RING.from(self.abs(el))
+        StdInt::RING.from(self.abs(el))
+    }
+}
+
+impl UfdInfoRing for BigIntSOORing {
+    
+    fn is_ufd(&self) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn is_prime(&self, el: &Self::El) -> bool {
+        primes::miller_rabin(self, el, 10)
+    }
+
+    fn calc_factor(&self, el: &Self::El) -> Option<Self::El> {
+        primes::calc_factor(&StdInt::RING.from(el.clone()))
+            .map(|x| x.into_val())
     }
 }
 
@@ -450,7 +489,7 @@ impl IntegerRing for BigIntSOORing {
     fn is_odd(&self, el: &Self::El) -> bool {
         match el {
             BigIntSOO::BigInt(x) => BigInt::RING.is_odd(x),
-            BigIntSOO::SOO(x) => x % 2 == 0
+            BigIntSOO::SOO(x) => x % 2 != 0
         }
     }
 

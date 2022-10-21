@@ -107,7 +107,7 @@ impl<I: IntegerRing> FiniteRing for Zn<I> {
 
     type IterFn = ZnIterFn<I>;
 
-    fn size(&self) -> BigInt {
+    fn size(&self) -> StdInt {
         self.characteristic()
     }
 
@@ -182,8 +182,8 @@ impl<I: IntegerRing> RingBase for Zn<I> {
         self.integer_ring.is_eq(&lhs, &rhs)
     }
 
-    fn characteristic(&self) -> BigInt {
-        self.integer_ring.preimage(&BigInt::RING, self.modulus.clone())
+    fn characteristic(&self) -> StdInt {
+        StdInt::RING.from_z_gen(self.modulus.clone(), &self.integer_ring)
     }
 
     default fn is_integral(&self) -> RingPropValue {
@@ -283,6 +283,9 @@ impl<I: IntegerRing> CanonicalIsomorphismInfo<Zn<I>> for Zn<I> {
         FactorRingZEl(self.integer_ring.preimage(&from.integer_ring, el))
     }
 }
+
+#[cfg(test)]
+use super::super::integer::bigint::*;
 
 #[test]
 fn test_mul() {

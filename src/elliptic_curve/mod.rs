@@ -5,9 +5,7 @@ pub mod rational_torsion_group;
 pub mod point_count;
 pub mod division_polynomials;
 
-use super::ring::*;
-use super::integer::*;
-use super::embedding::*;
+use super::prelude::*;
 use super::wrapper::*;
 use super::la::mat::*;
 use super::fq::*;
@@ -305,7 +303,7 @@ impl<K> EllipticCurve<WrappingRing<K>>
         }
     }
 
-    pub fn mul_point<L>(&self, point: &EllipticCurvePoint<WrappingRing<L>>, n: &BigInt, field: &WrappingRing<L>) -> EllipticCurvePoint<WrappingRing<L>> 
+    pub fn mul_point<L>(&self, point: &EllipticCurvePoint<WrappingRing<L>>, n: &StdInt, field: &WrappingRing<L>) -> EllipticCurvePoint<WrappingRing<L>> 
         where L: Ring + CanonicalEmbeddingInfo<K>
     {
         assert!(field.is_field().can_use());
@@ -313,7 +311,7 @@ impl<K> EllipticCurve<WrappingRing<K>>
         let result = abs_square_and_multiply(
             point, 
             n, 
-            BigInt::RING, 
+            StdInt::RING, 
             |x, y| self.point_add(x, y, field), 
             |x, y| self.point_add(x.clone(), y.clone(), field), 
             EllipticCurvePoint::Infinity
@@ -397,9 +395,12 @@ impl<K> std::hash::Hash for EllipticCurvePoint<WrappingRing<K>>
     }
 }
 
+#[cfg(test)]
+use super::integer::bigint_soo::*;
+
 #[test]
 fn test_elliptic_curve_point_eq() {
-    let Q = WrappingRing::new(FractionFieldImpl::<BigIntRing>::singleton());
+    let Q = WrappingRing::new(FractionFieldImpl::<BigIntSOORing>::singleton());
     let i = z_hom(&Q);
     let E = EllipticCurve::new(Q.clone(), i(0), i(1));
     let P = EllipticCurvePoint::Affine(i(0), i(1));

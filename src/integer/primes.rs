@@ -63,35 +63,35 @@ pub fn miller_rabin<I>(ring: I, n: &El<I>, k: usize) -> bool
     return true;
 }
 
-pub fn calc_factor(el: &BigInt) -> Option<BigInt> {
+pub fn calc_factor(el: &StdInt) -> Option<StdInt> {
     // honestly, this is much too small, especially given my very slow implementation of the QS
     // however, now that it exists, I also want to use it :)
     // and all in all, the whole function is really slow
     const QUADRATIC_SIEVE_BOUND: i64 = 1000000000000;
     const IS_PRIME_ERROR_BOUND: usize = 8;
 
-    let n = BigInt::RING.abs(el.clone());
+    let n = el.clone();
     
     if n < QUADRATIC_SIEVE_BOUND {
-        let n_int = n.to_int().unwrap() as i64;
+        let n_int = n.to_i128().unwrap() as i64;
         let potential_divisors = factoring_algorithms::gen_primes((n_int as f64).sqrt() as i64 + 1);
         for p in potential_divisors {
             if n_int % p == 0 {
-                return Some(BigInt::from(p as i128))
+                return Some(StdInt::from(p))
             }
         }
         return None;
     } else {
-        if miller_rabin(&BigInt::RING, &n, IS_PRIME_ERROR_BOUND) {
+        if miller_rabin(&StdInt::RING, &n, IS_PRIME_ERROR_BOUND) {
             return None;
         } else {
-            for i in 2..BigInt::RING.abs_log2_floor(&n) {
-                if BigInt::RING.pow(&BigInt::RING.root_floor(&n, i), i as u32) == n {
-                    let root = BigInt::RING.root_floor(&n, i);
+            for i in 2..StdInt::RING.abs_log2_floor(&n) {
+                if StdInt::RING.root_floor(&n, i).pow(i as u32) == n {
+                    let root = StdInt::RING.root_floor(&n, i);
                     return Some(root);
                 }
             }
-            return Some(factoring_algorithms::sieve::quadratic_sieve(&BigInt::WRAPPED_RING.from(n)).into_val());
+            return Some(factoring_algorithms::sieve::quadratic_sieve(&n));
         }
     }
 }
@@ -115,5 +115,5 @@ pub fn gen_primes() -> impl Iterator<Item = i64> {
 
 #[test]
 fn test_calc_factor() {
-    assert_eq!(Some(BigInt::from(3)), calc_factor(&BigInt::from(81)));
+    assert_eq!(Some(StdInt::from(3)), calc_factor(&StdInt::from(81)));
 }

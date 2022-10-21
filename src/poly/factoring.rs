@@ -1,7 +1,6 @@
 use super::super::prelude::*;
 use super::super::eea::*;
 use super::super::fq::*;
-use super::super::integer::*;
 use super::*;
 use super::super::square_multiply::abs_square_and_multiply;
 
@@ -10,21 +9,21 @@ use std::hash::{Hash, Hasher};
 
 use oorandom;
 
-fn pow_mod_f<P>(poly_ring: &P, g: &El<P>, f: &El<P>, pow: &BigInt) -> El<P>
+fn pow_mod_f<P>(poly_ring: &P, g: &El<P>, f: &El<P>, pow: &StdInt) -> El<P>
     where P: PolyRing + EuclideanInfoRing
 {
     assert!(*pow >= 0);
     return abs_square_and_multiply(
         g, 
         pow, 
-        BigInt::RING, 
+        StdInt::RING, 
         |x, y| poly_ring.euclidean_rem(poly_ring.mul(x, y), f), 
         |x, y| poly_ring.euclidean_rem(poly_ring.mul_ref(x, y), f), 
         poly_ring.one()
     );
 }
 
-pub fn distinct_degree_factorization<P>(poly_ring: P, p: &BigInt, mut f: El<P>) -> Vec<El<P>>
+pub fn distinct_degree_factorization<P>(poly_ring: P, p: &StdInt, mut f: El<P>) -> Vec<El<P>>
     where P: PolyRing + EuclideanInfoRing, P::BaseRing: FiniteRing
 {
     assert!(poly_ring.base_ring().size() == *p);
@@ -87,13 +86,13 @@ pub fn distinct_degree_factorization<P>(poly_ring: P, p: &BigInt, mut f: El<P>) 
 #[allow(non_snake_case)]
 pub fn cantor_zassenhaus<P>(
     poly_ring: P, 
-    p: &BigInt, 
+    p: &StdInt, 
     f: El<P>, 
     d: usize
 ) -> El<P>
     where P: PolyRing + EuclideanInfoRing, P::BaseRing: FiniteRing
 {
-    assert!(BigInt::RING.is_odd(p));
+    assert!(p.is_odd());
     assert!(poly_ring.base_ring().size() == *p);
     assert!(poly_ring.deg(&f).unwrap() % d == 0);
     assert!(poly_ring.deg(&f).unwrap() > d);
@@ -113,7 +112,7 @@ pub fn cantor_zassenhaus<P>(
             power_x = poly_ring.mul(power_x, poly_ring.unknown());
         }
         T = poly_ring.add(T, power_x);
-        let exp = BigInt::RING.sub(BigInt::RING.pow(p, d as u32), BigInt::RING.one()).floor_div_small(2);
+        let exp = (p.pow(d as u32) - 1) / 2;
         let G = poly_ring.sub(pow_mod_f(&poly_ring, &T, &f, &exp), poly_ring.one());
         let g = eea(&poly_ring, f.clone(), G.clone()).2;
         if !poly_ring.is_unit(&g) && poly_ring.quotient(&g, &f).is_none() {
@@ -158,7 +157,7 @@ fn test_distinct_degree_factorization() {
     let a2 = &x * &x + &x + 1;
     let a3 = (&x * &x * &x + &x + 1) * (&x * &x * &x + &x * &x + 1);
     let expected = vec![a0, a1, a2, a3];
-    let distinct_degree_factorization = distinct_degree_factorization(ring.wrapped_ring(), &BigInt::from(2), a.val().clone());
+    let distinct_degree_factorization = distinct_degree_factorization(ring.wrapped_ring(), &StdInt::from(2), a.val().clone());
     assert_eq!(expected.len(), distinct_degree_factorization.len());
     for (f, e) in distinct_degree_factorization.into_iter().zip(expected.into_iter()) {
         let mut f = ring.from(f);
@@ -176,7 +175,7 @@ fn test_cantor_zassenhaus() {
     let f = &x * &x + 1;
     let g = &x * &x + &x + 3;
     let p = &f * &g;
-    let mut factor = ring.from(cantor_zassenhaus(ring.wrapped_ring(), &BigInt::from(7), p.val().clone(), 2));
+    let mut factor = ring.from(cantor_zassenhaus(ring.wrapped_ring(), &StdInt::from(7), p.val().clone(), 2));
     factor.normalize();
     assert!(factor == f || factor == g);
 }

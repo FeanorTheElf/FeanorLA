@@ -2,7 +2,6 @@ use super::prelude::*;
 use super::wrapper::*;
 use super::square_multiply::abs_square_and_multiply;
 use super::eea::signed_eea;
-use super::integer::*;
 
 use std::hash::Hash;
 use std::collections::HashMap;

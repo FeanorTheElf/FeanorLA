@@ -1,6 +1,5 @@
 use super::super::prelude::*;
 use super::super::wrapper::*;
-use super::super::integer::*;
 use super::super::fq::*;
 
 #[derive(Clone)]
@@ -40,14 +39,14 @@ impl<R, S, F> RingBase for ExtensionWrapper<R, S, F>
     fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.ring.mul(lhs, rhs) }
     fn sub(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.ring.sub(lhs, rhs) }
     fn pow(&self, basis: &Self::El, exp: u32) -> Self::El { self.ring.pow(basis, exp) }
-    fn pow_big(&self, basis: &Self::El, exp: &BigInt) -> Self::El { self.ring.pow_big(basis, exp) }
+    fn pow_big(&self, basis: &Self::El, exp: &StdInt) -> Self::El { self.ring.pow_big(basis, exp) }
     fn from_z(&self, x: i64) -> Self::El { self.ring.from_z(x) }
-    fn from_z_big(&self, x: &BigInt) -> Self::El { self.ring.from_z_big(x) }
+    fn from_z_big(&self, x: &StdInt) -> Self::El { self.ring.from_z_big(x) }
     fn is_zero(&self, val: &Self::El) -> bool { self.ring.is_zero(val) }
     fn is_one(&self, val: &Self::El) -> bool { self.ring.is_one(val) }
     fn is_neg_one(&self, val: &Self::El) -> bool { self.ring.is_neg_one(val) }
     fn is_integral(&self) -> RingPropValue { self.ring.is_integral() }
-    fn characteristic(&self) -> BigInt { self.ring.characteristic() }
+    fn characteristic(&self) -> StdInt { self.ring.characteristic() }
     fn is_field(&self) -> RingPropValue { self.ring.is_field() }
     fn is_noetherian(&self) -> bool { self.ring.is_noetherian() }
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { self.ring.div(lhs, rhs) }
@@ -75,7 +74,7 @@ impl<R, S, F> FiniteRing for ExtensionWrapper<R, S, F>
 {
     type IterFn = ExtensionWrapperIterFn<S>;
 
-    fn size(&self) -> BigInt { self.ring.size() }
+    fn size(&self) -> StdInt { self.ring.size() }
 
     fn iter_fn(&self) -> Self::IterFn { 
         ExtensionWrapperIterFn { base: self.ring.iter_fn() }
@@ -214,6 +213,8 @@ impl<R, S, F> RingElWrapper<ExtensionWrapper<R, S, F>>
 use super::super::fq::zn_big::*;
 #[cfg(test)]
 use super::super::finite_extension::finite_extension_impl::*;
+#[cfg(test)]
+use super::super::integer::bigint::*;
 #[cfg(test)]
 use super::super::la::vec::*;
 #[cfg(test)]

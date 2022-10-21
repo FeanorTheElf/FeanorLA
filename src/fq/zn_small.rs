@@ -184,7 +184,7 @@ impl<const N: u64> RingEl for ZnElImpl<N, true> {
     const RING: Self::RingType = StaticRing::<Self>::RING;
     const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
 
-    fn characteristic() -> BigInt { BigInt::RING.from_z(N as i64) }
+    fn characteristic() -> StdInt { StdInt::from(N as i64) }
 }
 
 impl<const N: u64> FieldEl for ZnElImpl<N, true> {}
@@ -195,7 +195,7 @@ impl<const N: u64> RingEl for ZnElImpl<N, false> {
     const RING: Self::RingType = StaticRing::<Self>::RING;
     const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
 
-    fn characteristic() -> BigInt { BigInt::RING.from_z(N as i64) }
+    fn characteristic() -> StdInt { StdInt::from(N as i64) }
 }
 
 #[derive(Clone, Debug)]
@@ -231,8 +231,8 @@ impl<const N: u64> FiniteRing for StaticRing<ZnElImpl<N, true>> {
 
     type IterFn = StaticZnIterFn;
 
-    fn size(&self) -> BigInt {
-        BigInt::from(N as i128)
+    fn size(&self) -> StdInt {
+        StdInt::from(N as i64)
     }
     
     fn iter_fn(&self) -> Self::IterFn {
@@ -277,8 +277,8 @@ impl<const N: u64> FiniteRing for StaticRing<ZnElImpl<N, false>> {
 
     type IterFn = StaticZnIterFn;
 
-    fn size(&self) -> BigInt {
-        BigInt::from(N as i128)
+    fn size(&self) -> StdInt {
+        StdInt::from(N as i64)
     }
     
     fn iter_fn(&self) -> Self::IterFn {

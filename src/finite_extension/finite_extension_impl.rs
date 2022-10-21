@@ -5,7 +5,6 @@ use super::super::poly::ops::poly_format;
 use super::super::fq::*;
 use super::super::combinatorics::iters::*;
 use super::*;
-use super::super::integer::*;
 use super::super::la::vec::*;
 use super::super::la::mat::*;
 
@@ -278,7 +277,7 @@ impl<R, V, W> RingBase for FiniteExtensionImpl<R, V, W>
         )
     }
 
-    fn characteristic(&self) -> BigInt {
+    fn characteristic(&self) -> StdInt {
         self.base_ring().characteristic()
     }
 
@@ -446,8 +445,8 @@ impl<R, V, W> FiniteRing for FiniteExtensionImpl<R, V, W>
 {
     type IterFn = FiniteRingExtensionIterFn<R, V, W>;
 
-    fn size(&self) -> BigInt {
-        BigInt::RING.pow(&self.base_ring().size(), self.rank_as_module() as u32)
+    fn size(&self) -> StdInt {
+        self.base_ring().size().pow(self.rank_as_module() as u32)
     }
 
     fn iter_fn(&self) -> Self::IterFn {

@@ -1,5 +1,5 @@
 use super::prelude::*;
-use super::integer::*;
+use super::integer::bigint_soo::*;
 
 use std::marker::PhantomData;
 
@@ -75,14 +75,14 @@ impl<R, T> CanonicalEmbeddingInfo<StaticRing<T>> for R
     }
 }
 
-impl<R> CanonicalEmbeddingInfo<BigIntRing> for R
-    where R: RingDecorator, R::DecoratedRing: CanonicalEmbeddingInfo<BigIntRing>
+impl<R> CanonicalEmbeddingInfo<BigIntSOORing> for R
+    where R: RingDecorator, R::DecoratedRing: CanonicalEmbeddingInfo<BigIntSOORing>
 {
-    fn has_embedding(&self, from: &BigIntRing) -> RingPropValue {
+    fn has_embedding(&self, from: &BigIntSOORing) -> RingPropValue {
         self.decorated_ring().has_embedding(from)
     }
 
-    fn embed(&self, from: &BigIntRing, el: BigInt) -> Self::El {
+    fn embed(&self, from: &BigIntSOORing, el: BigIntSOO) -> Self::El {
         self.decorated_ring().embed(from, el)
     }
 }
@@ -123,14 +123,14 @@ impl<R, T> CanonicalIsomorphismInfo<StaticRing<T>> for R
     }
 }
 
-impl<R> CanonicalIsomorphismInfo<BigIntRing> for R
-    where R: RingDecorator, R::DecoratedRing: CanonicalIsomorphismInfo<BigIntRing>
+impl<R> CanonicalIsomorphismInfo<BigIntSOORing> for R
+    where R: RingDecorator, R::DecoratedRing: CanonicalIsomorphismInfo<BigIntSOORing>
 {
-    fn has_isomorphism(&self, from: &BigIntRing) -> RingPropValue {
+    fn has_isomorphism(&self, from: &BigIntSOORing) -> RingPropValue {
         self.decorated_ring().has_isomorphism(from)
     }
 
-    fn preimage(&self, from: &BigIntRing, el: Self::El) -> BigInt {
+    fn preimage(&self, from: &BigIntSOORing, el: Self::El) -> BigIntSOO {
         self.decorated_ring().preimage(from, el)
     }
 }

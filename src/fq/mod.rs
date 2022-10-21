@@ -1,6 +1,5 @@
 use super::prelude::*;
 use super::wrapper::*;
-use super::integer::*;
 
 pub trait FiniteRingIterFn<R: FiniteRing>: Clone {
 
@@ -20,7 +19,7 @@ pub trait FiniteRing: Ring {
 
     type IterFn: FiniteRingIterFn<Self>;
 
-    fn size(&self) -> BigInt;
+    fn size(&self) -> StdInt;
     fn iter_fn(&self) -> Self::IterFn;
     fn random_element<G>(&self, rng: G) -> El<Self> 
         where G: FnMut() -> u32;
@@ -39,7 +38,7 @@ impl<'a, R> FiniteRing for R
 {
     type IterFn = <R::DecoratedRing as FiniteRing>::IterFn;
 
-    fn size(&self) -> BigInt { self.decorated_ring().size() }
+    fn size(&self) -> StdInt { self.decorated_ring().size() }
     fn iter_fn(&self) -> Self::IterFn { self.decorated_ring().iter_fn() }
 
     fn random_element<G>(&self, rng: G) -> El<Self> 
@@ -119,7 +118,7 @@ impl<R> FiniteRing for WrappingRing<R>
         self.from(self.wrapped_ring().random_element(rng))
     }
 
-    fn size(&self) -> BigInt {
+    fn size(&self) -> StdInt {
         self.wrapped_ring().size()
     }
 

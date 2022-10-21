@@ -35,14 +35,14 @@ impl<R: RingDecorator> RingBase for R {
     default fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.decorated_ring().mul(lhs, rhs) }
     default fn sub(&self, lhs: Self::El, rhs: Self::El) -> Self::El { self.decorated_ring().sub(lhs, rhs) }
     default fn pow(&self, basis: &Self::El, exp: u32) -> Self::El { self.decorated_ring().pow(basis, exp) }
-    default fn pow_big(&self, basis: &Self::El, exp: &BigInt) -> Self::El { self.decorated_ring().pow_big(basis, exp) }
+    default fn pow_big(&self, basis: &Self::El, exp: &StdInt) -> Self::El { self.decorated_ring().pow_big(basis, exp) }
     default fn from_z(&self, x: i64) -> Self::El { self.decorated_ring().from_z(x) }
-    default fn from_z_big(&self, x: &BigInt) -> Self::El { self.decorated_ring().from_z_big(x) }
+    default fn from_z_big(&self, x: &StdInt) -> Self::El { self.decorated_ring().from_z_big(x) }
     default fn is_zero(&self, val: &Self::El) -> bool { self.decorated_ring().is_zero(val) }
     default fn is_one(&self, val: &Self::El) -> bool { self.decorated_ring().is_one(val) }
     default fn is_neg_one(&self, val: &Self::El) -> bool { self.decorated_ring().is_neg_one(val) }
     default fn is_integral(&self) -> RingPropValue { self.decorated_ring().is_integral() }
-    default fn characteristic(&self) -> BigInt { self.decorated_ring().characteristic() }
+    default fn characteristic(&self) -> StdInt { self.decorated_ring().characteristic() }
     default fn is_field(&self) -> RingPropValue { self.decorated_ring().is_field() }
     default fn is_noetherian(&self) -> bool { self.decorated_ring().is_noetherian() }
     default fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { self.decorated_ring().div(lhs, rhs) }
@@ -112,7 +112,7 @@ impl<'a, R> EuclideanInfoRing for R
     fn euclidean_div_rem(&self, lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) { self.decorated_ring().euclidean_div_rem(lhs, rhs) }
     fn euclidean_rem(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { self.decorated_ring().euclidean_rem(lhs, rhs) }
     fn euclidean_div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { self.decorated_ring().euclidean_div(lhs, rhs) }
-    fn euclidean_deg(&self, el: Self::El) -> BigInt { self.decorated_ring().euclidean_deg(el) }
+    fn euclidean_deg(&self, el: Self::El) -> StdInt { self.decorated_ring().euclidean_deg(el) }
 }
 
 impl<R> RingExtension for R

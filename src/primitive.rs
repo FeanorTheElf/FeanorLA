@@ -1,6 +1,7 @@
 use crate::integer::bigint_soo::{BigIntSOORing, BigIntSOO};
 use super::ring::*;
 use super::integer::*;
+use super::integer::bigint::*;
 use super::embedding::*;
 use super::ring_property::*;
 use super::wrapper::*;
@@ -367,7 +368,7 @@ impl EuclideanEl for i128 {
     }
 
     fn euclidean_deg(&self) -> StdInt {
-        return WrappingRing::<BigIntSOORing>::singleton().from(BigIntSOO::RING.from(self.abs()));
+        return WrappingRing::<BigIntSOORing>::singleton().from(BigIntSOO::from(self.abs()));
     }
 }
 
@@ -412,7 +413,7 @@ impl RingEl for f64 {
         }
     }
 
-    fn characteristic() -> BigInt { BigInt::ZERO }
+    fn characteristic() -> StdInt { StdInt::zero() }
 }
 
 impl FieldEl for f32 {}
@@ -497,7 +498,7 @@ impl<T> RingBase for StaticRingImpl<T::Axioms, T>
     fn one(&self) -> Self::El { T::one() }
     fn is_eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool { lhs == rhs }
 
-    fn characteristic(&self) -> BigInt { T::characteristic() }
+    fn characteristic(&self) -> StdInt { T::characteristic() }
     fn is_noetherian(&self) -> bool { true }
     default fn is_integral(&self) -> RingPropValue { RingPropValue::False }
     default fn is_field(&self) -> RingPropValue { RingPropValue::False }
@@ -528,7 +529,7 @@ impl<T> EuclideanInfoRing for StaticRingImpl<RingAxiomsEuclidean, T>
         return (quo, lhs);
     }
 
-    fn euclidean_deg(&self, el: Self::El) -> BigInt {
+    fn euclidean_deg(&self, el: Self::El) -> StdInt {
         el.euclidean_deg()
     }
 }
@@ -585,11 +586,11 @@ impl<T> EuclideanInfoRing for StaticRingImpl<RingAxiomsField, T>
         self.zero()
     }
 
-    fn euclidean_deg(&self, el: Self::El) -> BigInt {
+    fn euclidean_deg(&self, el: Self::El) -> StdInt {
         if self.is_zero(&el) {
-            return BigInt::RING.zero();
+            return StdInt::zero();
         } else {
-            return BigInt::RING.one();
+            return StdInt::one();
         }
     }
 }
@@ -671,25 +672,25 @@ impl<T: RingEl> CanonicalIsomorphismInfo<StaticRing<T>> for StaticRing<T> {
     }
 }
 
-impl CanonicalEmbeddingInfo<BigIntRing> for StaticRing<i64> {
+impl CanonicalEmbeddingInfo<BigIntSOORing> for StaticRing<i64> {
 
-    fn has_embedding(&self, _from: &BigIntRing) -> RingPropValue {
+    fn has_embedding(&self, _from: &BigIntSOORing) -> RingPropValue {
         RingPropValue::True
     }
 
-    fn embed(&self, _from: &BigIntRing, el: BigInt) -> Self::El {
-        el.to_int().expect("Overflow when embedding BigInt into i64") as i64
+    fn embed(&self, _from: &BigIntSOORing, el: BigIntSOO) -> Self::El {
+        el.to_i128().expect("Overflow when embedding BigInt into i64") as i64
     }
 }
 
-impl CanonicalIsomorphismInfo<BigIntRing> for StaticRing<i64> {
+impl CanonicalIsomorphismInfo<BigIntSOORing> for StaticRing<i64> {
 
-    fn has_isomorphism(&self, _from: &BigIntRing) -> RingPropValue {
+    fn has_isomorphism(&self, _from: &BigIntSOORing) -> RingPropValue {
         RingPropValue::True
     }
 
-    fn preimage(&self, _from: &BigIntRing, el: i64) -> BigInt {
-        BigInt::from(el as i128)
+    fn preimage(&self, _from: &BigIntSOORing, el: i64) -> BigIntSOO {
+        BigIntSOO::from(el as i128)
     }
 }
 
@@ -730,24 +731,24 @@ impl CanonicalIsomorphismInfo<StaticRing<i64>> for StaticRing<i128> {
     }
 }
 
-impl CanonicalEmbeddingInfo<BigIntRing> for StaticRing<i128> {
+impl CanonicalEmbeddingInfo<BigIntSOORing> for StaticRing<i128> {
 
-    fn has_embedding(&self, _from: &BigIntRing) -> RingPropValue {
+    fn has_embedding(&self, _from: &BigIntSOORing) -> RingPropValue {
         RingPropValue::True
     }
 
-    fn embed(&self, _from: &BigIntRing, el: BigInt) -> Self::El {
-        el.to_int().expect("Overflow when embedding BigInt into i64")
+    fn embed(&self, _from: &BigIntSOORing, el: BigIntSOO) -> Self::El {
+        el.to_i128().expect("Overflow when embedding BigInt into i64")
     }
 }
 
-impl CanonicalIsomorphismInfo<BigIntRing> for StaticRing<i128> {
+impl CanonicalIsomorphismInfo<BigIntSOORing> for StaticRing<i128> {
 
-    fn has_isomorphism(&self, _from: &BigIntRing) -> RingPropValue {
+    fn has_isomorphism(&self, _from: &BigIntSOORing) -> RingPropValue {
         RingPropValue::True
     }
 
-    fn preimage(&self, _from: &BigIntRing, el: i128) -> BigInt {
-        BigInt::from(el)
+    fn preimage(&self, _from: &BigIntSOORing, el: i128) -> BigIntSOO {
+        BigIntSOO::from(el)
     }
 }

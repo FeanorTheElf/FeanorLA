@@ -1,6 +1,5 @@
 use super::super::prelude::*;
 use super::super::rational::*;
-use super::super::integer::*;
 use super::*;
 
 #[derive(Debug, Clone, Copy)]
@@ -117,7 +116,7 @@ impl<R> RingBase for FractionFieldImpl<R>
         true
     }
     
-    fn characteristic(&self) -> BigInt {
+    fn characteristic(&self) -> StdInt {
         self.base_ring().characteristic()
     }
 
@@ -344,6 +343,9 @@ impl<R> PartialEq for FractionFieldImpl<R>
         self.base_ring() == rhs.base_ring()
     }
 }
+
+#[cfg(test)]
+use super::super::integer::bigint::*;
 
 #[test]
 fn test_add() {

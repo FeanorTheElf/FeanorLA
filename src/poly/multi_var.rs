@@ -2,7 +2,6 @@ use super::super::prelude::*;
 use super::uni_var::*;
 use super::super::la::vec::*;
 use super::super::la::mat::*;
-use super::super::integer::*;
 use super::*;
 
 use std::collections::BTreeMap;
@@ -367,11 +366,11 @@ impl<R> RingBase for MultivariatePolyRing<R>
         self.from(self.base_ring.from_z(x))
     }
 
-    fn from_z_big(&self, x: &BigInt) -> Self::El {
+    fn from_z_big(&self, x: &StdInt) -> Self::El {
         self.from(self.base_ring.from_z_big(x))
     }
 
-    fn characteristic(&self) -> BigInt {
+    fn characteristic(&self) -> StdInt {
         self.base_ring.characteristic()
     }
 

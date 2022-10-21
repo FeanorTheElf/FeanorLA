@@ -322,7 +322,7 @@ impl RingEl for r64 {
     const RING: Self::RingType = StaticRing::<Self>::RING;
     const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
     
-    fn characteristic() -> BigInt { BigInt::ZERO }
+    fn characteristic() -> StdInt { StdInt::zero() }
 }
 
 impl FieldEl for r64 {}

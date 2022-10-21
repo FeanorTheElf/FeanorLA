@@ -5,11 +5,10 @@ use super::super::integer::*;
 use super::super::primitive::*;
 use super::super::fq::zn_small::*;
 use super::super::eea::*;
-use super::super::wrapper::*;
 use super::gen_primes;
 
-type Int = RingElWrapper<BigIntRing>;
-const INT_RING: WrappingRing<BigIntRing> = BigInt::WRAPPED_RING; 
+type Int = StdInt;
+const INT_RING: <Int as RingEl>::RingType = Int::RING; 
 
 fn next_around_zero(x: i64) -> i64 {
     if x < 0 {
@@ -244,7 +243,7 @@ pub fn quadratic_sieve(n: &Int) -> Int {
 
 #[test]
 fn test_quadratic_sieve() {
-    let f5 = INT_RING.from(BigInt::RING.mul_pow_2(BigInt::RING.one(), 32)) + 1;
+    let f5 = StdInt::one().mul_pow_2(32) + 1;
     let factor = quadratic_sieve(&f5);
     assert!(factor != f5);
     assert!(factor != 1);
