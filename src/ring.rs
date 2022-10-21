@@ -55,6 +55,22 @@ impl<'a, R> std::fmt::Display for RingElDisplay<'a, R>
 /// cannot profit from getting the parameters by value. If this is not true, then
 /// one should implement the default-implemented mul()-function
 /// 
+/// # A note on Clone
+/// 
+/// Sometimes, the question arises if rings should generally be required to implement
+/// Clone. In the end, the decision is to add it, since some very common use cases
+/// require Clone. In particular
+///  - In order to get `StandardEmbedding` objects (and other kinds of embeddings) that
+///    live for static lifetime (required e.g. for `RingExtension`), we must be able to
+///    clone source & destination ring
+///  - Many functionality of `WrappingRing` requires cloning, even to make it a ring (as
+///    elements of a ring are required to be clonable).
+/// 
+/// I am completely aware that cloning in these situations might lead to a non-obvious
+/// problems, e.g. if the ring contains a thread or memory pool. In these cases, we 
+/// recommend to implement `Ring` only for objects that contain references or `Rc`'s to
+/// the corresponding resource.
+/// 
 pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     
     type El: Sized + Clone + std::fmt::Debug;
@@ -310,9 +326,7 @@ pub trait RingExtension: Ring {
 
     fn embedding(&self) -> Self::Embedding;
 
-    fn from(&self, el: El<Self::BaseRing>) -> El<Self> {
-        self.embedding()(el)
-    }
+    fn from(&self, el: El<Self::BaseRing>) -> El<Self>;
 }
 
 ///

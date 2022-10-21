@@ -217,8 +217,6 @@ use super::super::finite_extension::finite_extension_impl::*;
 #[cfg(test)]
 use super::super::la::vec::*;
 #[cfg(test)]
-use super::super::integer::*;
-#[cfg(test)]
 use super::super::poly::*;
 
 #[allow(non_snake_case)]
