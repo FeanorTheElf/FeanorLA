@@ -1,5 +1,8 @@
 use super::super::prelude::*;
 use super::uni_var::*;
+use super::super::la::vec::*;
+use super::super::la::mat::*;
+use super::super::integer::*;
 use super::*;
 
 use std::collections::BTreeMap;

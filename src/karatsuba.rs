@@ -1,4 +1,5 @@
 use super::prelude::*;
+use super::la::vec::*;
 
 fn add_assign_intersect<R, U, V>(mut dst: Vector<U, R::El>, val: Vector<V, R::El>, ring: &R)
     where U: VectorViewMut<R::El>, V: VectorView<R::El>, R: Ring
@@ -104,6 +105,7 @@ fn karatsuba_impl<R, U, V, W>(
 /// ```
 /// # use feanor_la::karatsuba::*;
 /// # use feanor_la::prelude::*;
+/// # use feanor_la::la::vec::*;
 /// let mut out = Vector::from_array([0]);
 /// karatsuba_mul(Vector::from_array([1, 2]), Vector::from_array([3, 4]), out.as_mut(), &i64::RING);
 /// assert_eq!(Vector::from_array([3]), out);
@@ -114,6 +116,7 @@ fn karatsuba_impl<R, U, V, W>(
 /// ```
 /// # use feanor_la::karatsuba::*;
 /// # use feanor_la::prelude::*;
+/// # use feanor_la::la::vec::*;
 /// let lhs = Vector::from_array([1, 2, 3]);
 /// let rhs = Vector::from_array([2, 1]);
 /// let mut out = Vector::from_array([0, 0, 0, 0]);

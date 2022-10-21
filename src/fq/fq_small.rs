@@ -1,6 +1,6 @@
 
 pub mod define_fq {
-    pub use crate::ring_extension::simple_extension::*;
+    pub use crate::finite_extension::finite_extension_impl::*;
     pub use crate::fq::zn_small::*;
     pub use crate::la::vector_view::compile_time_vector::*;
     pub use crate::la::vec::*;
@@ -40,15 +40,17 @@ pub const F3: F3Type = ZnEl::<3>::RING;
 pub const F5: F5Type = ZnEl::<5>::RING;
 pub const F7: F7Type = ZnEl::<7>::RING;
 
-pub type F4Type = SimpleRingExtension<StaticRing::<ZnEl<2>>, F4MipoType, VectorArray<ZnEl<2>, 2>>;
-pub type F49Type = SimpleRingExtension<StaticRing::<ZnEl<7>>, F49MipoType, VectorArray<ZnEl<7>, 2>>;
-pub type F1369Type = SimpleRingExtension<StaticRing<ZnEl<37>>, F1369MipoType, VectorArray<ZnEl<37>, 2>>;
-pub const F4: F4Type = SimpleRingExtension::new(F2, F4_MIPO, "α");
-pub const F49: F49Type = SimpleRingExtension::new(F7, F49_MIPO, "α");
+pub type F4Type = FiniteExtensionImpl<StaticRing::<ZnEl<2>>, F4MipoType, VectorArray<ZnEl<2>, 2>>;
+pub type F49Type = FiniteExtensionImpl<StaticRing::<ZnEl<7>>, F49MipoType, VectorArray<ZnEl<7>, 2>>;
+pub type F1369Type = FiniteExtensionImpl<StaticRing<ZnEl<37>>, F1369MipoType, VectorArray<ZnEl<37>, 2>>;
+pub const F4: F4Type = FiniteExtensionImpl::new(F2, F4_MIPO, "α");
+pub const F49: F49Type = FiniteExtensionImpl::new(F7, F49_MIPO, "α");
 pub const F1369: F1369Type = F1369Type::new(ZnEl::<37>::RING, F1369_MIPO, "α");
 
 #[cfg(test)]
 use super::FiniteRing;
+#[cfg(test)]
+use super::super::finite_extension::*;
 
 #[test]
 fn test_arithmetic() {

@@ -1,5 +1,6 @@
 use super::super::prelude::*;
 use super::super::rational::*;
+use super::super::integer::*;
 use super::*;
 
 #[derive(Debug, Clone, Copy)]

@@ -1,4 +1,4 @@
-use super::super::prelude::*;
+use super::super::la::vec::*;
 
 use std::cmp::Ordering;
 

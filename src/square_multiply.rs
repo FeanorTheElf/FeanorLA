@@ -1,4 +1,5 @@
 use super::prelude::*;
+use super::integer::*;
 
 pub fn abs_square_and_multiply<T, F, G, I>(base: &T, power: &El<I>, int_ring: I, mut multiply: F, mut multiply_ref: G, identity: T) -> T
     where I: IntegerRing, F: FnMut(T, T) -> T, G: FnMut(&T, &T) -> T, T: Clone

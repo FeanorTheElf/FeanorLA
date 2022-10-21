@@ -12,8 +12,9 @@ use super::wrapper::*;
 use super::la::mat::*;
 use super::fq::*;
 use super::combinatorics::iters::*;
-use super::ring_extension::simple_extension::*;
-use super::ring_extension::extension_wrapper::*;
+use super::finite_extension::finite_extension_impl::*;
+use super::finite_extension::*;
+use super::extension_wrapper::extension_wrapper::*;
 use super::poly::*;
 use super::fraction_field::fraction_field_impl::*;
 use super::square_multiply::abs_square_and_multiply;
@@ -46,29 +47,29 @@ impl<K> std::fmt::Display for EllipticCurve<K>
 }
 
 #[allow(type_alias_bounds)]
-pub type CoordRing<K: Ring> = WrappingRing<SimpleRingExtension<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>>;
+pub type CoordRing<K: Ring> = WrappingRing<FiniteExtensionImpl<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>>;
 #[allow(type_alias_bounds)]
 pub type FunctionField<K: Ring> = WrappingRing<ExtensionWrapper<
     K, 
-    FractionFieldImpl<SimpleRingExtension<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>>,
+    FractionFieldImpl<FiniteExtensionImpl<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>>,
     ComposedEmbedding<
         ComposedEmbedding<
             StandardEmbedding<K, PolyRingImpl<K>>,
             StandardEmbedding<
                 PolyRingImpl<K>,
-                SimpleRingExtension<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>,
+                FiniteExtensionImpl<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>,
             >,
             K,
             PolyRingImpl<K>,
-            SimpleRingExtension<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>
+            FiniteExtensionImpl<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>
         >,
         StandardEmbedding<
-            SimpleRingExtension<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>,
-            FractionFieldImpl<SimpleRingExtension<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>>
+            FiniteExtensionImpl<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>,
+            FractionFieldImpl<FiniteExtensionImpl<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>>
         >,
         K, 
-        SimpleRingExtension<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>,
-        FractionFieldImpl<SimpleRingExtension<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>>,
+        FiniteExtensionImpl<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>,
+        FractionFieldImpl<FiniteExtensionImpl<PolyRingImpl<K>, VectorArray<El<PolyRingImpl<K>>, 2>, VectorArray<El<PolyRingImpl<K>>, 2>>>,
     >>>;
 
 #[derive(Clone)]
@@ -211,7 +212,7 @@ impl<K> EllipticCurve<WrappingRing<K>>
             poly_ring.zero()
         ]));
         let poly_ring_x = poly_ring.unknown();
-        let result = WrappingRing::new(SimpleRingExtension::new(poly_ring, mipo, "Y"));
+        let result = WrappingRing::new(FiniteExtensionImpl::new(poly_ring, mipo, "Y"));
         let X = result.from(result.wrapped_ring().from(poly_ring_x));
         let Y = result.from(result.wrapped_ring().generator());
         return (result, X, Y);

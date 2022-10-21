@@ -3,7 +3,6 @@
 #![feature(specialization)]
 #![feature(associated_type_bounds)]
 #![feature(step_trait)]
-#![feature(generic_associated_types)]
 #![feature(fn_traits)]
 #![feature(test)]
 #![feature(unboxed_closures)]
@@ -39,11 +38,12 @@ pub mod factoring_algorithms;
 pub mod p_adic;
 pub mod fraction_field;
 pub mod poly;
-pub mod ring_extension;
+pub mod finite_extension;
 pub mod elliptic_curve;
 pub mod finite_field_sqrt;
 pub mod discrete_log;
 pub mod number_field;
+pub mod extension_wrapper;
 
 pub mod numerics;
 pub mod combinatorics;

@@ -827,6 +827,10 @@ impl<R> WrappingRing<R>
     pub fn embedding(&self) -> LiftedHom<R::BaseRing, R, R::Embedding> {
         self.lift_hom(self.wrapped_ring().embedding())
     }
+
+    pub fn embedding_ref<'a, 'b>(&'a self) -> LiftedHom<&'b R::BaseRing, R, R::Embedding> {
+        self.lift_hom(self.wrapped_ring().embedding())
+    }
 }
 
 impl<S, R, F> PartialEq for LiftedHom<S, R, F>

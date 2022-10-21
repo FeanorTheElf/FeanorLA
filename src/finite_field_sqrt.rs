@@ -1,6 +1,8 @@
 use super::prelude::*;
 use super::fq::*;
-use super::ring_extension::simple_extension::*;
+use super::integer::*;
+use super::la::vec::*;
+use super::finite_extension::finite_extension_impl::*;
 
 use std::hash::Hasher;
 use std::collections::hash_map::DefaultHasher;
@@ -39,7 +41,7 @@ pub fn sqrt<F: FiniteRing + HashableElRing>(x: El<F>, field: F) -> Option<El<F>>
     if field.is_neg_one(&field.pow_big(&x, &n)) {
         return None;
     }
-    let ring: SimpleRingExtension<_, _, VectorArray<_, 2>> = SimpleRingExtension::new(&field, Vector::from_array([x, field.zero()]), "α");
+    let ring: FiniteExtensionImpl<_, _, VectorArray<_, 2>> = FiniteExtensionImpl::new(&field, Vector::from_array([x, field.zero()]), "α");
     loop {
         let g = ring.random_element(|| rng.rand_u32());
         let h = ring.pow_big(&g, &n);

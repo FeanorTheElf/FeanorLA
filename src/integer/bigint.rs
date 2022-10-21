@@ -1,6 +1,7 @@
 use super::super::ring::*;
 use super::super::embedding::*;
 use super::super::primitive::*;
+use super::super::la::vec::*;
 use super::bigint_ops;
 
 use super::primes;

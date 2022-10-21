@@ -1,4 +1,5 @@
 use super::prelude::*;
+use super::integer::*;
 
 use std::marker::PhantomData;
 

@@ -4,13 +4,16 @@ use super::super::la::inversion::*;
 use super::super::poly::ops::poly_format;
 use super::super::fq::*;
 use super::super::combinatorics::iters::*;
-use super::super::wrapper::*;
+use super::*;
+use super::super::integer::*;
+use super::super::la::vec::*;
+use super::super::la::mat::*;
 
 use std::marker::PhantomData;
 use std::iter::FromIterator;
 
 #[derive(Clone)]
-pub struct SimpleRingExtension<R, V = VectorOwned<El<R>>, W = VectorOwned<El<R>>>
+pub struct FiniteExtensionImpl<R, V = VectorOwned<El<R>>, W = VectorOwned<El<R>>>
     where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El>
 {
     base_ring: R,
@@ -20,7 +23,7 @@ pub struct SimpleRingExtension<R, V = VectorOwned<El<R>>, W = VectorOwned<El<R>>
     gen_name: &'static str
 }
 
-impl<R> SimpleRingExtension<R, VectorOwned<R::El>, VectorOwned<R::El>>
+impl<R> FiniteExtensionImpl<R, VectorOwned<R::El>, VectorOwned<R::El>>
     where R: Ring
 {
     pub fn adjoin_element<P>(base_ring: R, mipo: El<P>, poly_ring: &P, gen_name: &'static str) -> Self
@@ -41,7 +44,7 @@ impl<R> SimpleRingExtension<R, VectorOwned<R::El>, VectorOwned<R::El>>
     }
 }
 
-impl<R, V, W> SimpleRingExtension<R, V, W>
+impl<R, V, W> FiniteExtensionImpl<R, V, W>
     where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     ///
@@ -51,7 +54,7 @@ impl<R, V, W> SimpleRingExtension<R, V, W>
     /// ```
     /// 
     pub const fn new(base_ring: R, mipo_values: Vector<V, R::El>, gen_name: &'static str) -> Self {
-        SimpleRingExtension {
+        FiniteExtensionImpl {
             base_ring: base_ring, 
             mipo_values: mipo_values,
             element_vector: PhantomData,
@@ -60,12 +63,8 @@ impl<R, V, W> SimpleRingExtension<R, V, W>
         }
     }
 
-    pub fn degree(&self) -> usize {
-        self.mipo_values.len()
-    }
-
     fn assert_valid_element(&self, el: &El<Self>) {
-        assert_eq!(el.len(), self.degree());
+        assert_eq!(el.len(), self.rank_as_module());
     }
 
     pub fn polynomial_repr(&self, poly_ring: &PolyRingImpl<&R>, el: El<Self>) -> El<PolyRingImpl<R>> {
@@ -74,17 +73,8 @@ impl<R, V, W> SimpleRingExtension<R, V, W>
             .fold(poly_ring.zero(), |a, b| poly_ring.add(a, b))
     }
 
-    pub fn generator(&self) -> El<Self> {
-        Vector::new(
-            std::iter::once(self.base_ring.zero())
-            .chain(std::iter::once(self.base_ring.one()))
-            .chain(std::iter::repeat(self.base_ring.zero()).take(self.degree() - 2))
-            .collect()
-        )
-    }
-
     fn create_multiplication_matrix(&self, el: El<Self>) -> Matrix<MatrixOwned<R::El>, R::El> {
-        let d = self.degree();
+        let d = self.rank_as_module();
         let mut matrix = Matrix::zero_ring(d, d, &self.base_ring).into_owned();
         for (j, x) in el.into_owned().raw_data().to_vec().into_iter().enumerate() {
             *matrix.at_mut(j, 0) = x;
@@ -125,7 +115,7 @@ impl<R, V, W> SimpleRingExtension<R, V, W>
     }
 }
 
-impl<R, V, W> CanonicalEmbeddingInfo<R> for SimpleRingExtension<R, V, W>
+impl<R, V, W> CanonicalEmbeddingInfo<R> for FiniteExtensionImpl<R, V, W>
     where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn has_embedding(&self, from: &R) -> RingPropValue {
@@ -138,7 +128,7 @@ impl<R, V, W> CanonicalEmbeddingInfo<R> for SimpleRingExtension<R, V, W>
     }
 }
 
-impl<R, V, W> CanonicalEmbeddingInfo<&R> for SimpleRingExtension<R, V, W>
+impl<R, V, W> CanonicalEmbeddingInfo<&R> for FiniteExtensionImpl<R, V, W>
     where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn has_embedding(&self, from: &&R) -> RingPropValue {
@@ -151,7 +141,7 @@ impl<R, V, W> CanonicalEmbeddingInfo<&R> for SimpleRingExtension<R, V, W>
     }
 }
 
-impl<R, V, W> CanonicalEmbeddingInfo<R> for SimpleRingExtension<&R, V, W>
+impl<R, V, W> CanonicalEmbeddingInfo<R> for FiniteExtensionImpl<&R, V, W>
     where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn has_embedding(&self, from: &R) -> RingPropValue {
@@ -164,13 +154,13 @@ impl<R, V, W> CanonicalEmbeddingInfo<R> for SimpleRingExtension<&R, V, W>
     }
 }
 
-impl<R, V, W> CanonicalEmbeddingInfo<SimpleRingExtension<R, V, W>> for SimpleRingExtension<R, V, W>
+impl<R, V, W> CanonicalEmbeddingInfo<FiniteExtensionImpl<R, V, W>> for FiniteExtensionImpl<R, V, W>
     where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn has_embedding(&self, from: &Self) -> RingPropValue {
         if !self.base_ring().has_embedding(from.base_ring()).can_use() {
             return self.base_ring().has_embedding(from.base_ring());
-        } else if self.degree() == from.degree() && self.mipo_values.as_ref().eq(from.mipo_values.as_ref(), self.base_ring()) {
+        } else if self.rank_as_module() == from.rank_as_module() && self.mipo_values.as_ref().eq(from.mipo_values.as_ref(), self.base_ring()) {
             return RingPropValue::True;
         } else {
             return RingPropValue::Unknown;
@@ -183,13 +173,13 @@ impl<R, V, W> CanonicalEmbeddingInfo<SimpleRingExtension<R, V, W>> for SimpleRin
     }
 }
 
-impl<R, V, W> CanonicalIsomorphismInfo<SimpleRingExtension<R, V, W>> for SimpleRingExtension<R, V, W>
+impl<R, V, W> CanonicalIsomorphismInfo<FiniteExtensionImpl<R, V, W>> for FiniteExtensionImpl<R, V, W>
     where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn has_isomorphism(&self, from: &Self) -> RingPropValue {
         if !self.base_ring().has_isomorphism(from.base_ring()).can_use() {
             return self.base_ring().has_isomorphism(from.base_ring());
-        } else if self.degree() == from.degree() && self.mipo_values.as_ref().eq(from.mipo_values.as_ref(), self.base_ring()) {
+        } else if self.rank_as_module() == from.rank_as_module() && self.mipo_values.as_ref().eq(from.mipo_values.as_ref(), self.base_ring()) {
             return RingPropValue::True;
         } else {
             return RingPropValue::Unknown;
@@ -202,7 +192,7 @@ impl<R, V, W> CanonicalIsomorphismInfo<SimpleRingExtension<R, V, W>> for SimpleR
     }
 }
 
-impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
+impl<R, V, W> RingBase for FiniteExtensionImpl<R, V, W>
     where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     type El = Vector<W, R::El>;
@@ -225,25 +215,25 @@ impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
 
         // when we start, result contains the upper half of the product lhs * rhs as
         // polynomials; then we reduce that piece by piece
-        let mut result: Vector<W, R::El> = Vector::new((self.degree()..=(self.degree() * 2 - 2)).map(|i|
-            self.base_ring().sum(((i - self.degree() + 1)..self.degree()).map(|j| 
+        let mut result: Vector<W, R::El> = Vector::new((self.rank_as_module()..=(self.rank_as_module() * 2 - 2)).map(|i|
+            self.base_ring().sum(((i - self.rank_as_module() + 1)..self.rank_as_module()).map(|j| 
                 self.base_ring().mul_ref(lhs.at(j), rhs.at(i - j))
             ))
         ).chain(std::iter::once(self.base_ring().zero())).collect());
 
-        for i in (0..=(self.degree() - 2)).rev() {
+        for i in (0..=(self.rank_as_module() - 2)).rev() {
             let value = std::mem::replace(result.at_mut(i), self.base_ring().zero());
-            for j in 0..self.degree() {
-                let index = if i + j < self.degree() {
+            for j in 0..self.rank_as_module() {
+                let index = if i + j < self.rank_as_module() {
                     i + j
                 } else {
-                    i + j - self.degree()
+                    i + j - self.rank_as_module()
                 };
                 self.base_ring().add_assign(result.at_mut(index), self.base_ring().mul_ref(self.mipo_values.at(j), &value));
             }
         }
 
-        for i in 0..self.degree() {
+        for i in 0..self.rank_as_module() {
             for j in 0..=i {
                 self.base_ring().add_assign(result.at_mut(i), self.base_ring().mul_ref(lhs.at(j), rhs.at(i - j)));
             }
@@ -271,20 +261,20 @@ impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
     }
 
     fn is_zero(&self, val: &Self::El) -> bool {
-        val.as_ref().eq(Vector::zero_ring(self.degree(), &self.base_ring), &self.base_ring)
+        val.as_ref().eq(Vector::zero_ring(self.rank_as_module(), &self.base_ring), &self.base_ring)
     }
 
     fn is_one(&self, val: &Self::El) -> bool {
         self.base_ring.is_one(val.at(0)) && (
-            self.degree() == 1 || 
-            val.as_ref().subvector(1..).eq(Vector::zero_ring(self.degree() - 1, &self.base_ring), &self.base_ring)
+            self.rank_as_module() == 1 || 
+            val.as_ref().subvector(1..).eq(Vector::zero_ring(self.rank_as_module() - 1, &self.base_ring), &self.base_ring)
         )
     }
 
     fn is_neg_one(&self, val: &Self::El) -> bool {
         self.base_ring.is_neg_one(val.at(0)) && (
-            self.degree() == 1 || 
-            val.as_ref().subvector(1..).eq(Vector::zero_ring(self.degree() - 1, &self.base_ring), &self.base_ring)
+            self.rank_as_module() == 1 || 
+            val.as_ref().subvector(1..).eq(Vector::zero_ring(self.rank_as_module() - 1, &self.base_ring), &self.base_ring)
         )
     }
 
@@ -323,7 +313,7 @@ impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
     }
 }
 
-impl<R, V, W> RingExtension for SimpleRingExtension<R, V, W> 
+impl<R, V, W> RingExtension for FiniteExtensionImpl<R, V, W> 
     where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     type BaseRing = R;
@@ -340,7 +330,7 @@ impl<R, V, W> RingExtension for SimpleRingExtension<R, V, W>
     fn from(&self, el: El<R>) -> El<Self> {
         Vector::new(
             std::iter::once(el)
-            .chain(std::iter::repeat(self.base_ring.zero()).take(self.degree() - 1))
+            .chain(std::iter::repeat(self.base_ring.zero()).take(self.rank_as_module() - 1))
             .collect()
         )
     }
@@ -350,7 +340,30 @@ impl<R, V, W> RingExtension for SimpleRingExtension<R, V, W>
     }
 }
 
-impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
+impl<R, V, W> FiniteExtension for FiniteExtensionImpl<R, V, W>
+    where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
+{
+    type ModuleVectorView = W;
+
+    fn generator(&self) -> El<Self> {
+        Vector::new(
+            std::iter::once(self.base_ring.zero())
+            .chain(std::iter::once(self.base_ring.one()))
+            .chain(std::iter::repeat(self.base_ring.zero()).take(self.rank_as_module() - 2))
+            .collect()
+        )
+    }
+
+    fn rank_as_module(&self) -> usize {
+        self.mipo_values.len()
+    }
+
+    fn as_module_el(&self, x: El<Self>) -> Vector<Self::ModuleVectorView, El<Self::BaseRing>> {
+        x
+    }
+}
+
+impl<R, V, W> RingBase for FiniteExtensionImpl<R, V, W>
     where R: Ring, for<'a> PolyRingImpl<&'a R>: UfdInfoRing, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn is_integral(&self) -> RingPropValue {
@@ -375,7 +388,7 @@ impl<R, V, W> RingBase for SimpleRingExtension<R, V, W>
     }
 }
 
-impl<R, V, W> DivisibilityInfoRing for SimpleRingExtension<R, V, W>
+impl<R, V, W> DivisibilityInfoRing for FiniteExtensionImpl<R, V, W>
     where R: Ring, for<'a> PolyRingImpl<&'a R>: UfdInfoRing, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn is_divisibility_computable(&self) -> RingPropValue {
@@ -394,19 +407,19 @@ impl<R, V, W> DivisibilityInfoRing for SimpleRingExtension<R, V, W>
     }
 }
 
-impl<R, V, W> PartialEq for SimpleRingExtension<R, V, W>
+impl<R, V, W> PartialEq for FiniteExtensionImpl<R, V, W>
     where R: Ring + PartialEq, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn eq(&self, rhs: &Self) -> bool {
-        self.base_ring() == rhs.base_ring() && self.degree() == rhs.degree() && self.mipo_values.as_ref().eq(rhs.mipo_values.as_ref(), self.base_ring())
+        self.base_ring() == rhs.base_ring() && self.rank_as_module() == rhs.rank_as_module() && self.mipo_values.as_ref().eq(rhs.mipo_values.as_ref(), self.base_ring())
     }
 }
 
-impl<R, V, W> std::fmt::Debug for SimpleRingExtension<R, V, W>
+impl<R, V, W> std::fmt::Debug for FiniteExtensionImpl<R, V, W>
     where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Ring extension of {:?} generated by equation X^{} = ", &self.base_ring, self.degree())?;
+        write!(f, "Ring extension of {:?} generated by equation X^{} = ", &self.base_ring, self.rank_as_module())?;
         poly_format(&self.base_ring, self.mipo_values.as_ref(), f, "X")?;
         return Ok(());
     }
@@ -416,25 +429,25 @@ impl<R, V, W> std::fmt::Debug for SimpleRingExtension<R, V, W>
 pub struct FiniteRingExtensionIterFn<R, V, W> 
     where  R: FiniteRing, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
-    base_iter: MultiProduct<FiniteRingElementIter<R>, fn(&[El<R>]) -> Vector<W, El<R>>, El<SimpleRingExtension<R, V, W>>>,
+    base_iter: MultiProduct<FiniteRingElementIter<R>, fn(&[El<R>]) -> Vector<W, El<R>>, El<FiniteExtensionImpl<R, V, W>>>,
     vector_type: PhantomData<V>
 }
 
-impl<R, V, W> FiniteRingIterFn<SimpleRingExtension<R, V, W>> for FiniteRingExtensionIterFn<R, V, W> 
+impl<R, V, W> FiniteRingIterFn<FiniteExtensionImpl<R, V, W>> for FiniteRingExtensionIterFn<R, V, W> 
     where  R: FiniteRing, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
-    fn next(&mut self, _: &SimpleRingExtension<R, V, W>) -> Option<El<SimpleRingExtension<R, V, W>>> {
+    fn next(&mut self, _: &FiniteExtensionImpl<R, V, W>) -> Option<El<FiniteExtensionImpl<R, V, W>>> {
         <_ as Iterator>::next(&mut self.base_iter)
     }
 }
 
-impl<R, V, W> FiniteRing for SimpleRingExtension<R, V, W>
+impl<R, V, W> FiniteRing for FiniteExtensionImpl<R, V, W>
     where  R: FiniteRing, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     type IterFn = FiniteRingExtensionIterFn<R, V, W>;
 
     fn size(&self) -> BigInt {
-        BigInt::RING.pow(&self.base_ring().size(), self.degree() as u32)
+        BigInt::RING.pow(&self.base_ring().size(), self.rank_as_module() as u32)
     }
 
     fn iter_fn(&self) -> Self::IterFn {
@@ -455,11 +468,11 @@ impl<R, V, W> FiniteRing for SimpleRingExtension<R, V, W>
     fn random_element<G>(&self, mut rng: G) -> El<Self> 
         where G: FnMut() -> u32
     {
-        Vector::new((0..self.degree()).map(|_| self.base_ring().random_element(&mut rng)).collect())
+        Vector::new((0..self.rank_as_module()).map(|_| self.base_ring().random_element(&mut rng)).collect())
     }
 }
 
-impl<R, V, W> HashableElRing for SimpleRingExtension<R, V, W>
+impl<R, V, W> HashableElRing for FiniteExtensionImpl<R, V, W>
     where  R: HashableElRing, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {
     fn hash<H: std::hash::Hasher>(&self, h: &mut H, el: &Self::El) {
@@ -470,35 +483,12 @@ impl<R, V, W> HashableElRing for SimpleRingExtension<R, V, W>
 }
 
 
-//TODO: introduce trait
-
-impl<R, V, W> WrappingRing<SimpleRingExtension<R, V, W>>
-    where  R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
-{
-    pub fn generator(&self) -> El<Self> {
-        self.from(self.wrapped_ring().generator())
-    }
-
-    pub fn degree(&self) -> usize {
-        self.wrapped_ring().degree()
-    }
-}
-
-impl<'a, R, V, W> WrappingRing<&'a SimpleRingExtension<R, V, W>>
-    where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
-{
-    pub fn generator(&self) -> El<Self> {
-        self.from(self.wrapped_ring().generator())
-    }
-}
-
-
 #[cfg(test)]
 use super::super::fq::zn_small::*;
 
 #[test]
 fn test_format() {
-    let ring: SimpleRingExtension<_, _> = SimpleRingExtension::new(i64::RING, Vector::from_array([-1, 0]), "α");
+    let ring: FiniteExtensionImpl<_, _> = FiniteExtensionImpl::new(i64::RING, Vector::from_array([-1, 0]), "α");
     let i = ring.generator();
     assert_eq!("α", format!("{}", ring.display(&i)));
     assert_eq!("-1", format!("{}", ring.display(&ring.mul_ref(&i, &i))));
@@ -507,7 +497,7 @@ fn test_format() {
 #[test]
 fn test_division() {
     let base = ZnEl::<7>::RING;
-    let field: SimpleRingExtension<_, _> = SimpleRingExtension::new(base, Vector::from_array([ZnEl::project(-1), ZnEl::project(0)]), "α");
+    let field: FiniteExtensionImpl<_, _> = FiniteExtensionImpl::new(base, Vector::from_array([ZnEl::project(-1), ZnEl::project(0)]), "α");
     assert!(field.is_field().can_use());
     assert!(field.is_eq(&field.from(ZnEl::project(1) / ZnEl::project(2)), &field.div(field.from_z(1), &field.from_z(2))));
 
@@ -520,7 +510,7 @@ fn test_division() {
 #[test]
 fn test_mul() {
     let base = i64::RING;
-    let extension: SimpleRingExtension<_, _> = SimpleRingExtension::new(base, Vector::from_array([-1, 0]), "i");
+    let extension: FiniteExtensionImpl<_, _> = FiniteExtensionImpl::new(base, Vector::from_array([-1, 0]), "i");
     let a = extension.sub(extension.one(), extension.generator());
     let b = extension.add(extension.one(), extension.generator());
     assert!(extension.is_eq(&extension.from_z(2), &extension.mul(a, b)));
@@ -532,7 +522,7 @@ fn test_adjoin_element() {
     let ring = WrappingRing::new(PolyRingImpl::adjoint(i64::RING, "x"));
     let x = ring.unknown();
     let f = x.pow(3) + x.pow(2) + 1;
-    let ring = WrappingRing::new(SimpleRingExtension::adjoin_element(i64::RING, f.val().clone(), f.parent_ring(), "x"));
+    let ring = WrappingRing::new(FiniteExtensionImpl::adjoin_element(i64::RING, f.val().clone(), f.parent_ring(), "x"));
     let x = ring.generator();
     assert_eq!(x.ring().zero(), f(x));
 }

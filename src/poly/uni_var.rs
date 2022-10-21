@@ -1,7 +1,9 @@
 use super::super::prelude::*;
 use super::ops::*;
 use super::factoring;
+use super::super::la::vec::*;
 use super::super::fq::*;
+use super::super::integer::*;
 use super::*;
 
 use vector_map::VecMap;
@@ -635,7 +637,7 @@ mod f1369 {
     gen_const_vector!(ConstVector2F37; F37El; V0, V1);
     type F1369MipoType = ConstVector2F37<{F37El::project(2)}, {F37El::project(33)}>;
     const F1369_MIPO: Vector<F1369MipoType, F37El> = Vector::new(F1369MipoType::INSTANCE);
-    type F1369Type = SimpleRingExtension<StaticRing<F37El>, F1369MipoType, VectorArray<F37El, 2>>;
+    type F1369Type = FiniteExtensionImpl<StaticRing<F37El>, F1369MipoType, VectorArray<F37El, 2>>;
     pub static F1369: F1369Type = F1369Type::new(F37El::RING, F1369_MIPO, "α");
 }
 

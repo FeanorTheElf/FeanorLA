@@ -1,6 +1,7 @@
 use super::super::prelude::*;
 use super::super::eea::*;
 use super::super::fq::*;
+use super::super::integer::*;
 use super::*;
 use super::super::square_multiply::abs_square_and_multiply;
 

@@ -1,5 +1,6 @@
 use super::prelude::*;
 use super::wrapper::*;
+use super::integer::*;
 
 use vector_map::VecMap;
 
