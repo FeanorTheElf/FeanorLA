@@ -110,9 +110,12 @@ impl<QType> EllipticCurve<WrappingRing<QType>>
     }
 }
 
+#[cfg(test)]
+use super::super::integer::bigint::*;
+
 #[test]
 fn test_isomorphic_curve_over_z() {
-    let Q = WrappingRing::new(FractionFieldImpl::<BigIntSOORing>::singleton());
+    let Q = WrappingRing::new(FractionFieldImpl::<BigIntRing>::singleton());
     let i = z_hom(&Q);
     let A = i(3).pow(5) / i(2).pow(4);
     let B = i(3).pow(6) / i(2).pow(6);
@@ -128,7 +131,7 @@ fn test_isomorphic_curve_over_z() {
 
 #[test]
 fn test_compute_torsion_group() {
-    let Q = WrappingRing::new(FractionFieldImpl::<BigIntSOORing>::singleton());
+    let Q = WrappingRing::new(FractionFieldImpl::<BigIntRing>::singleton());
     let i = z_hom(&Q);
     let E = EllipticCurve::new(Q.clone(), i(0), i(3));
     let mut torsion_group = HashSet::new();
