@@ -1,3 +1,4 @@
+use super::integer::bigint::*;
 use super::ring::*;
 use super::embedding::*;
 use super::integer::*;
@@ -11,7 +12,6 @@ use std::ops::{
 };
 use std::iter::Step;
 use std::marker::PhantomData;
-
 pub struct RingElWrapper<R>
     where R: Ring
 {
@@ -51,7 +51,7 @@ impl<R> RingElWrapper<R>
         self.ring().from(self.parent_ring().pow(&self.el, exp))
     }
 
-    pub fn pow_big(&self, exp: &BigInt) -> RingElWrapper<R> {
+    pub fn pow_big(&self, exp: &StdInt) -> RingElWrapper<R> {
         self.ring().from(self.parent_ring().pow_big(&self.el, exp))
     }
 
@@ -77,6 +77,43 @@ impl<R> RingElWrapper<R>
 
     pub fn ref_ring(&self) -> RingElWrapper<&R> {
         RingElWrapper::new(self.val().clone(), self.parent_ring())
+    }
+}
+
+impl<R> From<i64> for RingElWrapper<R>
+    where R: SingletonRing
+{
+    fn from(x: i64) -> Self {
+        WrappingRing::<R>::singleton().from_z(x)
+    }
+}
+
+impl<R> Zero for RingElWrapper<R>
+    where R: SingletonRing
+{
+    fn zero() -> Self {
+        Self::from(0)
+    }
+}
+
+impl<R> One for RingElWrapper<R>
+    where R: SingletonRing
+{
+    fn one() -> Self {
+        Self::from(1)
+    }
+}
+
+impl<R> RingEl for RingElWrapper<R>
+    where R: SingletonRing
+{
+    type Axioms = RingAxiomsEuclidean;
+    type RingType = StaticRing<RingElWrapper<R>>;
+    const RING: Self::RingType = StaticRing::RING;
+    const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
+
+    fn characteristic() -> StdInt {
+        StdInt::zero()
     }
 }
 
@@ -969,7 +1006,7 @@ impl<R> RingBase for WrappingRing<R>
         self.from(self.ring.pow(&basis.el, exp))
     }
 
-    fn pow_big(&self, basis: &Self::El, exp: &BigInt) -> Self::El 
+    fn pow_big(&self, basis: &Self::El, exp: &StdInt) -> Self::El 
         where Self::El: Clone
     {
         self.from(self.ring.pow_big(&basis.el, exp))
@@ -987,7 +1024,7 @@ impl<R> RingBase for WrappingRing<R>
         self.ring.is_neg_one(&val.el)
     }
 
-    fn characteristic(&self) -> BigInt {
+    fn characteristic(&self) -> StdInt {
         self.wrapped_ring().characteristic()
     }
 
@@ -1009,7 +1046,7 @@ impl<R> RingBase for WrappingRing<R>
         self.from(self.ring.div(lhs.el, &rhs.el))
     }
 
-    fn from_z_big(&self, x: &BigInt) -> Self::El {
+    fn from_z_big(&self, x: &StdInt) -> Self::El {
         self.from(self.ring.from_z_big(x))
     }
 
@@ -1059,7 +1096,7 @@ impl<R> EuclideanInfoRing for WrappingRing<R>
         }
     }
 
-    fn euclidean_deg(&self, el: Self::El) -> BigInt {
+    fn euclidean_deg(&self, el: Self::El) -> StdInt {
         self.ring.euclidean_deg(el.el)
     }
 }

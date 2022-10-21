@@ -24,7 +24,7 @@ pub fn abs_square_and_multiply<T, F, G, I>(base: &T, power: &El<I>, int_ring: I,
 #[test]
 fn test_pow() {
     assert_eq!(3 * 3, abs_square_and_multiply(&3, &2, i64::RING, |a, b| a * b, |a, b| *a * *b, 1));
-    assert_eq!(3 * 3, abs_square_and_multiply(&3, &BigInt::from(2), BigInt::RING, |a, b| a * b, |a, b| *a * *b, 1));
+    assert_eq!(3 * 3, abs_square_and_multiply(&3, &StdInt::from(2), StdInt::RING, |a, b| a * b, |a, b| *a * *b, 1));
     assert_eq!(3 * 3 * 3 * 3 * 3, abs_square_and_multiply(&3, &5, i64::RING, |a, b| a * b, |a, b| *a * *b, 1));
-    assert_eq!(3 * 3 * 3 * 3 * 3, abs_square_and_multiply(&3, &BigInt::from(5), BigInt::RING, |a, b| a * b, |a, b| *a * *b, 1));
+    assert_eq!(3 * 3 * 3 * 3 * 3, abs_square_and_multiply(&3, &StdInt::from(5), StdInt::RING, |a, b| a * b, |a, b| *a * *b, 1));
 }

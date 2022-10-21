@@ -25,17 +25,6 @@ impl BigIntSOO {
 
     pub const RING: BigIntSOORing = BigIntSOORing {};
 
-    pub fn from(x: BigInt) -> BigIntSOO {
-        match x.to_int() {
-            Ok(result) => {
-                return BigIntSOO::SOO(result);
-            },
-            Err(()) => {
-                return BigIntSOO::BigInt(x);
-            }
-        }
-    }
-
     pub fn to_i128(&self) -> Result<i128, ()> {
         match self {
             BigIntSOO::BigInt(x) => x.to_int(),
@@ -120,6 +109,31 @@ impl BigIntSOO {
             }
         };
         return Self::from(result);
+    }
+}
+
+impl From<BigInt> for BigIntSOO {
+    
+    fn from(x: BigInt) -> BigIntSOO {
+        match x.to_int() {
+            Ok(result) => {
+                return BigIntSOO::SOO(result);
+            },
+            Err(()) => {
+                return BigIntSOO::BigInt(x);
+            }
+        }
+    }
+}
+
+impl From<i128> for BigIntSOO {
+    
+    fn from(x: i128) -> BigIntSOO {
+        if x == i128::MIN {
+            return BigIntSOO::BigInt(BigInt::from(x));
+        } else {
+            return BigIntSOO::SOO(x)
+        }
     }
 }
 
@@ -235,7 +249,7 @@ impl RingBase for BigIntSOORing {
         BigIntSOO::operation(|a, b| a.checked_sub(b), |a, b| BASE_RING.sub(a, b), lhs, rhs)
     }
 
-    fn characteristic(&self) -> BigInt {
+    fn characteristic(&self) -> StdInt {
         BASE_RING.characteristic()
     }
 
@@ -255,8 +269,8 @@ impl RingBase for BigIntSOORing {
         panic!("Not a field!")
     }
 
-    fn from_z_big(&self, x: &BigInt) -> Self::El {
-        BigIntSOO::BigInt(x.clone())
+    fn from_z_big(&self, x: &StdInt) -> Self::El {
+        x.into_val()
     }
 
     fn from_z(&self, x: i64) -> Self::El {
@@ -268,6 +282,13 @@ impl RingBase for BigIntSOORing {
             BigIntSOO::SOO(x) => write!(f, "{:?}", x),
             BigIntSOO::BigInt(x) => BASE_RING.format(x, f, in_prod)
         }
+    }
+}
+
+impl SingletonRing for BigIntSOORing {
+    
+    fn singleton() -> Self {
+        BigIntSOO::RING
     }
 }
 
@@ -393,8 +414,8 @@ impl EuclideanInfoRing for BigIntSOORing {
         };
     }
 
-    fn euclidean_deg(&self, el: Self::El) -> BigInt {
-        BigInt::RING.abs(el.to_bigint())
+    fn euclidean_deg(&self, el: Self::El) -> StdInt {
+        BigIntSOO::WRAPPED_RING.from(self.abs(el))
     }
 }
 

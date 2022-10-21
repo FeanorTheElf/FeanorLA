@@ -4,7 +4,9 @@ pub mod primes;
 pub mod roots;
 pub mod bigint_soo;
 
-pub use bigint::*;
+use bigint::*;
+use bigint_soo::BigIntSOORing;
+
 use super::prelude::*;
 use super::wrapper::*;
 
@@ -145,6 +147,8 @@ pub trait IntegerRing: OrderedRing + EuclideanInfoRing + CanonicalIsomorphismInf
         ) as usize
     }
 }
+
+pub type StdInt = RingElWrapper<BigIntSOORing>;
 
 fn integer_ring_get_uniformly_random<G, I>(
     ring: &I,

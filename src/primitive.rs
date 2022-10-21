@@ -1,3 +1,4 @@
+use crate::integer::bigint_soo::{BigIntSOORing, BigIntSOO};
 use super::ring::*;
 use super::integer::*;
 use super::embedding::*;
@@ -246,7 +247,7 @@ pub trait RingEl:
         Self::WRAPPED_RING
     }
 
-    fn characteristic() -> BigInt;
+    fn characteristic() -> StdInt;
 }
 
 pub trait EuclideanEl: 
@@ -258,7 +259,7 @@ pub trait EuclideanEl:
     /// 
     fn div_rem(&mut self, rhs: Self) -> Self;
 
-    fn euclidean_deg(&self) -> BigInt;
+    fn euclidean_deg(&self) -> StdInt;
 }
 
 pub trait FieldEl: 
@@ -270,7 +271,7 @@ impl RingEl for i8 {
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
     const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
-    fn characteristic() -> BigInt { BigInt::ZERO }
+    fn characteristic() -> StdInt { StdInt::zero() }
 }
 
 impl RingEl for i16 {
@@ -278,7 +279,7 @@ impl RingEl for i16 {
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
     const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
-    fn characteristic() -> BigInt { BigInt::ZERO }
+    fn characteristic() -> StdInt { StdInt::zero() }
 }
 
 impl RingEl for i32 {
@@ -286,7 +287,7 @@ impl RingEl for i32 {
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
     const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
-    fn characteristic() -> BigInt { BigInt::ZERO }
+    fn characteristic() -> StdInt { StdInt::zero() }
 }
 
 impl RingEl for i64 {
@@ -294,7 +295,7 @@ impl RingEl for i64 {
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
     const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
-    fn characteristic() -> BigInt { BigInt::ZERO }
+    fn characteristic() -> StdInt { StdInt::zero() }
 }
 
 impl RingEl for i128 {
@@ -302,9 +303,8 @@ impl RingEl for i128 {
     type RingType = StaticRing<Self>;
     const RING: Self::RingType = StaticRing::<Self>::RING;
     const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
-    fn characteristic() -> BigInt { BigInt::ZERO }
+    fn characteristic() -> StdInt { StdInt::zero() }
 }
-
 
 impl EuclideanEl for i8 {
 
@@ -314,8 +314,8 @@ impl EuclideanEl for i8 {
         return result;
     }
 
-    fn euclidean_deg(&self) -> BigInt {
-        BigInt::from(self.abs() as i128)
+    fn euclidean_deg(&self) -> StdInt {
+        StdInt::from(self.abs() as i64)
     }
 }
 
@@ -327,8 +327,8 @@ impl EuclideanEl for i16 {
         return result;
     }
 
-    fn euclidean_deg(&self) -> BigInt {
-        BigInt::from(self.abs() as i128)
+    fn euclidean_deg(&self) -> StdInt {
+        StdInt::from(self.abs() as i64)
     }
 }
 
@@ -340,8 +340,8 @@ impl EuclideanEl for i32 {
         return result;
     }
 
-    fn euclidean_deg(&self) -> BigInt {
-        BigInt::from(self.abs() as i128)
+    fn euclidean_deg(&self) -> StdInt {
+        StdInt::from(self.abs() as i64)
     }
 }
 
@@ -353,8 +353,8 @@ impl EuclideanEl for i64 {
         return result;
     }
 
-    fn euclidean_deg(&self) -> BigInt {
-        BigInt::from(self.abs() as i128)
+    fn euclidean_deg(&self) -> StdInt {
+        StdInt::from(self.abs() as i64)
     }
 }
 
@@ -366,8 +366,8 @@ impl EuclideanEl for i128 {
         return result;
     }
 
-    fn euclidean_deg(&self) -> BigInt {
-        return BigInt::from(self.abs());
+    fn euclidean_deg(&self) -> StdInt {
+        return WrappingRing::<BigIntSOORing>::singleton().from(BigIntSOO::RING.from(self.abs()));
     }
 }
 
@@ -390,7 +390,7 @@ impl RingEl for f32 {
         }
     }
 
-    fn characteristic() -> BigInt { BigInt::ZERO }
+    fn characteristic() -> StdInt { StdInt::zero() }
 }
 
 impl RingEl for f64 {

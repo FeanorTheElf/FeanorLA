@@ -169,18 +169,18 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
         return abs_square_and_multiply(basis, &(exp as i64), i64::RING, |x, y| self.mul(x, y), |x, y| self.mul_ref(x, y), self.one());
     }
 
-    fn pow_big(&self, basis: &Self::El, exp: &BigInt) -> Self::El 
+    fn pow_big(&self, basis: &Self::El, exp: &StdInt) -> Self::El 
         where Self::El: Clone
     {
         assert!(*exp >= 0);
-        return abs_square_and_multiply(basis, exp, BigInt::RING, |x, y| self.mul(x, y), |x, y| self.mul_ref(x, y), self.one());
+        return abs_square_and_multiply(basis, exp, StdInt::RING, |x, y| self.mul(x, y), |x, y| self.mul_ref(x, y), self.one());
     }
 
     fn is_zero(&self, val: &Self::El) -> bool { self.is_eq(val, &self.zero()) }
     fn is_one(&self, val: &Self::El) -> bool { self.is_eq(val, &self.one()) }
     fn is_neg_one(&self, val: &Self::El) -> bool { self.is_eq(val, &self.neg(self.one())) }
 
-    fn characteristic(&self) -> BigInt;
+    fn characteristic(&self) -> StdInt;
     ///
     /// Returns whether the ring is integral, so if there for all nonzero a, b it holds
     /// that ab != 0.
@@ -201,8 +201,8 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     /// 
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El;
 
-    fn from_z_big(&self, x: &BigInt) -> Self::El {
-        let result = abs_square_and_multiply(&self.one(), x, BigInt::RING, |x, y| self.add(x, y), |x, y| self.add_ref(x.clone(), y), self.zero());
+    fn from_z_big(&self, x: &StdInt) -> Self::El {
+        let result = abs_square_and_multiply(&self.one(), x, StdInt::RING, |x, y| self.add(x, y), |x, y| self.add_ref(x.clone(), y), self.zero());
         if *x < 0 {
             return self.neg(result);
         } else {
@@ -305,7 +305,7 @@ pub trait EuclideanInfoRing: DivisibilityInfoRing {
         self.euclidean_div_rem(lhs, rhs).0
     }
 
-    fn euclidean_deg(&self, el: Self::El) -> BigInt;
+    fn euclidean_deg(&self, el: Self::El) -> StdInt;
 }
 
 ///
