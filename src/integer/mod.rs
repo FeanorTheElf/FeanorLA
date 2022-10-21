@@ -238,6 +238,34 @@ impl IntegerRing for StaticRing<i64> {
     }
 }
 
+impl IntegerRing for StaticRing<i128> {
+
+    fn to_float_approx(&self, el: &Self::El) -> f64 {
+        *el as f64
+    }
+
+    fn from_float_approx(&self, el: f64) -> Option<Self::El>  {
+        Some(el as i128)
+    }
+
+    fn mul_pow_2(&self, el: El<Self>, power: u64) -> El<Self> { 
+        el << power
+    }
+
+    fn euclidean_div_pow_2(&self, el: El<Self>, power: u64) -> El<Self> {
+        el / (1 << power)
+    }
+
+    fn abs_log2_floor(&self, el: &El<Self>) -> u64 {
+        assert!(!self.is_zero(el));
+        (i128::BITS - el.abs().leading_zeros() - 1) as u64
+    }
+
+    fn abs_is_bit_set(&self, el: &El<Self>, bit: u64) -> bool {
+        (el.abs() >> bit) & 1 == 1
+    }
+}
+
 impl<R: IntegerRing> IntegerRing for WrappingRing<R> {
 
     fn to_float_approx(&self, el: &Self::El) -> f64 { 

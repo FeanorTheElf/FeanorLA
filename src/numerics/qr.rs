@@ -15,7 +15,7 @@ fn householder_left<V, M, T>(y: Vector<V, T>, mut A: Matrix<M, T>)
 {
     assert_eq!(y.len(), A.row_count());
     let yTA = (Matrix::row_vec(y.as_ref()) * A.as_ref()).compute();
-    A -= (Matrix::col_vec(y) * yTA).scaled(two(), T::RING);
+    A -= (Matrix::col_vec(y) * yTA).scaled(two());
 }
 
 fn householder_right<V, M, T>(y: Vector<V, T>, mut A: Matrix<M, T>)
@@ -23,7 +23,7 @@ fn householder_right<V, M, T>(y: Vector<V, T>, mut A: Matrix<M, T>)
 {
     assert_eq!(y.len(), A.col_count());
     let Ay = (A.as_ref() * Matrix::col_vec(y.as_ref())).compute();
-    A -= (Ay * Matrix::row_vec(y)).scaled(two(), T::RING);
+    A -= (Ay * Matrix::row_vec(y)).scaled(two());
 }
 
 fn abs<T>(val: T) -> T

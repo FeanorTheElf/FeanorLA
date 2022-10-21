@@ -35,10 +35,56 @@ pub trait MatFn<T>: Sized {
         Matrix::from_fn(self.row_count(), self.col_count(), |i, j| self.at(i, j))
     }
 
-    fn scaled<R>(self, coeff: El<R>, ring: R) -> MatrixScaled<R, Self> 
+    fn scaled_ring<R>(self, coeff: El<R>, ring: R) -> MatrixScaled<R, Self> 
         where R: Ring<El = T>
     {
         MatrixScaled::new(self, coeff, ring)
+    }
+
+    fn scaled(self, coeff: T) -> MatrixScaled<T::RingType, Self> 
+        where T: RingEl
+    {
+        self.scaled_ring(coeff, T::RING)
+    }
+
+    fn neg_ring<R>(self, ring: R) -> MatrixNeg<R, Self> 
+        where R: Ring<El = T>
+    {
+        MatrixNeg::new(self, ring)
+    }
+
+    fn neg(self) -> MatrixNeg<T::RingType, Self> 
+        where T: RingEl
+    {
+        self.neg_ring(T::RING)
+    }
+
+    fn add_ring<R, N>(self, rhs: N, ring: R) -> MatrixSum<R, Self, N>
+        where R: Ring<El = T>, N: MatFn<T>
+    {
+        assert_eq!(self.row_count(), rhs.row_count());
+        assert_eq!(self.col_count(), rhs.col_count());
+        MatrixSum::new(self, rhs, ring)
+    }
+
+    fn add<N>(self, rhs: N) -> MatrixSum<T::RingType, Self, N>
+        where T: RingEl, N: MatFn<T>
+    {
+        self.add_ring(rhs, T::RING)
+    }
+
+    fn sub_ring<R, N>(self, rhs: N, ring: R) -> MatrixSum<R, Self, MatrixNeg<R, N>>
+        where R: Ring<El = T>, N: MatFn<T>
+    {
+        assert_eq!(self.row_count(), rhs.row_count());
+        assert_eq!(self.col_count(), rhs.col_count());
+        self.add_ring(rhs.neg_ring(ring.clone()), ring)
+    }
+
+    fn sub<N>(self, rhs: N) -> MatrixSum<T::RingType, Self, MatrixNeg<T::RingType, N>>
+        where T: RingEl, N: MatFn<T>
+    {
+        self.sub_ring(rhs, T::RING)
     }
 }
 
@@ -86,7 +132,8 @@ impl<R, M1, M2> MatrixSum<R, M1, M2>
     where R: Ring, M1: MatFn<El<R>>, M2: MatFn<El<R>>
 {
     pub fn new(lhs: M1, rhs: M2, ring: R) -> Self {
-        assert_eq!(lhs.col_count(), rhs.row_count());
+        assert_eq!(lhs.row_count(), rhs.row_count());
+        assert_eq!(lhs.col_count(), rhs.col_count());
         MatrixSum { ring, lhs, rhs }
     }
 }
@@ -221,4 +268,51 @@ impl<R, M> MatFn<El<R>> for MatrixScaled<R, M>
     fn at(&self, i: usize, j: usize) -> El<R> {
         self.ring.mul_ref(&self.val.at(i, j), &self.coeff)
     }
+}
+
+pub struct MatrixKronecker<R, M1, M2>
+    where R: Ring, M1: MatrixView<El<R>>, M2: MatrixView<El<R>>
+{
+    ring: R,
+    lhs: Matrix<M1, El<R>>,
+    rhs: Matrix<M2, El<R>>
+}
+
+impl<R, M1, M2> MatrixKronecker<R, M1, M2>
+    where R: Ring, M1: MatrixView<El<R>>, M2: MatrixView<El<R>>
+{
+    pub fn new(lhs: Matrix<M1, El<R>>, rhs: Matrix<M2, El<R>>, ring: R) -> Self {
+        MatrixKronecker { ring, lhs, rhs }
+    }
+}
+
+impl<R, M1, M2> MatFn<El<R>> for MatrixKronecker<R, M1, M2>
+    where R: Ring, M1: MatrixView<El<R>>, M2: MatrixView<El<R>>
+{
+    fn row_count(&self) -> usize {
+        self.lhs.row_count() * self.rhs.row_count()
+    }
+
+    fn col_count(&self) -> usize {
+        self.lhs.col_count() * self.rhs.col_count()
+    }
+
+    fn at(&self, i: usize, j: usize) -> El<R> {
+        let lhs_i = i / self.rhs.row_count();
+        let rhs_i = i % self.rhs.row_count();
+        let lhs_j = j / self.rhs.col_count();
+        let rhs_j = j % self.rhs.col_count();
+        return self.ring.mul_ref(self.lhs.at(lhs_i, lhs_j), self.rhs.at(rhs_i, rhs_j));
+    }
+}
+
+#[test]
+fn test_kronecker() {
+    let a = Matrix::from_array([[1, 2], [3, 4]]);
+    let b = Matrix::from_array([[1, 1, 0]]);
+    let b2 = Matrix::from_array([[1], [1], [0]]);
+    let c = Matrix::from_array([[1, 1, 0, 2, 2, 0], [3, 3, 0, 4, 4, 0]]);
+    let c2 = Matrix::from_array([[1, 2], [1, 2], [0, 0], [3, 4], [3, 4], [0, 0]]);
+    assert_eq!(c, MatrixKronecker::new(a.clone(), b, i64::RING).compute());
+    assert_eq!(c2, MatrixKronecker::new(a, b2, i64::RING).compute());
 }

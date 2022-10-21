@@ -16,7 +16,7 @@ pub use super::vector_view::matrix_row_col::*;
 pub use super::vector_view::matrix_diagonal::*;
 
 use std::marker::PhantomData;
-use std::ops::{AddAssign, Sub, SubAssign, MulAssign, Add, Mul, RangeBounds, Bound};
+use std::ops::{AddAssign, SubAssign, Mul, RangeBounds, Bound};
 
 #[derive(Debug)]
 pub struct Matrix<M, T>
@@ -315,20 +315,10 @@ impl<M, T> Matrix<M, T>
         MatrixProd::new(self, rhs, ring)
     }
 
-    pub fn add<R, N>(self, rhs: N, ring: R) -> MatrixSum<R, Matrix<M, T>, N>
-        where R: Ring<El = T>, N: MatFn<T>
+    pub fn kronecker<R, N>(self, rhs: Matrix<N, T>, ring: R) -> MatrixKronecker<R, M, N>
+        where R: Ring<El = T>, N: MatrixView<T>
     {
-        assert_eq!(self.row_count(), rhs.row_count());
-        assert_eq!(self.col_count(), rhs.col_count());
-        MatrixSum::new(self, rhs, ring)
-    }
-
-    pub fn sub<R, N>(self, rhs: N, ring: R) -> MatrixSum<R, Matrix<M, T>, MatrixNeg<R, N>>
-        where R: Ring<El = T>, N: MatFn<T>
-    {
-        assert_eq!(self.row_count(), rhs.row_count());
-        assert_eq!(self.col_count(), rhs.col_count());
-        MatrixSum::new(self, MatrixNeg::new(rhs, ring.clone()), ring)
+        MatrixKronecker::new(self, rhs, ring)
     }
 
     pub fn eq<R, N>(self, rhs: Matrix<N, T>, ring: &R) -> bool
@@ -432,26 +422,6 @@ impl<M, T> Eq for Matrix<M, T>
     where M: MatrixView<T>, T: Eq
 {}
 
-impl<M, N, T> Add<N> for Matrix<M, T>
-    where M: MatrixView<T>, N: MatFn<T>, T: RingEl
-{
-    type Output = MatrixSum<T::RingType, Matrix<M, T>, N>;
-
-    fn add(self, rhs: N) -> Self::Output {
-        self.add(rhs, T::RING)
-    }
-}
-
-impl<M, N, T> Sub<N> for Matrix<M, T>
-    where M: MatrixView<T>, N: MatFn<T>, T: RingEl
-{
-    type Output = MatrixSum<T::RingType, Matrix<M, T>, MatrixNeg<T::RingType, N>>;
-
-    fn sub(self, rhs: N) -> Self::Output {
-        self.sub(rhs, T::RING)
-    }
-}
-
 impl<M, N, T> AddAssign<N> for Matrix<M, T>
     where M: MatrixViewMut<T>, N: MatFn<T>, T: RingEl
 {
@@ -475,14 +445,6 @@ impl<M, N, T> Mul<Matrix<N, T>> for Matrix<M, T>
 
     fn mul(self, rhs: Matrix<N, T>) -> Self::Output {
         self.mul(rhs, T::RING)
-    }
-}
-
-impl<M, T> MulAssign<T> for Matrix<M, T>
-    where T: RingEl, M: MatrixViewMut<T>
-{
-    fn mul_assign(&mut self, rhs: T) {
-        self.scale(&rhs, &T::RING)
     }
 }
 
