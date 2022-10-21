@@ -65,7 +65,7 @@ impl<R> WrappingRing<R>
 impl<R> RingElWrapper<R>
     where R: FiniteExtension
 {
-    pub fn into_module_el<'a>(&'a self) -> Vector<Vec<RingElWrapper<&'a R::BaseRing>>, RingElWrapper<&'a R::BaseRing>> {
+    pub fn as_module_el<'a>(&'a self) -> Vector<Vec<RingElWrapper<&'a R::BaseRing>>, RingElWrapper<&'a R::BaseRing>> {
         let base_ring = self.parent_ring().base_ring();
         let mut as_module_els = self.parent_ring().as_module_el(self.val().clone()).into_owned().raw_data().into_iter();
         let result = Vector::from_fn(self.parent_ring().rank_as_module(), |_| WrappingRing::new(base_ring).from(

@@ -10,6 +10,10 @@ use std::ops::{
     AddAssign, MulAssign, SubAssign, DivAssign
 };
 
+///
+/// Trait for types who support addition and have a neutral element
+/// with respect to addition.
+/// 
 pub trait Zero: Sized + Add<Self, Output = Self> {
     fn zero() -> Self;
 }
@@ -86,6 +90,11 @@ impl Zero for f64 {
     }
 }
 
+
+///
+/// Trait for types who support multiplication and have a neutral element
+/// with respect to multiplication.
+/// 
 pub trait One: Sized + Mul<Self, Output = Self> {
     fn one() -> Self;
 }
@@ -163,9 +172,21 @@ impl One for f64 {
 }
 
 ///
+/// Trait for objects that represent the collection of mathematical
+/// properties a fixed ring can satisfy.
+/// 
 /// Note that the Ring axioms are mutually exclusive, so a ring providing
-/// euclidean division should be RingAxiomsEuclideanRing but not 
-/// RingAxiomsIntegralRing even though it is integral
+/// euclidean division should use [`RingAxiomsEuclideanRing`] but not 
+/// [`RingAxiomsIntegralRing`] even though it is integral.
+/// 
+/// # Use
+/// 
+/// The main use is to allow using compile-time-ring (aka static ring) as 
+/// runtime-ring via [`StaticRing`]. More concretely, [`StaticRing`] must know 
+/// the properties of the static ring it represents, and these must be encoded in 
+/// the type of elements of the static ring. In other words, implementations of
+/// static ring elements (via [`RingEl`]) must provide this information, which
+/// is done via an associated type bounded by `RingAxioms`.
 /// 
 pub trait RingAxioms: 'static {
     fn is_integral() -> bool;
@@ -216,6 +237,18 @@ impl RingAxioms for RingAxiomsGeneral {
     fn is_ufd() -> bool { false }
 }
 
+///
+/// Trait for elements of static rings, i.e. rings that are
+/// completely known at compile time. For these rings, it is usually
+/// more convenient to not have objects at all, but directly work
+/// with their elements (e.g. integers via `i64`). Hence, the
+/// corresponding ring information is completely stored in the type
+/// of the elements, and `RingEl` provides the appropriate interface.
+/// 
+/// Note that in case a ring object is required, types implementing `RingEl`
+/// can be given to [`StaticRing`] to accquire a zero-size singleton ring
+/// object for the corresponding type. 
+/// 
 pub trait RingEl: 
     Clone + Sized + Add<Output = Self> + Mul<Output = Self> + 
     PartialEq + Zero + One + Neg<Output = Self> + 
@@ -237,12 +270,19 @@ pub trait RingEl:
     /// to write down the type of an element, e.g. because it is the
     /// result of nesting ring constructors.
     /// 
+    /// # Example
+    /// 
+    /// ```
+    /// # use feanor_la::prelude::*;
+    /// assert_eq!(i64::RING, 1i64.ring());
+    /// ```
+    /// 
     fn ring(&self) -> Self::RingType {
         Self::RING
     }
 
     ///
-    /// Analogous to `ring()`
+    /// Analogous to [`ring()`]
     /// 
     fn wrapped_ring(&self) -> WrappingRing<Self::RingType> {
         Self::WRAPPED_RING

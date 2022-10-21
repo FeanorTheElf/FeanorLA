@@ -7,6 +7,9 @@ use super::wrapper::*;
 
 use vector_map::VecMap;
 
+///
+/// Utility struct providing a nice way to display ring elements.
+/// 
 pub struct RingElDisplay<'a, R: ?Sized> 
     where R: RingBase
 {
@@ -28,10 +31,14 @@ impl<'a, R> std::fmt::Display for RingElDisplay<'a, R>
 /// is not provided, this is mainly an interface that can be used for algorithms 
 /// that deal with ring elements.
 /// 
+/// # `RingBase` vs [`Ring`]
+/// 
+/// 
+/// 
 /// # Further properties
 /// 
 /// Further properties a ring can have are represented by subtraits, e.g.
-/// `EuclideanInfoRing` or `DivisibilityInfoRing`. Note that implementing such a
+/// [`crate::ring::EuclideanInfoRing`] or [`crate::ring::DivisibilityInfoRing`]. Note that implementing such a
 /// trait means that objects of that type can have the property, not that they
 /// necessarily have to. Each of those subtraits provides a function to check
 /// whether a ring object has the property at runtime. This is necessary, as
@@ -39,7 +46,7 @@ impl<'a, R> std::fmt::Display for RingElDisplay<'a, R>
 /// 
 /// # Value vs Reference design rationale
 /// 
-/// Types that are cheap to copy can be used with the dd/sub()-functions, 
+/// Types that are cheap to copy can be used with the add/sub()-functions, 
 /// for types that are expensive to copy, one can use the
 /// add_ref/sub_ref()-functions. However, as each add/sub() / add_ref/sub_ref() 
 /// function returns the result by value, for big types, is is usually 
@@ -60,15 +67,15 @@ impl<'a, R> std::fmt::Display for RingElDisplay<'a, R>
 /// Sometimes, the question arises if rings should generally be required to implement
 /// Clone. In the end, the decision is to add it, since some very common use cases
 /// require Clone. In particular
-///  - In order to get `StandardEmbedding` objects (and other kinds of embeddings) that
-///    live for static lifetime (required e.g. for `RingExtension`), we must be able to
+///  - In order to get [`crate::embedding::StandardEmbedding`] objects (and other kinds of embeddings) that
+///    live for static lifetime (required e.g. for [`crate::ring::RingExtension`]), we must be able to
 ///    clone source & destination ring
-///  - Many functionality of `WrappingRing` requires cloning, even to make it a ring (as
+///  - Much functionality of [`crate::wrapper::WrappingRing`] requires cloning, even to make it a ring (as
 ///    elements of a ring are required to be clonable).
 /// 
 /// I am completely aware that cloning in these situations might lead to a non-obvious
 /// problems, e.g. if the ring contains a thread or memory pool. In these cases, we 
-/// recommend to implement `Ring` only for objects that contain references or `Rc`'s to
+/// recommend to implement `Ring` only for objects that contain references or [`std::rc::Rc`]'s to
 /// the corresponding resource.
 /// 
 pub trait RingBase : std::fmt::Debug + std::clone::Clone {
@@ -155,6 +162,11 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
         self.add(lhs, self.neg(rhs))
     }
 
+    ///
+    /// Raises the given element to the given power. The result should be 
+    /// equivalent to chaining `self.mul(basis, ...)` the appropriate number
+    /// of times.
+    /// 
     fn pow(&self, basis: &Self::El, exp: u32) -> Self::El 
         where Self::El: Clone
     {
@@ -169,6 +181,10 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
         return abs_square_and_multiply(basis, &(exp as i64), i64::RING, |x, y| self.mul(x, y), |x, y| self.mul_ref(x, y), self.one());
     }
 
+    ///
+    /// Raises the given element to the given power. This is equivalent to [`pow()`],
+    /// but takes an arbitrarily large integer.
+    /// 
     fn pow_big(&self, basis: &Self::El, exp: &StdInt) -> Self::El 
         where Self::El: Clone
     {
@@ -181,16 +197,27 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     fn is_neg_one(&self, val: &Self::El) -> bool { self.is_eq(val, &self.neg(self.one())) }
 
     fn characteristic(&self) -> StdInt;
+
     ///
     /// Returns whether the ring is integral, so if there for all nonzero a, b it holds
     /// that ab != 0.
     /// 
     fn is_integral(&self) -> RingPropValue;
+
     ///
     /// Returns whether the ring is a field, so whether each nonzero element has a unique 
     /// inverse.
     /// 
     fn is_field(&self) -> RingPropValue;
+
+    ///
+    /// Returns whether the ring is noetherian, so whether each ascending chain of ideals is
+    /// stationary. 
+    /// 
+    /// Even though computations with ideals are currently not available, this
+    /// can have visible consequences. For example, in a noetherian ring it is impossible that
+    /// some x is infinitely often divisible by some y, such that x/y^i != x/y^j for i != j.
+    /// 
     fn is_noetherian(&self) -> bool;
 
     ///
@@ -201,6 +228,10 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     /// 
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El;
 
+    ///
+    /// Maps an integer into the ring. This is analogeous to [`from_z()`], but
+    /// supports arbitrarily large integers.
+    /// 
     fn from_z_big(&self, x: &StdInt) -> Self::El {
         let result = abs_square_and_multiply(&self.one(), x, StdInt::RING, |x, y| self.add(x, y), |x, y| self.add_ref(x.clone(), y), self.zero());
         if *x < 0 {
@@ -210,6 +241,10 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
         }
     }
 
+    ///
+    /// Maps an integer into the ring. The result is equivalent to summing up `self.one()`
+    /// an appropriate number of times.
+    /// 
     fn from_z(&self, x: i64) -> Self::El {
         let result = abs_square_and_multiply(&self.one(), &x, i64::RING, |x, y| self.add(x, y), |x, y| self.add_ref(x.clone(), y), self.zero());
         if x < 0 {
@@ -219,6 +254,10 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
         }
     }
 
+    ///
+    /// Maps an integer into the ring. This is analogeous to [`from_z()`], but
+    /// supports custom implementations of the integer ring.
+    /// 
     fn from_z_gen<I>(&self, x: El<I>, ring: &I) -> Self::El 
         where I: IntegerRing
     {
@@ -246,6 +285,9 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
         write!(f, "{:?}", el)
     }
 
+    ///
+    /// See [`format()`].
+    /// 
     fn format_in_brackets(&self, el: &Self::El, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "(")?;
         self.format(el, f, false)?;
@@ -261,6 +303,18 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     }
 }
 
+///
+/// Trait to represent a unital, commutative ring. More abstract functionality 
+/// (global properties, like ideals) is not provided, this is mainly an interface 
+/// that can be used for algorithms that deal with ring elements. However, as
+/// opposed to [`RingBase`], this trait interacts with the [`crate::embedding::CanonicalEmbeddingInfo`]
+/// framework to provide maps between different rings.
+/// 
+/// # Implementation
+/// 
+/// To implement this trait, implement [`RingBase`] and [`CanonicalIsomorphismInfo<Self>`].
+/// For more information, see [`RingBase`].
+/// 
 pub trait Ring: RingBase + CanonicalIsomorphismInfo<Self> {}
 
 impl<R: ?Sized> Ring for R
@@ -271,7 +325,9 @@ impl<R: ?Sized> Ring for R
 pub type El<R: Ring> = <R as RingBase>::El;
 
 ///
-/// Trait for rings that might have a euclidean division.
+/// Trait for rings that might have a euclidean division, that is they provide
+/// a function `d: R -> N` and a division procedure `x, y -> x = qy + r` such that
+/// `d(r) < d(y)` (if y is nonzero).
 /// 
 pub trait EuclideanInfoRing: DivisibilityInfoRing {
     
@@ -324,6 +380,9 @@ pub trait RingExtension: Ring {
 
     fn base_ring(&self) -> &Self::BaseRing;
 
+    ///
+    /// Returns the canonical ring homomorphism `Self::BaseRing -> Self`.
+    /// 
     fn embedding(&self) -> Self::Embedding;
 
     fn from(&self, el: El<Self::BaseRing>) -> El<Self>;
@@ -351,7 +410,7 @@ pub trait DivisibilityInfoRing : Ring {
     ///
     /// Computes a quotient of two elements, if one divides the other.
     /// If this is not the case, None is returned.
-    /// This may panic if `is_divisibility_computable()` returns false.
+    /// This may panic if `is_divisibility_computable().can_use()` returns false.
     /// 
     /// # Uniqueness
     /// 

@@ -30,10 +30,13 @@ use std::marker::PhantomData;
 ///    we are already quite limited options for further blanket implementations.
 ///  - we can still make blanket implementations for somewhat concrete types (that
 ///    do not contain references for sure); up to now, these are `StaticRing` and
-///    `BigIntRing`, as they are required for the definition of the Integers.
+///    `BigIntSOORing`, as they are required for the definition of the Integers.
 ///  - we require `CanonicalIsomorphismInfo<R> for R` for each ring. However, we 
 ///    do not provide a blanket implementation, so each ring implementation must
 ///    implement this in the standard way
+///  - to implement [`crate::ring::Ring`], it is required to implement
+///    `CanonicalIsomorphismInfo<Self>`, so this is always ensured, however without
+///    providing a blanket implementation.
 ///
 /// The same holds for `CanonicalIsomorphismInfo`.
 /// 
@@ -54,7 +57,7 @@ pub trait CanonicalEmbeddingInfo<R>: RingBase
 /// # Note on blanket implementations
 /// 
 /// Sadly, we cannot provide blanket implementations for all reference-to-ring
-/// combinations. For more details, see the notes on `CanonicalEmbeddingInfo`.
+/// combinations. For more details, see the notes on [`CanonicalEmbeddingInfo`].
 /// 
 pub trait CanonicalIsomorphismInfo<R>: CanonicalEmbeddingInfo<R>
     where R: RingBase
@@ -135,6 +138,21 @@ impl<R> CanonicalIsomorphismInfo<BigIntSOORing> for R
     }
 }
 
+///
+/// Creates an embedding between two rings that can be canonically
+/// embedded into each other.
+/// 
+/// # Example
+/// 
+/// ```
+/// # use feanor_la::prelude::*;
+/// # use feanor_la::rational::primitive_rational::*;
+/// let integers = i64::RING;
+/// let rationals = r64::RING;
+/// let f = embedding(integers, rationals);
+/// assert_eq!(r64::new(3, 1), f(3));
+/// ```
+/// 
 pub fn embedding<R, S>(from: R, to: S) -> StandardEmbedding<R, S> 
     where R: Ring, S: Ring + CanonicalEmbeddingInfo<R>
 {
@@ -142,6 +160,10 @@ pub fn embedding<R, S>(from: R, to: S) -> StandardEmbedding<R, S>
     StandardEmbedding { base: from, ring: to }
 }
 
+///
+/// Creates an isomorphism and its inverse between two canonically
+/// isomorphic rings.
+/// 
 pub fn isomorphism<R, S>(from: R, to: S) -> (impl Fn(R::El) -> S::El, impl Fn(S::El) -> R::El)
     where R: Ring, S: CanonicalIsomorphismInfo<R>
 {
@@ -151,12 +173,24 @@ pub fn isomorphism<R, S>(from: R, to: S) -> (impl Fn(R::El) -> S::El, impl Fn(S:
     (move |x| to_copy.embed(&from_copy, x), move |x| to.preimage(&from, x))
 }
 
+///
+/// Creates the natural, not necessarily injective homomorphism
+/// `Z -> R` that exists for every ring R.
+/// 
 pub fn z_hom<'a, R>(to: &'a R) -> impl 'a + Fn(i64) -> R::El 
     where R: Ring
 {
     move |x| to.from_z(x)
 }
 
+///
+/// The canonical embedding between two rings that can be
+/// canonically embedded into each other, i.e. implement the
+/// appropriate version of [`crate::embedding::CanonicalEmbeddingInfo`].
+/// 
+/// It is recommended to create instances by using the global
+/// function [`crate::embedding::embedding()`].
+/// 
 #[derive(Clone, Copy)]
 pub struct StandardEmbedding<R, S>
     where R: Ring, S: Ring + CanonicalEmbeddingInfo<R>
@@ -210,6 +244,13 @@ impl<R, S> Fn<(El<R>,)> for StandardEmbedding<R, S>
     }
 }
 
+///
+/// An embedding of two rings that is defined as the composition
+/// of two given embeddings.
+/// 
+/// It is recommended to create instances using the global function
+/// [`crate::embedding::compose()`].
+/// 
 #[derive(Clone, Copy)]
 pub struct ComposedEmbedding<F, G, R, S, T>
     where R: Ring, S: Ring, T: Ring, F: Fn(R::El) -> S::El, G: Fn(S::El) -> T::El
@@ -267,6 +308,31 @@ impl<F, G, R, S, T> Fn<(R::El, )> for ComposedEmbedding<F, G, R, S, T>
     }
 }
 
+///
+/// Composes two arbitrary embeddings of rings.
+/// 
+/// Due to the generality of this function, it is often
+/// required to provide type arguments
+/// 
+/// There is no check that the given maps are injective, or
+/// even ring homomorphisms. If wrong input is passed, the
+/// resulting map might not be an embedding as well.
+/// 
+/// # Example
+/// 
+/// ```
+/// # use feanor_la::prelude::*;
+/// # use feanor_la::rational::primitive_rational::*;
+/// # use feanor_la::poly::uni_var::*;
+/// let integers = i64::RING;
+/// let rationals = r64::RING;
+/// let rational_polys = PolyRingImpl::adjoint(rationals, "X");
+/// let f = rationals.embedding();
+/// let g = rational_polys.embedding();
+/// let h: ComposedEmbedding<_, _, StaticRing<i64>, StaticRing<r64>, PolyRingImpl<StaticRing<r64>>> = compose(g, f);
+/// assert_eq!(rational_polys.from_z(3), h(3));
+/// ```
+/// 
 pub fn compose<F, G, R, S, T>(g: G, f: F) -> ComposedEmbedding<F, G, R, S, T>
     where R: Ring, S: Ring, T: Ring, F: Fn(R::El) -> S::El, G: Fn(S::El) -> T::El
 {
