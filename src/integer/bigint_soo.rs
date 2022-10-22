@@ -117,30 +117,42 @@ impl BigIntSOO {
         };
         return Self::from(result);
     }
+
+    fn assert_valid(&self) {
+        match self {
+            BigIntSOO::BigInt(x) => debug_assert!(BigInt::RING.abs_cmp(x, &BigInt::from(i128::MAX)) == Ordering::Greater),
+            BigIntSOO::SOO(x) => debug_assert!(*x != i128::MIN)
+        };
+    }
+
 }
 
 impl From<BigInt> for BigIntSOO {
     
     fn from(x: BigInt) -> BigIntSOO {
-        match x.to_int() {
+        let result = match x.to_int() {
             Ok(result) => {
-                return BigIntSOO::SOO(result);
+                BigIntSOO::SOO(result)
             },
             Err(()) => {
-                return BigIntSOO::BigInt(x);
+                BigIntSOO::BigInt(x)
             }
-        }
+        };
+        result.assert_valid();
+        return result;
     }
 }
 
 impl From<i128> for BigIntSOO {
     
     fn from(x: i128) -> BigIntSOO {
-        if x == i128::MIN {
-            return BigIntSOO::BigInt(BigInt::from(x));
+        let result = if x == i128::MIN {
+            BigIntSOO::BigInt(BigInt::from(x))
         } else {
-            return BigIntSOO::SOO(x)
-        }
+            BigIntSOO::SOO(x)
+        };
+        result.assert_valid();
+        return result;
     }
 }
 
@@ -154,18 +166,24 @@ impl RingBase for BigIntSOORing {
     type El = BigIntSOO;
 
     fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
-        BigIntSOO::operation_ref_snd(|a, b| a.checked_add(b), |a, b| BASE_RING.add_ref(a, b), lhs, rhs)
+        let result = BigIntSOO::operation_ref_snd(|a, b| a.checked_add(b), |a, b| BASE_RING.add_ref(a, b), lhs, rhs);
+        result.assert_valid();
+        return result;
     }
 
     fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El {
-        BigIntSOO::operation_ref_ref(|a, b| a.checked_mul(b), |a, b| BASE_RING.mul_ref(a, b), lhs, rhs)
+        let result = BigIntSOO::operation_ref_ref(|a, b| a.checked_mul(b), |a, b| BASE_RING.mul_ref(a, b), lhs, rhs);
+        result.assert_valid();
+        return result;
     }
 
     fn neg(&self, val: Self::El) -> Self::El {
-        match val {
+        let result = match val {
             BigIntSOO::BigInt(x) => BigIntSOO::BigInt(BASE_RING.neg(x)),
             BigIntSOO::SOO(x) => BigIntSOO::SOO(-x)
-        }
+        };
+        result.assert_valid();
+        return result;
     }
 
     fn zero(&self) -> Self::El {
@@ -185,29 +203,38 @@ impl RingBase for BigIntSOORing {
     }
 
     fn sub_ref_fst(&self, lhs: &Self::El, rhs: Self::El) -> Self::El {
-        BigIntSOO::operation_ref_fst(|a, b| a.checked_sub(b), |a, b| BASE_RING.sub_ref_fst(a, b), lhs, rhs)
+        let result = BigIntSOO::operation_ref_fst(|a, b| a.checked_sub(b), |a, b| BASE_RING.sub_ref_fst(a, b), lhs, rhs);
+        result.assert_valid();
+        return result;
     }
 
     fn sub_ref_snd(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
-        BigIntSOO::operation_ref_snd(|a, b| a.checked_sub(b), |a, b| BASE_RING.sub_ref_snd(a, b), lhs, rhs)
+        let result = BigIntSOO::operation_ref_snd(|a, b| a.checked_sub(b), |a, b| BASE_RING.sub_ref_snd(a, b), lhs, rhs);
+        result.assert_valid();
+        return result;
     }
 
     fn add(&self, lhs: Self::El, rhs: Self::El) -> Self::El {
-        BigIntSOO::operation(|a, b| a.checked_add(b), |a, b| BASE_RING.add(a, b), lhs, rhs)
+        let result = BigIntSOO::operation(|a, b| a.checked_add(b), |a, b| BASE_RING.add(a, b), lhs, rhs);
+        result.assert_valid();
+        return result;
     }
 
     fn add_assign(&self, lhs: &mut Self::El, rhs: Self::El) { 
         let value = std::mem::replace(lhs, self.unspecified_element());
         *lhs = self.add(value, rhs);
+        lhs.assert_valid();
     }
 
     fn add_assign_ref(&self, lhs: &mut Self::El, rhs: &Self::El) { 
         let value = std::mem::replace(lhs, self.unspecified_element());
         *lhs = self.add_ref(value, rhs);
+        lhs.assert_valid();
     }
 
     fn add_assign_int(&self, lhs: &mut Self::El, rhs: i64) {
         self.add_assign(lhs, self.from_z(rhs));
+        lhs.assert_valid();
     }
 
     fn sum<I>(&self, data: I) -> Self::El
@@ -231,29 +258,38 @@ impl RingBase for BigIntSOORing {
                 }
             }
         }
-        if BASE_RING.is_zero(&sum_bigint) {
-            return BigIntSOO::SOO(sum_i128);
+        let result = if BASE_RING.is_zero(&sum_bigint) {
+            BigIntSOO::SOO(sum_i128)
         } else {
-            return BigIntSOO::BigInt(BASE_RING.add(sum_bigint, BigInt::from(sum_i128)));
-        }
+            BigIntSOO::BigInt(BASE_RING.add(sum_bigint, BigInt::from(sum_i128)))
+        };
+        result.assert_valid();
+        return result;
     }
 
     fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El {
-        BigIntSOO::operation(|a, b| a.checked_mul(b), |a, b| BASE_RING.mul(a, b), lhs, rhs)
+        let result = BigIntSOO::operation(|a, b| a.checked_mul(b), |a, b| BASE_RING.mul(a, b), lhs, rhs);
+        result.assert_valid();
+        return result;
     }
 
     fn mul_assign_int(&self, lhs: &mut Self::El, rhs: i64) {
         self.mul_assign(lhs, &self.from_z(rhs));
+        lhs.assert_valid();
     }
 
     fn product<I>(&self, data: I) -> Self::El 
         where I: Iterator<Item = Self::El>
     {
-        data.fold(self.one(), |a, b| self.mul(a, b))
+        let result = data.fold(self.one(), |a, b| self.mul(a, b));
+        result.assert_valid();
+        return result;
     }
 
     fn sub(&self, lhs: Self::El, rhs: Self::El) -> Self::El {
-        BigIntSOO::operation(|a, b| a.checked_sub(b), |a, b| BASE_RING.sub(a, b), lhs, rhs)
+        let result = BigIntSOO::operation(|a, b| a.checked_sub(b), |a, b| BASE_RING.sub(a, b), lhs, rhs);
+        result.assert_valid();
+        return result;
     }
 
     fn characteristic(&self) -> StdInt {
@@ -281,7 +317,9 @@ impl RingBase for BigIntSOORing {
     }
 
     fn from_z(&self, x: i64) -> Self::El {
-        BigIntSOO::SOO(x as i128)
+        let result = BigIntSOO::SOO(x as i128);
+        result.assert_valid();
+        return result;
     }
 
     fn from_z_gen<I>(&self, x: El<I>, ring: &I) -> Self::El
@@ -468,23 +506,29 @@ impl IntegerRing for BigIntSOORing {
     }
 
     fn from_float_approx(&self, el: f64) -> Option<Self::El> {
-        BigInt::RING.from_float_approx(el).map(BigIntSOO::from)
+        let result = BigInt::RING.from_float_approx(el).map(BigIntSOO::from);
+        result.as_ref().inspect(|x| x.assert_valid());
+        return result;
     }
 
     fn mul_pow_2(&self, el: El<Self>, power: u64) -> El<Self> {
-        match el {
+        let result = match el {
             BigIntSOO::BigInt(x) => BigIntSOO::from(BigInt::RING.mul_pow_2(x, power)),
             BigIntSOO::SOO(x) if power < x.leading_zeros() as u64 => BigIntSOO::SOO(x << power),
             BigIntSOO::SOO(x) => BigIntSOO::from(BigInt::RING.mul_pow_2(BigInt::from(x), power))
-        }
+        };
+        result.assert_valid();
+        return result;
     }
 
     fn euclidean_div_pow_2(&self, el: El<Self>, power: u64) -> El<Self> {
-        match el {
+        let result = match el {
             BigIntSOO::BigInt(x) => BigIntSOO::from(BigInt::RING.euclidean_div_pow_2(x, power)),
             BigIntSOO::SOO(x) if power < i128::BITS as u64 => BigIntSOO::SOO(x.div_euclid(1 << power)),
             BigIntSOO::SOO(_)  => BigIntSOO::SOO(0)
-        }
+        };
+        result.assert_valid();
+        return result;
     }
 
     fn is_odd(&self, el: &Self::El) -> bool {
@@ -515,7 +559,9 @@ impl IntegerRing for BigIntSOORing {
     ) -> El<Self> 
         where G: FnMut() -> u32
     {
-        BigIntSOO::from(BigInt::RING.get_uniformly_random(rng, &end_exclusive.clone().to_bigint()))
+        let result = BigIntSOO::from(BigInt::RING.get_uniformly_random(rng, &end_exclusive.clone().to_bigint()));
+        result.assert_valid();
+        return result;
     }
 
     fn highest_dividing_power_of_two(&self, el: &El<Self>) -> usize {

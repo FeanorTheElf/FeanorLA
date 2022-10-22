@@ -3,6 +3,7 @@
 #![feature(specialization)]
 #![feature(associated_type_bounds)]
 #![feature(step_trait)]
+#![feature(result_option_inspect)]
 #![feature(fn_traits)]
 #![feature(test)]
 #![feature(unboxed_closures)]

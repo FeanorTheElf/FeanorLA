@@ -46,6 +46,31 @@ use std::marker::PhantomData;
 /// latter on the other hand, it is required that there is a long-living object
 /// of the ring to reference.
 /// 
+/// # Interaction with specific rings
+/// 
+/// Much of the functionality of concrete rings is also provided through the
+/// `RingElWrapper`-interface. For example, for the trait [`crate::fraction_field::FractionField`],
+/// there is an extension implementation
+/// ```ignore
+/// # use feanor_la::prelude::*;
+/// # use feanor_la::wrapper::*;
+/// # use feanor_la::fraction_field::*;
+/// impl<R: FractionField> RingElWrapper<R> {
+/// 
+///     fn num(&self) -> RingElWrapper<&R::BaseRing> { unimplemented!() }    
+///     fn den(&self) -> RingElWrapper<&R::BaseRing> { unimplemented!() }
+/// }
+/// ```
+/// so that we can use it like
+/// ```
+/// # use feanor_la::prelude::*;
+/// # use feanor_la::wrapper::*;
+/// # use feanor_la::fraction_field::*;
+/// # use feanor_la::fraction_field::fraction_field_impl::*;
+/// let ring = WrappingRing::new(FractionFieldImpl::new(i64::RING));
+/// assert_eq!(RingElWrapper::new(3, &i64::RING), (ring.from_z(3) / ring.from_z(2)).num());
+/// ```
+/// 
 pub struct RingElWrapper<R>
     where R: Ring
 {
@@ -809,6 +834,11 @@ impl<R> std::fmt::Debug for RingElWrapper<R>
     }
 }
 
+///
+/// Decorates a ring such that all its elements store it via [`RingElWrapper`], thus
+/// providing operations without explicitly providing the ring object. For more details,
+/// see [`RingElWrapper`].
+/// 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct WrappingRing<R>
     where R: Ring
