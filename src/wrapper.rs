@@ -12,6 +12,40 @@ use std::ops::{
 };
 use std::iter::Step;
 use std::marker::PhantomData;
+
+///
+/// Stores an element of a ring together with its ring, thus enabling operations on
+/// elements without explicitly providing the ring.
+/// 
+/// The main point is that notation like
+/// ```
+/// # use feanor_la::prelude::*;
+/// # use feanor_la::poly::*;
+/// # use feanor_la::poly::uni_var::*;
+/// let ring = PolyRingImpl::adjoint(i64::RING, "X");
+/// let x = ring.unknown();
+/// assert_eq!("1 + X", format!("{}", ring.display(&ring.add(x, ring.one()))));
+/// ```
+/// is extremely annoying, and we really prefer to use
+/// ```
+/// # use feanor_la::prelude::*;
+/// # use feanor_la::poly::*;
+/// # use feanor_la::poly::uni_var::*;
+/// # use feanor_la::wrapper::*;
+/// let ring = PolyRingImpl::adjoint(i64::RING, "X");
+/// let x = RingElWrapper::new(ring.unknown(), &ring);
+/// assert_eq!("1 + X", format!("{}", x + 1));
+/// ```
+/// instead.
+/// 
+/// Note that since references to rings are again rings, you can always
+/// choose whether to work with `RingElWrapper<R>` or `RingElWrapper<&R>`.
+/// The former copies the ring of type `R` on every operation, and should
+/// thus be avoided if that is expensive (on the other hand, if `R` is zero-sized
+/// like e.g. [`crate::primitive::StaticRing`], this is zero-cost). For the
+/// latter on the other hand, it is required that there is a long-living object
+/// of the ring to reference.
+/// 
 pub struct RingElWrapper<R>
     where R: Ring
 {

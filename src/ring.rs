@@ -583,6 +583,32 @@ pub trait UfdInfoRing : DivisibilityInfoRing {
 /// Trait for rings that are already completely determined by their type, i.e.
 /// contain no further runtime data.
 /// 
+/// For a similar functionality, see [`crate::primitive::StaticRing`].
+/// 
+/// # Difference of `SingletonRing` and [`crate::primitive::StaticRing`]
+/// 
+/// Both `SingletonRing` and `StaticRing` can be used for "constant-ring" rings, i.e.
+/// ring types that have only one sensible instance. Hence, from an abstract perspective,
+/// they are equivalent. However, due to the different kind of implementation, they
+/// have significantly different properties.
+/// 
+/// In particular, `StaticRing` is always used with elements of type implementing
+/// [`crate::primitive::RingEl`], and so the elements can be multiplied without having
+/// any ring instance at all. Furthermore, a ring instance must be a compile-time constant,
+/// thus very small and trivial to copy.
+/// 
+/// On the other hand, there is no reason why an implementation of `SingletonRing` should be
+/// small, it could for example contain a memory pool to reuse memory for elements. In this case,
+/// we really require access to the ring object for operations, as creating one on-the-fly every
+/// time would be extremely expensive.
+/// 
+/// As a summary, `StaticRing` is more narrow than `SingletonRing`. The struct `StaticRing` does
+/// implement `SingletonRing`, but not every ring implementing `SingletonRing` can be sensibly
+/// made into `StaticRing<E>` for some `RingEl`-type `E`.
+/// 
+/// Note that one could bridge this gap using lazy statics, but that seems like an unnecessary
+/// effort at the moment.
+/// 
 pub trait SingletonRing: Ring {
     fn singleton() -> Self;
 }
