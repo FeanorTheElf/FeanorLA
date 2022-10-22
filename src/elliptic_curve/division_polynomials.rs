@@ -139,7 +139,7 @@ fn test_division_polynomials() {
     let E = EllipticCurve::new(field, field.zero(), field.one());
     let (f, _, h) = division_polynomials(&E, 2);
     let poly_ring = WrappingRing::new(PolyRingImpl::adjoint(field.wrapped_ring().clone(), "X"));
-    let x = poly_ring.from(poly_ring.wrapped_ring().unknown());
+    let x = poly_ring.wrap(poly_ring.wrapped_ring().unknown());
     let f_expected = x.pow(4) - &x * 8;
     let h_expected = x.pow(3) * 4 + 4;
     let d = gcd(&f.ring(), f.clone(), h.clone());

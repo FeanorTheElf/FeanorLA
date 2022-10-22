@@ -48,11 +48,11 @@ impl<R> RingElWrapper<R>
     }
 
     pub fn pow(&self, exp: u32) -> RingElWrapper<R> {
-        self.ring().from(self.parent_ring().pow(&self.el, exp))
+        self.ring().wrap(self.parent_ring().pow(&self.el, exp))
     }
 
     pub fn pow_big(&self, exp: &StdInt) -> RingElWrapper<R> {
-        self.ring().from(self.parent_ring().pow_big(&self.el, exp))
+        self.ring().wrap(self.parent_ring().pow_big(&self.el, exp))
     }
 
     pub fn parent_ring(&self) -> &R {
@@ -183,7 +183,7 @@ impl<R> Clone for RingElWrapper<R>
     where R: Ring
 {
     fn clone(&self) -> Self {
-        self.ring().from(self.el.clone())
+        self.ring().wrap(self.el.clone())
     }
 }
 
@@ -797,7 +797,7 @@ impl<R> WrappingRing<R>
         WrappingRing { ring }
     }
 
-    pub fn from(&self, x: El<R>) -> El<Self> {
+    pub fn wrap(&self, x: El<R>) -> El<Self> {
         RingElWrapper {
             ring: self.clone(),
             el: x
@@ -829,7 +829,7 @@ impl<R> WrappingRing<R>
     }
 
     pub fn wrapping_embedding<'a>(&'a self) -> impl 'a + Clone + Fn(R::El) -> <Self as RingBase>::El {
-        move |x| self.from(x)
+        move |x| self.wrap(x)
     }
 
     pub fn map_ring<F, S>(self, f: F) -> WrappingRing<S>
@@ -850,6 +850,10 @@ impl<R> WrappingRing<R>
 
     pub fn embedding(&self) -> LiftedHom<R::BaseRing, R, R::Embedding> {
         self.lift_hom(self.wrapped_ring().embedding())
+    }
+
+    pub fn from_(&self, x: RingElWrapper<&R::BaseRing>) -> RingElWrapper<R> {
+        self.wrap(self.wrapped_ring().from(x.into_val()))
     }
 
     pub fn embedding_ref<'a, 'b>(&'a self) -> LiftedHom<&'b R::BaseRing, R, R::Embedding> {
@@ -912,7 +916,7 @@ impl<S, R, F> Fn<(RingElWrapper<S>,)> for LiftedHom<S, R, F>
         &self, 
         (x, ): (RingElWrapper<S>,)
     ) -> Self::Output {
-        self.to.from((self.base)(x.el))
+        self.to.wrap((self.base)(x.el))
     }
 }
 
@@ -932,23 +936,23 @@ impl<R> RingBase for WrappingRing<R>
     type El = RingElWrapper<R>;
 
     fn add_ref(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
-        self.from(self.ring.add_ref(lhs.el, &rhs.el))
+        self.wrap(self.ring.add_ref(lhs.el, &rhs.el))
     }
 
     fn mul_ref(&self, lhs: &Self::El, rhs: &Self::El) -> Self::El {
-        self.from(self.ring.mul_ref(&lhs.el, &rhs.el))
+        self.wrap(self.ring.mul_ref(&lhs.el, &rhs.el))
     }
 
     fn neg(&self, val: Self::El) -> Self::El {
-        self.from(self.ring.neg(val.el))
+        self.wrap(self.ring.neg(val.el))
     }
 
     fn zero(&self) -> Self::El {
-        self.from(self.ring.zero())
+        self.wrap(self.ring.zero())
     }
 
     fn one(&self) -> Self::El {
-        self.from(self.ring.one())
+        self.wrap(self.ring.one())
     }
 
     fn is_eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
@@ -956,7 +960,7 @@ impl<R> RingBase for WrappingRing<R>
     }
 
     fn unspecified_element(&self) -> Self::El {
-        self.from(self.ring.unspecified_element())
+        self.wrap(self.ring.unspecified_element())
     }
 
     fn add_assign(&self, lhs: &mut Self::El, rhs: Self::El) { 
@@ -968,35 +972,35 @@ impl<R> RingBase for WrappingRing<R>
     }
 
     fn sub_ref_fst(&self, lhs: &Self::El, rhs: Self::El) -> Self::El {
-        self.from(self.ring.sub_ref_fst(&lhs.el, rhs.el))
+        self.wrap(self.ring.sub_ref_fst(&lhs.el, rhs.el))
     }
 
     fn sub_ref_snd(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
-        self.from(self.ring.sub_ref_snd(lhs.el, &rhs.el))
+        self.wrap(self.ring.sub_ref_snd(lhs.el, &rhs.el))
     }
 
     fn add(&self, lhs: Self::El, rhs: Self::El) -> Self::El { 
-        self.from(self.ring.add(lhs.el, rhs.el))
+        self.wrap(self.ring.add(lhs.el, rhs.el))
     }
 
     fn mul(&self, lhs: Self::El, rhs: Self::El) -> Self::El { 
-        self.from(self.ring.mul(lhs.el, rhs.el))
+        self.wrap(self.ring.mul(lhs.el, rhs.el))
     }
 
     fn sub(&self, lhs: Self::El, rhs: Self::El) -> Self::El {
-        self.from(self.ring.sub(lhs.el, rhs.el))
+        self.wrap(self.ring.sub(lhs.el, rhs.el))
     }
 
     fn pow(&self, basis: &Self::El, exp: u32) -> Self::El 
         where Self::El: Clone
     {
-        self.from(self.ring.pow(&basis.el, exp))
+        self.wrap(self.ring.pow(&basis.el, exp))
     }
 
     fn pow_big(&self, basis: &Self::El, exp: &StdInt) -> Self::El 
         where Self::El: Clone
     {
-        self.from(self.ring.pow_big(&basis.el, exp))
+        self.wrap(self.ring.pow_big(&basis.el, exp))
     }
 
     fn is_zero(&self, val: &Self::El) -> bool { 
@@ -1030,19 +1034,19 @@ impl<R> RingBase for WrappingRing<R>
     fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
         assert!(self.ring.is_field().can_use());
         assert!(!self.is_zero(rhs));
-        self.from(self.ring.div(lhs.el, &rhs.el))
+        self.wrap(self.ring.div(lhs.el, &rhs.el))
     }
 
     fn from_z_big(&self, x: &StdInt) -> Self::El {
-        self.from(self.ring.from_z_big(x))
+        self.wrap(self.ring.from_z_big(x))
     }
 
     fn from_z_gen<I: IntegerRing>(&self, x: El<I>, ring: &I) -> Self::El {
-        self.from(self.ring.from_z_gen(x, ring))
+        self.wrap(self.ring.from_z_gen(x, ring))
     }
 
     fn from_z(&self, x: i64) -> Self::El {
-        self.from(self.ring.from_z(x))
+        self.wrap(self.ring.from_z(x))
     }
 
     fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
@@ -1067,7 +1071,7 @@ impl<R> EuclideanInfoRing for WrappingRing<R>
 
     fn euclidean_div_rem(&self, lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) {
         let (quo, rem) = self.ring.euclidean_div_rem(lhs.el, &rhs.el);
-        (self.from(quo), RingElWrapper {
+        (self.wrap(quo), RingElWrapper {
             ring: lhs.ring,
             el: rem
         })
@@ -1140,13 +1144,13 @@ impl<R> UfdInfoRing for WrappingRing<R>
     }
 
     fn calc_factor(&self, el: &Self::El) -> Option<Self::El> {
-        self.wrapped_ring().calc_factor(el.val()).map(|x| self.from(x))
+        self.wrapped_ring().calc_factor(el.val()).map(|x| self.wrap(x))
     }
 
     fn factor<'a>(&'a self, el: Self::El) -> VecMap<RingElWrapper<&'a Self>, usize> {
         let wrapping_ring = WrappingRing::new(self);
         self.wrapped_ring().factor(el.into_val()).into_iter().map(|(key, val)| 
-            (wrapping_ring.from(self.from(key.into_val())), val)
+            (wrapping_ring.wrap(self.wrap(key.into_val())), val)
         ).collect()
     }
 }

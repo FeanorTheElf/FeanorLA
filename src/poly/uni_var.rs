@@ -468,7 +468,7 @@ impl<R> UfdInfoRing for PolyRingImpl<R>
                     if self.is_one(&el) {
                         continue;
                     } else if self.deg(&el) == Some(d) {
-                        let wrapped_el = wrapped_ring.from(el);
+                        let wrapped_el = wrapped_ring.wrap(el);
                         if let Some(power) = result.get_mut(&wrapped_el) {
                             *power += 1;
                         } else {
@@ -492,7 +492,7 @@ impl<R> UfdInfoRing for PolyRingImpl<R>
         unit = self.base_ring().mul_ref(&unit, el.at(0));
         debug_assert!(self.base_ring().is_unit(&unit));
         if !self.base_ring().is_one(&unit) {
-            result.insert(wrapped_ring.from(self.from(unit)), 1);
+            result.insert(wrapped_ring.wrap(self.from(unit)), 1);
         }
         return result;
     }
@@ -537,7 +537,7 @@ fn test_poly_div() {
     let mut p = &x * &x * &x + &x * &x + &x + 1;
     let q = &x + 1;
     let expected = &x * &x + 1;
-    let result = ring.from(ring.wrapped_ring().poly_division(p.val_mut(), q.val(), |x| Ok(*x)).unwrap());
+    let result = ring.wrap(ring.wrapped_ring().poly_division(p.val_mut(), q.val(), |x| Ok(*x)).unwrap());
     assert_eq!(ring.zero(), p);
     assert_eq!(expected, result);
 }

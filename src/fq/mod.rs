@@ -103,7 +103,7 @@ impl<R: FiniteRing> FiniteRingIterFn<WrappingRing<R>> for WrappingRingIterFn<R> 
 
     fn next(&mut self, ring: &WrappingRing<R>) -> Option<RingElWrapper<R>> {
         let el = self.base_fn.next(ring.wrapped_ring());
-        el.map(|e| ring.from(e))
+        el.map(|e| ring.wrap(e))
     }
 }
 
@@ -115,7 +115,7 @@ impl<R> FiniteRing for WrappingRing<R>
     fn random_element<G>(&self, rng: G) -> RingElWrapper<R>
         where G: FnMut() -> u32
     {
-        self.from(self.wrapped_ring().random_element(rng))
+        self.wrap(self.wrapped_ring().random_element(rng))
     }
 
     fn size(&self) -> StdInt {

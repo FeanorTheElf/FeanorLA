@@ -372,7 +372,7 @@ impl EuclideanInfoRing for BigIntRing {
     }
 
     fn euclidean_deg(&self, el: Self::El) -> StdInt {
-        StdInt::RING.from(BigIntSOO::from(el)).abs()
+        StdInt::RING.wrap(BigIntSOO::from(el)).abs()
     }
 }
 
@@ -501,7 +501,7 @@ impl UfdInfoRing for BigIntRing {
     }
 
     fn calc_factor(&self, el: &Self::El) -> Option<Self::El> {
-        primes::calc_factor(&StdInt::RING.from(self.preimage(&BigIntSOO::RING, el.clone())))
+        primes::calc_factor(&StdInt::RING.wrap(self.preimage(&BigIntSOO::RING, el.clone())))
             .map(|x| self.embed(&BigIntSOO::RING, x.into_val()))
     }
 }
@@ -918,11 +918,11 @@ fn test_cmp_small() {
 fn test_factor() {
     let ring = WrappingRing::new(&BigInt::RING);
     let mut expected = VecMap::new();
-    expected.insert(ring.from(BigInt::from(7)), 2);
-    expected.insert(ring.from(BigInt::from(2)), 1);
+    expected.insert(ring.wrap(BigInt::from(7)), 2);
+    expected.insert(ring.wrap(BigInt::from(2)), 1);
     assert_eq!(expected, BigInt::RING.factor(BigInt::from(98)));
     expected = VecMap::new();
-    expected.insert(ring.from(BigInt::from(3)), 5);
+    expected.insert(ring.wrap(BigInt::from(3)), 5);
     assert_eq!(expected, BigInt::RING.factor(BigInt::from(243)));
 }
 

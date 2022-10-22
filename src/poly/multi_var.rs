@@ -678,10 +678,10 @@ fn test_elevate_var() {
 
     let expected = &uni_x * &uni_y + &uni_y * &uni_y * &uni_x * 2 + 1 + &uni_x;
 
-    let actual = uni_ring.from(ring.wrapped_ring().elevate_var(1, p.val().clone()));
+    let actual = uni_ring.wrap(ring.wrapped_ring().elevate_var(1, p.val().clone()));
     assert_eq!(expected, actual);
 
-    let original = ring.from(ring.wrapped_ring().de_elevate_var(1, actual.val().clone()));
+    let original = ring.wrap(ring.wrapped_ring().de_elevate_var(1, actual.val().clone()));
     assert_eq!(p, original);
 }
 

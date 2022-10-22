@@ -161,7 +161,7 @@ impl<R> WrappingRing<R>
 {
     pub fn unknown_count(&self) -> usize { self.wrapped_ring().unknown_count() }
     pub fn get_unknown(&self, i: usize) -> &'static str { self.wrapped_ring().get_name(i) }
-    pub fn as_poly(&self, var: &str) -> El<Self> { self.from(self.wrapped_ring().as_poly(self.wrapped_ring().get_var(var))) }
+    pub fn as_poly(&self, var: &str) -> El<Self> { self.wrap(self.wrapped_ring().as_poly(self.wrapped_ring().get_var(var))) }
 
     pub fn elevate_var_ring<'a>(&'a self, var: usize) -> WrappingRing<PolyRingImpl<&'a R>> {
         WrappingRing::new(self.wrapped_ring().elevate_var_ring(var))
@@ -332,6 +332,6 @@ impl<P> WrappingRing<P>
     where P: PolyRing
 {
     pub fn unknown(&self) -> El<Self> {
-        self.from(self.wrapped_ring().unknown())
+        self.wrap(self.wrapped_ring().unknown())
     }
 }

@@ -472,7 +472,7 @@ pub trait UfdInfoRing : DivisibilityInfoRing {
         stack.push(el);
         let wrapping_ring = WrappingRing::new(self);
         while let Some(el) = stack.pop() {
-            let wrapped_el = wrapping_ring.from(el);
+            let wrapped_el = wrapping_ring.wrap(el);
             if let Some(factor) = self.calc_factor(wrapped_el.val()) {
                 stack.push(self.quotient(wrapped_el.val(), &factor).unwrap());
                 stack.push(factor);

@@ -438,7 +438,7 @@ impl EuclideanInfoRing for BigIntSOORing {
     }
 
     fn euclidean_deg(&self, el: Self::El) -> StdInt {
-        StdInt::RING.from(self.abs(el))
+        StdInt::RING.wrap(self.abs(el))
     }
 }
 
@@ -453,7 +453,7 @@ impl UfdInfoRing for BigIntSOORing {
     }
 
     fn calc_factor(&self, el: &Self::El) -> Option<Self::El> {
-        primes::calc_factor(&StdInt::RING.from(el.clone()))
+        primes::calc_factor(&StdInt::RING.wrap(el.clone()))
             .map(|x| x.into_val())
     }
 }

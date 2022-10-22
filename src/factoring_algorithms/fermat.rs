@@ -16,7 +16,7 @@ use super::super::wrapper::*;
 pub fn fermat<I: IntegerRing>(n: &El<I>, ring: &I) -> El<I>
 {
     let wrapped_ring = WrappingRing::new(ring);
-    let n = wrapped_ring.from(n.clone());
+    let n = wrapped_ring.wrap(n.clone());
     let mut m = (&n - 1).sqrt_floor() + 1;
 
     // We try to find m such that m^2 - n = d^2 for some integer d, then

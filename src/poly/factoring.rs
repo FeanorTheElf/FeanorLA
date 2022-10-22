@@ -140,7 +140,7 @@ fn test_poly_squarefree_part() {
     let x = ring.unknown();
     let a = (&x + 4) * (&x + 6).pow(2) * (&x - 2).pow(2) * (&x + 8).pow(3);
     let b = (&x + 4) * (&x + 6) * (&x - 2) * (&x + 8);
-    let mut squarefree_part = ring.from(poly_squarefree_part(ring.wrapped_ring(), a.val().clone()));
+    let mut squarefree_part = ring.wrap(poly_squarefree_part(ring.wrapped_ring(), a.val().clone()));
     squarefree_part.normalize();
     assert_eq!(b, squarefree_part);
 }
@@ -160,7 +160,7 @@ fn test_distinct_degree_factorization() {
     let distinct_degree_factorization = distinct_degree_factorization(ring.wrapped_ring(), &StdInt::from(2), a.val().clone());
     assert_eq!(expected.len(), distinct_degree_factorization.len());
     for (f, e) in distinct_degree_factorization.into_iter().zip(expected.into_iter()) {
-        let mut f = ring.from(f);
+        let mut f = ring.wrap(f);
         f.normalize();
         assert_eq!(e, f);
     }
@@ -175,7 +175,7 @@ fn test_cantor_zassenhaus() {
     let f = &x * &x + 1;
     let g = &x * &x + &x + 3;
     let p = &f * &g;
-    let mut factor = ring.from(cantor_zassenhaus(ring.wrapped_ring(), &StdInt::from(7), p.val().clone(), 2));
+    let mut factor = ring.wrap(cantor_zassenhaus(ring.wrapped_ring(), &StdInt::from(7), p.val().clone(), 2));
     factor.normalize();
     assert!(factor == f || factor == g);
 }

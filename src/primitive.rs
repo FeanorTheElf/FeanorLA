@@ -408,7 +408,7 @@ impl EuclideanEl for i128 {
     }
 
     fn euclidean_deg(&self) -> StdInt {
-        return WrappingRing::<BigIntSOORing>::singleton().from(BigIntSOO::from(self.abs()));
+        return WrappingRing::<BigIntSOORing>::singleton().wrap(BigIntSOO::from(self.abs()));
     }
 }
 

@@ -267,19 +267,19 @@ use super::fq::zn_small::*;
 #[test]
 fn test_baby_giant_step() {
     assert_eq!(
-        Some(i64::WRAPPED_RING.from(6)), 
-        baby_giant_step(6, &1, &i64::WRAPPED_RING.from(20), |a, b| a + b, 0)
+        Some(i64::WRAPPED_RING.wrap(6)), 
+        baby_giant_step(6, &1, &i64::WRAPPED_RING.wrap(20), |a, b| a + b, 0)
     );
 }
 
 #[test]
 fn test_baby_giant_step_2d() {
     assert_eq!(
-        Some((i64::WRAPPED_RING.from(13), i64::WRAPPED_RING.from(6))), 
+        Some((i64::WRAPPED_RING.wrap(13), i64::WRAPPED_RING.wrap(6))), 
         baby_giant_step_2d::<_, _, StaticRing<i64>>(
             (13, 12), 
             (&(1, 0), &(0, 2)), 
-            (&i64::WRAPPED_RING.from(20), &i64::WRAPPED_RING.from(20)), 
+            (&i64::WRAPPED_RING.wrap(20), &i64::WRAPPED_RING.wrap(20)), 
             |(a1, a2), (b1, b2)| (a1 + b1, a2 + b2), 
             (0,0)
         )
@@ -289,11 +289,11 @@ fn test_baby_giant_step_2d() {
 #[test]
 fn test_power_p_discrete_log() {
     assert_eq!(
-        Some(i64::WRAPPED_RING.from(6)), 
+        Some(i64::WRAPPED_RING.wrap(6)), 
         power_p_discrete_log(
             ZnEl::<81>::project(6), 
             &ZnEl::project(1),
-            &i64::WRAPPED_RING.from(3), 
+            &i64::WRAPPED_RING.wrap(3), 
             4, 
             |a, b| a + b, 
             ZnEl::project(0),
@@ -304,11 +304,11 @@ fn test_power_p_discrete_log() {
 #[test]
 fn test_power_p_discrete_log_2d() {
     assert_eq!(
-        Some((i64::WRAPPED_RING.from(23), i64::WRAPPED_RING.from(5))), 
+        Some((i64::WRAPPED_RING.wrap(23), i64::WRAPPED_RING.wrap(5))), 
         power_p_discrete_log_2d(
             (ZnEl::<81>::project(23), ZnEl::<9>::project(5)), 
             (&(ZnEl::project(1), ZnEl::project(0)), &(ZnEl::project(0), ZnEl::project(1))),
-            &i64::WRAPPED_RING.from(3), 
+            &i64::WRAPPED_RING.wrap(3), 
             (4, 2), 
             |(a1, a2), (b1, b2)| (a1 + b1, a2 + b2), 
             (ZnEl::project(0), ZnEl::project(0)),
@@ -319,11 +319,11 @@ fn test_power_p_discrete_log_2d() {
 #[test]
 fn test_power_p_discrete_log_2d_non_unit_basis() {
     assert_eq!(
-        Some((i64::WRAPPED_RING.from(-1 /* 8 would be correct as well */), i64::WRAPPED_RING.from(6))), 
+        Some((i64::WRAPPED_RING.wrap(-1 /* 8 would be correct as well */), i64::WRAPPED_RING.wrap(6))), 
         power_p_discrete_log_2d(
             (ZnEl::<495>::project(110), ZnEl::<189>::project(42)), 
             (&(ZnEl::project(385), ZnEl::project(0)), &(ZnEl::project(0), ZnEl::project(7))),
-            &i64::WRAPPED_RING.from(3), 
+            &i64::WRAPPED_RING.wrap(3), 
             (2, 3), 
             |(a1, a2), (b1, b2)| (a1 + b1, a2 + b2), 
             (ZnEl::project(0), ZnEl::project(0)),
@@ -332,11 +332,11 @@ fn test_power_p_discrete_log_2d_non_unit_basis() {
 }
 #[test]
 fn test_discrete_log() {
-    assert_eq!(Some(i64::WRAPPED_RING.from(78)), 
+    assert_eq!(Some(i64::WRAPPED_RING.wrap(78)), 
         discrete_log(
             ZnEl::<132>::project(78), 
             &ZnEl::project(1),
-            &i64::WRAPPED_RING.from(132), 
+            &i64::WRAPPED_RING.wrap(132), 
             |a, b| a + b, 
             ZnEl::project(0),
         )
@@ -350,11 +350,11 @@ fn test_discrete_log_2d() {
     let e0 = (ZnEl::<N>::project(1), ZnEl::<M>::project(0));
     let e1 = (ZnEl::<N>::project(0), ZnEl::<M>::project(1));
     assert_eq!(
-        Some((i64::WRAPPED_RING.from(16 * 5), i64::WRAPPED_RING.from(3 * 4 * 5))),
+        Some((i64::WRAPPED_RING.wrap(16 * 5), i64::WRAPPED_RING.wrap(3 * 4 * 5))),
         discrete_log_2d(
             (ZnEl::<N>::project(16 * 5), ZnEl::<M>::project(3 * 4 * 5)), 
             (&e0, &e1),
-            (&i64::WRAPPED_RING.from(N as i64), &i64::WRAPPED_RING.from(M as i64)), 
+            (&i64::WRAPPED_RING.wrap(N as i64), &i64::WRAPPED_RING.wrap(M as i64)), 
             |(a1, a2), (b1, b2)| (a1 + b1, a2 + b2), 
             (ZnEl::project(0), ZnEl::project(0))
         )

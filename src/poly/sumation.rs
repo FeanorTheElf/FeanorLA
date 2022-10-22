@@ -37,8 +37,8 @@ fn test_sumation_poly() {
     let ring = WrappingRing::new(PolyRingImpl::adjoint(r64::RING, "X"));
     let x = ring.unknown();
     let sum_x_2 = x.clone() * (x.clone() + 1) / 2;
-    assert_eq!(sum_x_2, ring.from(sumation_poly(ring.wrapped_ring(), ring.unknown().into_val())));
+    assert_eq!(sum_x_2, ring.wrap(sumation_poly(ring.wrapped_ring(), ring.unknown().into_val())));
 
     let sum_x_3 = x.clone() * (x.clone() + 1) * (x.clone() * 2 + 1) / 6;
-    assert_eq!(sum_x_3, ring.from(sumation_poly(ring.wrapped_ring(), (&x * &x).into_val())));
+    assert_eq!(sum_x_3, ring.wrap(sumation_poly(ring.wrapped_ring(), (&x * &x).into_val())));
 }

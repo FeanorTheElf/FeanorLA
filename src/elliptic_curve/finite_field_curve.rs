@@ -18,7 +18,7 @@ impl<K: FiniteRing + HashableElRing> EllipticCurve<WrappingRing<K>> {
             let x = ext_field.random_element(&mut rng);
             let fx = x.pow(3) + &x * ext_field.embed(self.base_field(), self.A.clone()) + ext_field.embed(self.base_field(), self.B.clone());
             if let Some(y) = finite_field_sqrt::sqrt(fx.into_val(), ext_field.wrapped_ring()) {
-                return EllipticCurvePoint::Affine(x, ext_field.from(y));
+                return EllipticCurvePoint::Affine(x, ext_field.wrap(y));
             }
         }
     }

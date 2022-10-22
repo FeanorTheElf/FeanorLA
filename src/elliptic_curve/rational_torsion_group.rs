@@ -96,7 +96,7 @@ impl<QType> EllipticCurve<WrappingRing<QType>>
         for y in possible_y {
             let B_minus_y2 = &B - &y * &y;
             for x in roots::IntegralCubic::new(A.val(), B_minus_y2.val(), y.parent_ring()).find_integral_roots() {
-                let x = Z.from(x);
+                let x = Z.wrap(x);
                 let point = EllipticCurvePoint::Affine(i(x), i(y.clone()));
                 // it is a theorem that the torsion group has order dividing 24
                 if E.points_eq(&E.mul_point::<QType>(&point, &StdInt::from(24), &Q), &EllipticCurvePoint::Infinity) {

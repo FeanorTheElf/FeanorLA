@@ -160,7 +160,6 @@ impl RingEl for StdInt {
     }
 }
 
-
 fn integer_ring_get_uniformly_random<G, I>(
     ring: &I,
     mut rng: G, 
@@ -288,15 +287,15 @@ impl<R: IntegerRing> IntegerRing for WrappingRing<R> {
     }
 
     fn from_float_approx(&self, el: f64) -> Option<Self::El>  { 
-        self.wrapped_ring().from_float_approx(el).map(|x| self.from(x))
+        self.wrapped_ring().from_float_approx(el).map(|x| self.wrap(x))
     }
 
     fn mul_pow_2(&self, el: El<Self>, power: u64) -> El<Self> { 
-        self.from(self.wrapped_ring().mul_pow_2(el.into_val(), power))
+        self.wrap(self.wrapped_ring().mul_pow_2(el.into_val(), power))
     }
 
     fn euclidean_div_pow_2(&self, el: El<Self>, power: u64) -> El<Self> { 
-        self.from(self.wrapped_ring().euclidean_div_pow_2(el.into_val(), power))
+        self.wrap(self.wrapped_ring().euclidean_div_pow_2(el.into_val(), power))
     }
 
     fn abs_log2_floor(&self, el: &El<Self>) -> u64 { 
@@ -308,11 +307,11 @@ impl<R: IntegerRing> IntegerRing for WrappingRing<R> {
     }
 
     fn abs(&self, el: Self::El) -> Self::El { 
-        self.from(self.wrapped_ring().abs(el.into_val()))
+        self.wrap(self.wrapped_ring().abs(el.into_val()))
     }
 
     fn floor_div(&self, a: Self::El, b: &Self::El) -> Self::El {
-        self.from(self.wrapped_ring().floor_div(a.into_val(), b.val()))
+        self.wrap(self.wrapped_ring().floor_div(a.into_val(), b.val()))
     }
 
     fn get_uniformly_random<G>(
@@ -321,18 +320,20 @@ impl<R: IntegerRing> IntegerRing for WrappingRing<R> {
         end_exclusive: &El<Self>
     ) -> El<Self> 
         where G: FnMut() -> u32
-    { self.from(self.wrapped_ring().get_uniformly_random(rng, end_exclusive.val())) }
+    { 
+        self.wrap(self.wrapped_ring().get_uniformly_random(rng, end_exclusive.val()))
+    }
 
     fn abs_cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering {
         self.wrapped_ring().abs_cmp(lhs.val(), rhs.val())
     }
 
     fn root_floor(&self, el: &Self::El, n: u64) -> Self::El {
-        self.from(self.wrapped_ring().root_floor(el.val(), n))
+        self.wrap(self.wrapped_ring().root_floor(el.val(), n))
     }
 
     fn get_uniformly_random_oorandom(&self, rng: &mut oorandom::Rand32, end_exclusive: &El<Self>) -> El<Self> { 
-        self.from(self.wrapped_ring().get_uniformly_random_oorandom(rng, end_exclusive.val()))
+        self.wrap(self.wrapped_ring().get_uniformly_random_oorandom(rng, end_exclusive.val()))
     }
 
     fn highest_dividing_power_of_two(&self, el: &El<Self>) -> usize { 
@@ -379,7 +380,7 @@ impl<R: IntegerRing> RingElWrapper<R>
     pub fn mul_pow_2(self, power: u64) -> Self {
         let (el, ring) = self.destruct();
         let result = ring.mul_pow_2(el, power);
-        WrappingRing::new(ring).from(result)
+        WrappingRing::new(ring).wrap(result)
     }
 
     pub fn abs_log2_floor(&self) -> u64 {

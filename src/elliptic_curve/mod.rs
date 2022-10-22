@@ -211,9 +211,9 @@ impl<K> EllipticCurve<WrappingRing<K>>
         ]));
         let poly_ring_x = poly_ring.unknown();
         let result = WrappingRing::new(FiniteExtensionImpl::new(poly_ring, mipo, "Y"));
-        let X = result.from(result.wrapped_ring().from(poly_ring_x));
-        let Y = result.from(result.wrapped_ring().generator());
-        return (result, X, Y);
+        let x = result.wrap(result.wrapped_ring().from(poly_ring_x));
+        let y = result.wrap(result.wrapped_ring().generator());
+        return (result, x, y);
     }
 
     pub fn function_field(&self) -> (FunctionField<K>, El<FunctionField<K>>, El<FunctionField<K>>) 
@@ -240,8 +240,8 @@ impl<K> EllipticCurve<WrappingRing<K>>
                 )
             )
         ));
-        let x = result.from(x);
-        let y = result.from(y);
+        let x = result.wrap(x);
+        let y = result.wrap(y);
         return (result, x, y);
     }
 

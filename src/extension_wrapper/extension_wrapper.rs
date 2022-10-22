@@ -288,7 +288,7 @@ fn test_build_extension_wrapper() {
     let ring = ExtensionWrapper::from(i64::RING);
     let ring = ring.extend(|r| FiniteExtensionImpl::new(r, Vector::from_array([-1, 0]), "i") as FiniteExtensionImpl<_, _>);
     let ring = WrappingRing::new(ring.as_ref().extend(|r| PolyRingImpl::adjoint(r, "x")));
-    let i = ring.from(ring.wrapped_ring().wrapped_ring().from(ring.wrapped_ring().wrapped_ring().base_ring().generator()));
-    let x = ring.from(ring.wrapped_ring().wrapped_ring().unknown());
+    let i = ring.wrap(ring.wrapped_ring().wrapped_ring().from(ring.wrapped_ring().wrapped_ring().base_ring().generator()));
+    let x = ring.wrap(ring.wrapped_ring().wrapped_ring().unknown());
     assert_eq!(x.pow(2) + 1, (&x - &i) * (x + i));
 }

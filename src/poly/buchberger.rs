@@ -109,7 +109,7 @@ fn test_multi_poly_divide() {
     // x^3 (x^2 y + 2x y^2 + 1) - 2x^4 y^2 - x^3
     // -2x^2 y (x^2 y + 2x y^2 + 1) + 4x^3 y^3 + 2x^2 y
     // 4x y^2 (x^2 y + 2x y^2 + 1) - 8x^2 y^4 - 4x y^2
-    assert_eq!(h, ring.from(multi_poly_div(ring.wrapped_ring(), f.into_val(), g.val(), Lex {})))
+    assert_eq!(h, ring.wrap(multi_poly_div(ring.wrapped_ring(), f.into_val(), g.val(), Lex {})))
 }
 
 #[test]

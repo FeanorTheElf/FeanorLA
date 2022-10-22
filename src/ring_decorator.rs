@@ -88,7 +88,7 @@ impl<R> UfdInfoRing for R
     fn factor<'b>(&'b self, el: Self::El) -> VecMap<RingElWrapper<&'b Self>, usize> { 
         let result = self.decorated_ring().factor(el);
         let wrapping_ring = WrappingRing::new(self);
-        return result.into_iter().map(|(el, power)| (wrapping_ring.from(el.into_val()), power)).collect();
+        return result.into_iter().map(|(el, power)| (wrapping_ring.wrap(el.into_val()), power)).collect();
     }
 }
 
