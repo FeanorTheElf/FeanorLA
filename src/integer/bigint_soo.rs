@@ -59,7 +59,7 @@ impl BigIntSOO {
             (BigIntSOO::SOO(a), BigIntSOO::BigInt(b)) => g(BigInt::from(a), b),
             (BigIntSOO::SOO(a), BigIntSOO::SOO(b)) => {
                 if let Some(result) = f(a, b) {
-                    return BigIntSOO::SOO(result);
+                    return BigIntSOO::from(result);
                 }
                 g(BigInt::from(a), BigInt::from(b))
             }
@@ -76,7 +76,7 @@ impl BigIntSOO {
             (BigIntSOO::SOO(a), BigIntSOO::BigInt(b)) => g(&BigInt::from(*a), b),
             (BigIntSOO::SOO(a), BigIntSOO::SOO(b)) => {
                 if let Some(result) = f(*a, b) {
-                    return BigIntSOO::SOO(result);
+                    return BigIntSOO::from(result);
                 }
                 g(&BigInt::from(*a), BigInt::from(b))
             }
@@ -93,7 +93,7 @@ impl BigIntSOO {
             (BigIntSOO::SOO(a), BigIntSOO::BigInt(b)) => g(BigInt::from(a), b),
             (BigIntSOO::SOO(a), BigIntSOO::SOO(b)) => {
                 if let Some(result) = f(a, *b) {
-                    return BigIntSOO::SOO(result);
+                    return BigIntSOO::from(result);
                 }
                 g(BigInt::from(a), &BigInt::from(*b))
             }
@@ -110,7 +110,7 @@ impl BigIntSOO {
             (BigIntSOO::SOO(a), BigIntSOO::BigInt(b)) => g(&BigInt::from(*a), b),
             (BigIntSOO::SOO(a), BigIntSOO::SOO(b)) => {
                 if let Some(result) = f(*a, *b) {
-                    return BigIntSOO::SOO(result);
+                    return BigIntSOO::from(result);
                 }
                 g(&BigInt::from(*a), &BigInt::from(*b))
             }
@@ -132,7 +132,7 @@ impl From<BigInt> for BigIntSOO {
     fn from(x: BigInt) -> BigIntSOO {
         let result = match x.to_int() {
             Ok(result) => {
-                BigIntSOO::SOO(result)
+                BigIntSOO::from(result)
             },
             Err(()) => {
                 BigIntSOO::BigInt(x)
@@ -259,7 +259,7 @@ impl RingBase for BigIntSOORing {
             }
         }
         let result = if BASE_RING.is_zero(&sum_bigint) {
-            BigIntSOO::SOO(sum_i128)
+            BigIntSOO::from(sum_i128)
         } else {
             BigIntSOO::BigInt(BASE_RING.add(sum_bigint, BigInt::from(sum_i128)))
         };
@@ -514,7 +514,7 @@ impl IntegerRing for BigIntSOORing {
     fn mul_pow_2(&self, el: El<Self>, power: u64) -> El<Self> {
         let result = match el {
             BigIntSOO::BigInt(x) => BigIntSOO::from(BigInt::RING.mul_pow_2(x, power)),
-            BigIntSOO::SOO(x) if power < x.leading_zeros() as u64 => BigIntSOO::SOO(x << power),
+            BigIntSOO::SOO(x) if power < x.leading_zeros() as u64 => BigIntSOO::from(x << power),
             BigIntSOO::SOO(x) => BigIntSOO::from(BigInt::RING.mul_pow_2(BigInt::from(x), power))
         };
         result.assert_valid();
