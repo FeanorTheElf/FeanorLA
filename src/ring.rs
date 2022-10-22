@@ -33,16 +33,7 @@ impl<'a, R> std::fmt::Display for RingElDisplay<'a, R>
 /// 
 /// # `RingBase` vs [`Ring`]
 /// 
-/// 
-/// 
-/// # Further properties
-/// 
-/// Further properties a ring can have are represented by subtraits, e.g.
-/// [`crate::ring::EuclideanInfoRing`] or [`crate::ring::DivisibilityInfoRing`]. Note that implementing such a
-/// trait means that objects of that type can have the property, not that they
-/// necessarily have to. Each of those subtraits provides a function to check
-/// whether a ring object has the property at runtime. This is necessary, as
-/// the check might require information only available at runtime.
+/// See the corresponding remark in [`Ring`].
 /// 
 /// # Value vs Reference design rationale
 /// 
@@ -306,14 +297,116 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
 ///
 /// Trait to represent a unital, commutative ring. More abstract functionality 
 /// (global properties, like ideals) is not provided, this is mainly an interface 
-/// that can be used for algorithms that deal with ring elements. However, as
-/// opposed to [`RingBase`], this trait interacts with the [`crate::embedding::CanonicalEmbeddingInfo`]
-/// framework to provide maps between different rings.
+/// that can be used for algorithms that deal with ring elements. 
 /// 
-/// # Implementation
+/// This trait is the central interface for the crate, as everything else are either
+/// algorithms working on rings, or ring combinators that provide standard rings and
+/// ring constructions.
 /// 
-/// To implement this trait, implement [`RingBase`] and [`CanonicalIsomorphismInfo<Self>`].
+/// # Notes
+/// 
+/// This trait is mainly to be used in algorithms that work in rings. In particular,
+/// if you want to create a new ring type, look below.
+/// 
+/// If you just want to use existing rings, you might want to have a look at [`crate::wrapper::RingElWrapper`] 
+/// and [`crate::wrapper::WrappingRing`], which provide a much more convenient interface
+/// to computing with them. In particular, it is then possible to use the
+/// natural `+`, `*`, `=` and other operations.
+/// 
+/// ## `Ring` vs [`RingBase`]
+/// 
+/// As a rule of thumb, use `Ring` everywhere, except when implementing the traits for
+/// your own type (see below). The main reason is that `RingBase` defines the basic functionality,
+/// and `Ring` adds some (slightly) higher-level functionality on top of that (in particular
+/// embeddings & isomorphisms between rings, see [`crate::embedding::CanonicalEmbeddingInfo`]).
+/// 
+/// ## Implementation
+/// 
+/// To implement this trait, implement [`RingBase`] and [`crate::embedding::CanonicalIsomorphismInfo<Self>`].
 /// For more information, see [`RingBase`].
+/// 
+/// # Specific rings & properties
+/// 
+/// Rings can have many properties that are not provided by the basic `Ring` trait (it only contains
+/// the query functions [`is_field()`], [`is_noetherian()`] and [`is_integral()`]). For further properties,
+/// there exist traits (usually using the naming convention `...Info`) that mark ring type that might
+/// have the corresponding property. However, since this property may depend on runtime information, you
+/// always have to use the corresponding query function of the specific trait to check.
+/// Examples are [`crate::ring::EuclideanInfoRing`] or [`crate::ring::DivisibilityInfoRing`].
+/// 
+/// We also consider the property of being "a specific ring", e.g. a polynomial ring as a property, and hence
+/// there exists a corresponding trait for it (e.g. [`crate::poly::PolyRing`]). This trait is then implemented
+/// by all rings that represent the ring (as a purely mathematical object) in question. Usually, this trait
+/// comes together with a default implementation (e.g. [`crate::poly::uni_var::PolyRingImpl`]), and the trait
+/// also requires all implementations to be canonically isomorphic to this default implementation.
+/// 
+/// # Examples
+/// 
+/// ## Integers
+/// 
+/// The most classical ring is probably the integers Z. There are many different implementations
+/// of this ring, with different performance characteristics.
+/// ```
+/// # use feanor_la::prelude::*;
+/// type Ztype = StaticRing<i64>;
+/// let Z: Ztype = i64::RING; // StaticRing<_> implements Ring
+/// let a: El<Ztype> = 7i64;
+/// let b: El<Ztype> = 6i64;
+/// assert!(Z.is_eq(&13, &Z.add(a, b)));
+/// ```
+/// Of course, this example is equivalent to the standard, more convenient notation
+/// ```
+/// # use feanor_la::prelude::*;
+/// let a: i64 = 7;
+/// let b: i64 = 6;
+/// assert!(13 == a + b);
+/// ```
+/// To work with arbitrarily large integers, the most important ring is [`crate::integer::bigint_soo::BigIntSOORing`],
+/// usually used through [`crate::integer::StdInt`] (note that this uses [`crate::wrapper::RingElWrapper`] internally,
+/// for improved convenience).
+/// ```
+/// # use feanor_la::prelude::*;
+/// type Ztype = <StdInt as RingEl>::RingType;
+/// let Z: Ztype = StdInt::RING; // StaticRing<_> implements Ring
+/// let a: El<Ztype> = StdInt::from(7);
+/// let b: El<Ztype> = StdInt::from(6);
+/// assert!(Z.is_eq(&StdInt::from(13), &Z.add(a, b)));
+/// ```
+/// Since `StdInt` is wrapped, we can also use a nice notation
+/// ```
+/// # use feanor_la::prelude::*;
+/// let a: StdInt = StdInt::from(7);
+/// let b: StdInt = StdInt::from(6);
+/// assert!(StdInt::from(13) == a + b);
+/// ```
+/// However, if directly use the underlying ring [`crate::integer::bigint_soo::BigIntSOORing`],
+/// we cannot do this anymore. Instead, we would have to write
+/// ```
+/// # use feanor_la::prelude::*;
+/// # use feanor_la::integer::bigint_soo::*;
+/// type Ztype = BigIntSOORing;
+/// let Z = BigIntSOORing::singleton();
+/// let a: El<Ztype> = Z.from_z(7);
+/// let b: El<Ztype> = Z.from_z(6);
+/// assert!(Z.is_eq(&BigIntSOO::RING.from_z(13), &Z.add(a, b)));
+/// ```
+/// However, the wrapper around `BigIntSOORing` is trivial, so we do not suffer any performance
+/// loss when using the above, nicer variant.
+/// 
+/// ## Other rings
+/// For example polynomial rings are provided by [`crate::poly::uni_var::PolyRing`].
+/// ```
+/// # use feanor_la::prelude::*;
+/// # use feanor_la::poly::uni_var::*;
+/// # use feanor_la::poly::*;
+/// let P = PolyRingImpl::adjoint(i64::RING, "X");
+/// let x = P.unknown();
+/// let f = P.add(x.clone(), P.one()); // x + 1
+/// let g = P.add(P.pow(&x, 2), P.add(P.mul(x, P.from_z(2)), P.one())); // x^2 + 2x + 1
+/// assert!(P.is_eq(&g, &P.mul_ref(&f, &f)));
+/// ```
+/// As this shows, this ring-based interface can easily get very cumbersome. To
+/// avoid this, look at [`crate::wrapper::RingElWrapper`].
 /// 
 pub trait Ring: RingBase + CanonicalIsomorphismInfo<Self> {}
 

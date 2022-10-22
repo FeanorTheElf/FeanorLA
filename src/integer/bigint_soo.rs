@@ -482,7 +482,8 @@ impl IntegerRing for BigIntSOORing {
     fn euclidean_div_pow_2(&self, el: El<Self>, power: u64) -> El<Self> {
         match el {
             BigIntSOO::BigInt(x) => BigIntSOO::from(BigInt::RING.euclidean_div_pow_2(x, power)),
-            BigIntSOO::SOO(x) => BigIntSOO::SOO(x.div_euclid(1 << power))
+            BigIntSOO::SOO(x) if power < i128::BITS as u64 => BigIntSOO::SOO(x.div_euclid(1 << power)),
+            BigIntSOO::SOO(_)  => BigIntSOO::SOO(0)
         }
     }
 
@@ -593,4 +594,15 @@ fn test_mul_pow_2() {
 #[ignore]
 fn test_size() {
     assert_eq!(std::mem::size_of::<BigInt>() + 8, std::mem::size_of::<BigIntSOO>());
+}
+
+#[test]
+fn test_euclidean_div_pow2() {
+    let huge_shift_of_3 = BigInt::from_str_radix("300000000000000000000000000000000", 16).unwrap();
+    let huge_shift_of_3_noise = BigInt::from_str_radix("30000000000076aa76089674807c6780a", 16).unwrap();
+    assert!(BigIntSOO::RING.is_eq(&BigIntSOO::SOO(3), &BigIntSOO::RING.euclidean_div_pow_2(BigIntSOO::BigInt(huge_shift_of_3), 128)));
+    assert!(BigIntSOO::RING.is_eq(&BigIntSOO::SOO(3), &BigIntSOO::RING.euclidean_div_pow_2(BigIntSOO::BigInt(huge_shift_of_3_noise), 128)));
+    assert!(BigIntSOO::RING.is_eq(&BigIntSOO::SOO(3), &BigIntSOO::RING.euclidean_div_pow_2(BigIntSOO::SOO(3 << 64), 64)));
+    assert!(BigIntSOO::RING.is_eq(&BigIntSOO::SOO(3), &BigIntSOO::RING.euclidean_div_pow_2(BigIntSOO::SOO((3 << 64) + 3489372), 64)));
+    assert!(BigIntSOO::RING.is_eq(&BigIntSOO::SOO(0), &BigIntSOO::RING.euclidean_div_pow_2(BigIntSOO::SOO(3 << 64), 128)));
 }

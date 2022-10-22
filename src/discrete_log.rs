@@ -215,11 +215,11 @@ pub fn discrete_log<T, F, I>(value: T, base: &T, order: &RingElWrapper<I>, op: F
 /// let e1 = (ZnEl::<45>::project(0), ZnEl::<162>::project(1));
 /// let zero = (ZnEl::<45>::project(0), ZnEl::<162>::project(0));
 /// assert_eq!(
-///     Some((i64::WRAPPED_RING.from(30), i64::WRAPPED_RING.from(28))),
+///     Some((i64::WRAPPED_RING.wrap(30), i64::WRAPPED_RING.wrap(28))),
 ///     discrete_log_2d(
 ///         (ZnEl::<45>::project(30), ZnEl::<162>::project(28)),
 ///         (&e0, &e1),
-///         (&i64::WRAPPED_RING.from(45), &i64::WRAPPED_RING.from(162)),
+///         (&i64::WRAPPED_RING.wrap(45), &i64::WRAPPED_RING.wrap(162)),
 ///         |(a1, a2), (b1, b2)| (a1 + b1, a2 + b2),
 ///         zero
 ///     )
