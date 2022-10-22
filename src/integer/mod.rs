@@ -381,6 +381,14 @@ impl<R: IntegerRing> RingElWrapper<R>
         let result = ring.mul_pow_2(el, power);
         WrappingRing::new(ring).from(result)
     }
+
+    pub fn abs_log2_floor(&self) -> u64 {
+        self.parent_ring().abs_log2_floor(self.val())
+    }
+
+    pub fn abs_is_bit_set(&self, bit: u64) -> bool {
+        self.parent_ring().abs_is_bit_set(self.val(), bit)
+    }
 }
 
 #[cfg(test)]
