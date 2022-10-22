@@ -852,7 +852,11 @@ impl<R> WrappingRing<R>
         self.lift_hom(self.wrapped_ring().embedding())
     }
 
-    pub fn from_(&self, x: RingElWrapper<&R::BaseRing>) -> RingElWrapper<R> {
+    pub fn from(&self, x: RingElWrapper<R::BaseRing>) -> RingElWrapper<R> {
+        self.wrap(self.wrapped_ring().from(x.into_val()))
+    }
+
+    pub fn from_ref(&self, x: RingElWrapper<&R::BaseRing>) -> RingElWrapper<R> {
         self.wrap(self.wrapped_ring().from(x.into_val()))
     }
 

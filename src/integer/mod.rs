@@ -341,8 +341,7 @@ impl<R: IntegerRing> IntegerRing for WrappingRing<R> {
     }
 }
 
-impl<R: IntegerRing> RingElWrapper<R> 
-{
+impl<R: IntegerRing> RingElWrapper<R> {
     pub fn to_float_approx(&self) -> f64 {
         self.parent_ring().to_float_approx(self.val())
     }
@@ -372,9 +371,18 @@ impl<R: IntegerRing> RingElWrapper<R>
         self.parent_ring().is_odd(self.val())
     }
 
-    pub fn to_i128(self) -> Result<i128, ()> {
+    pub fn to_i64(self) -> i64 {
         let (el, ring) = self.destruct();
-        ring.preimage(&BigIntSOO::RING, el).to_i128()
+        ring.preimage(&i64::RING, el)
+    }
+
+    pub fn to_i128(self) -> i128 {
+        self.to_stdint().into_val().to_i128().unwrap()
+    }
+
+    pub fn to_stdint(self) -> StdInt {
+        let (el, ring) = self.destruct();
+        StdInt::RING.wrap(ring.preimage(&BigIntSOO::RING, el))
     }
 
     pub fn mul_pow_2(self, power: u64) -> Self {
