@@ -260,8 +260,8 @@ pub trait RingEl:
     const RING: Self::RingType;
     const WRAPPED_RING: WrappingRing<Self::RingType>;
 
-    fn pow(self, exp: u32) -> Self {
-        Self::RING.pow(&self, exp)
+    fn pow(&self, exp: u32) -> Self {
+        Self::RING.pow(self, exp)
     }
 
     ///
@@ -418,16 +418,16 @@ impl RingEl for f32 {
     const RING: Self::RingType = StaticRing::<Self>::RING;
     const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
 
-    fn pow(self, exp: u32) -> Self {
+    fn pow(&self, exp: u32) -> Self {
         if exp > i32::MAX as u32 {
-            let value = f32::powi(self, (exp >> 1) as i32);
+            let value = f32::powi(*self, (exp >> 1) as i32);
             if exp & 1 == 1 {
                 value * value * self
             } else {
                 value * value
             }
         } else {
-            f32::powi(self, exp as i32)
+            f32::powi(*self, exp as i32)
         }
     }
 
@@ -440,16 +440,16 @@ impl RingEl for f64 {
     const RING: Self::RingType = StaticRing::<Self>::RING;
     const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
 
-    fn pow(self, exp: u32) -> Self {
+    fn pow(&self, exp: u32) -> Self {
         if exp > i32::MAX as u32 {
-            let value = f64::powi(self, (exp >> 1) as i32);
+            let value = f64::powi(*self, (exp >> 1) as i32);
             if exp & 1 == 1 {
                 value * value * self
             } else {
                 value * value
             }
         } else {
-            f64::powi(self, exp as i32)
+            f64::powi(*self, exp as i32)
         }
     }
 
