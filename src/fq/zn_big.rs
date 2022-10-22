@@ -77,6 +77,10 @@ impl<I: IntegerRing> Zn<I> {
             Err(d)
         }
     }
+
+    pub fn integer_ring(&self) -> &I {
+        &self.integer_ring
+    }
 }
 
 impl<I: IntegerRing> PartialEq for Zn<I> {
