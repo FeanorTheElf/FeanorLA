@@ -165,7 +165,12 @@ impl BigInt {
 impl From<i128> for BigInt {
 
     fn from(val: i128) -> BigInt {
-        if val < 0 {
+        if val == i128::MIN {
+            BigInt {
+                negative: true,
+                data: Vector::new(vec![0, 1])
+            }
+        } else if val < 0 {
             let val = (-val) as u128;
             BigInt {
                 negative: true,
@@ -955,4 +960,9 @@ fn test_get_uniformly_random() {
     assert!(data.iter().any(|x| *x == 0));
     assert!(data.iter().any(|x| *x == 1));
     assert!(data.iter().any(|x| *x == 2));
+}
+
+#[test]
+fn test_from_overflow() {
+    assert_eq!(BigInt { data: Vector::new(vec![0, 1]), negative: true }, BigInt::from(i128::MIN));
 }
