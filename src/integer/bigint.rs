@@ -166,10 +166,24 @@ impl BigInt {
         }
     }
 
+    ///
+    /// Least significant digit first
+    /// 
     pub fn base_u64_repr(self) -> Vector<Vec<u64>, u64> {
         self.data
     }
 
+    ///
+    /// Least significant digit first
+    /// 
+    pub fn from_base_u64_repr<V>(data: Vector<V, u64>) -> Self 
+        where V: VectorView<u64>
+    {
+        BigInt { 
+            data: data.into_owned(), 
+            negative: false
+        }
+    }
 }
 
 impl From<i128> for BigInt {
@@ -178,7 +192,7 @@ impl From<i128> for BigInt {
         if val == i128::MIN {
             BigInt {
                 negative: true,
-                data: Vector::new(vec![0, 1])
+                data: Vector::new(vec![0, 0, 1])
             }
         } else if val < 0 {
             let val = (-val) as u128;

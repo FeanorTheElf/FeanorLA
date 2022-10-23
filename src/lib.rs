@@ -14,6 +14,7 @@
 extern crate test;
 extern crate oorandom;
 extern crate vector_map;
+extern crate libc;
 
 pub mod ring_property;
 pub mod ring;
@@ -48,3 +49,5 @@ pub mod extension_wrapper;
 
 pub mod numerics;
 pub mod combinatorics;
+
+pub mod mpir;

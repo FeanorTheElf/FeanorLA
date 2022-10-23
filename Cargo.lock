@@ -23,6 +23,7 @@ dependencies = [
 name = "feanor_la"
 version = "0.1.0"
 dependencies = [
+ "libc",
  "oorandom",
  "vector-map",
 ]
