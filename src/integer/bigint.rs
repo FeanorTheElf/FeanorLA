@@ -691,7 +691,7 @@ impl IntegerRing for BigIntRing {
             }
             unreachable!()
         } else {
-            return 0;
+            return usize::MAX;
         }
     }
 }

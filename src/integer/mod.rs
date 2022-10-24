@@ -135,14 +135,18 @@ pub trait IntegerRing: OrderedRing + EuclideanInfoRing + CanonicalIsomorphismInf
     }
 
     fn highest_dividing_power_of_two(&self, el: &El<Self>) -> usize {
-        roots::bisect(
-            &i64::RING,
-            |k| {
-                if self.is_eq(el, &self.mul_pow_2(self.euclidean_div_pow_2(el.clone(), *k as u64), *k as u64)) { -1 } else { 1 }
-            },
-            0,
-            self.abs_log2_floor(el) as i64 + 1
-        ) as usize
+        if self.is_zero(el) {
+            usize::MAX
+        } else {
+            roots::bisect(
+                &i64::RING,
+                |k| {
+                    if self.is_eq(el, &self.mul_pow_2(self.euclidean_div_pow_2(el.clone(), *k as u64), *k as u64)) { -1 } else { 1 }
+                },
+                0,
+                self.abs_log2_floor(el) as i64 + 1
+            ) as usize
+        }
     }
 }
 

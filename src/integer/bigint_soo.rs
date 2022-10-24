@@ -566,6 +566,7 @@ impl IntegerRing for BigIntSOORing {
 
     fn highest_dividing_power_of_two(&self, el: &El<Self>) -> usize {
         match el {
+            BigIntSOO::SOO(el) if *el == 0 => usize::MAX,
             BigIntSOO::SOO(el) => el.trailing_zeros() as usize,
             BigIntSOO::BigInt(el) => BigInt::RING.highest_dividing_power_of_two(el)
         }
@@ -651,4 +652,13 @@ fn test_euclidean_div_pow2() {
     assert!(BigIntSOO::RING.is_eq(&BigIntSOO::SOO(3), &BigIntSOO::RING.euclidean_div_pow_2(BigIntSOO::SOO(3 << 64), 64)));
     assert!(BigIntSOO::RING.is_eq(&BigIntSOO::SOO(3), &BigIntSOO::RING.euclidean_div_pow_2(BigIntSOO::SOO((3 << 64) + 3489372), 64)));
     assert!(BigIntSOO::RING.is_eq(&BigIntSOO::SOO(0), &BigIntSOO::RING.euclidean_div_pow_2(BigIntSOO::SOO(3 << 64), 128)));
+}
+
+#[test]
+fn test_highest_dividing_power_of_two() {
+    assert_eq!(usize::MAX, BigIntSOO::RING.highest_dividing_power_of_two(&BigIntSOO::RING.from_z(0)));
+    assert_eq!(0, BigIntSOO::RING.highest_dividing_power_of_two(&BigIntSOO::RING.from_z(-1)));
+    assert_eq!(0, BigIntSOO::RING.highest_dividing_power_of_two(&BigIntSOO::RING.from_z(1)));
+    assert_eq!(128, BigIntSOO::RING.highest_dividing_power_of_two(&BigIntSOO::RING.mul_pow_2(BigIntSOO::RING.from_z(-1), 128)));
+    assert_eq!(128, BigIntSOO::RING.highest_dividing_power_of_two(&BigIntSOO::RING.mul_pow_2(BigIntSOO::RING.from_z(1), 128)));
 }

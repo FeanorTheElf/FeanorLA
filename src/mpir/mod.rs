@@ -205,9 +205,7 @@ impl RingBase for MPZRing {
     }
 
     fn is_eq(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
-        unsafe {
-            mpz_bindings::__gmpz_cmp(&lhs.integer as mpz_bindings::mpz_srcptr, &rhs.integer as mpz_bindings::mpz_srcptr) == 0
-        }
+        self.cmp(lhs, rhs) == std::cmp::Ordering::Equal
     }
 
     fn unspecified_element(&self) -> Self::El {
@@ -393,6 +391,191 @@ impl CanonicalIsomorphismInfo<BigIntSOORing> for MPZRing {
     }
 }
 
+
+impl DivisibilityInfoRing for MPZRing {
+
+    fn is_divisibility_computable(&self) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn is_divisible_by(&self, lhs: &Self::El, rhs: &Self::El) -> bool {
+        self.is_zero(&self.euclidean_rem(lhs.clone(), rhs))
+    }
+
+    fn quotient(&self, lhs: &Self::El, rhs: &Self::El) -> Option<Self::El> {
+        let (q, r) = self.euclidean_div_rem(lhs.clone(), rhs);
+        if self.is_zero(&r) {
+            return Some(q);
+        } else {
+            return None;
+        }
+    }
+
+    fn is_unit(&self, el: &Self::El) -> bool {
+        self.is_one(el) || self.is_neg_one(el)
+    }
+}
+
+impl OrderedRing for MPZRing {
+
+    fn cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering {
+        unsafe {
+            let res = mpz_bindings::__gmpz_cmp(
+                &lhs.integer as mpz_bindings::mpz_srcptr,
+                &rhs.integer as mpz_bindings::mpz_srcptr
+            );
+            if res < 0 {
+                return std::cmp::Ordering::Less;
+            } else if res > 0 {
+                return std::cmp::Ordering::Greater;
+            } else {
+                return std::cmp::Ordering::Equal;
+            }
+        }
+    }
+}
+
+impl EuclideanInfoRing for MPZRing {
+    
+    fn is_euclidean(&self) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn euclidean_div_rem(&self, mut lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El) {
+        unsafe {
+            let mut quo = MPZ::new();
+            mpz_bindings::__gmpz_tdiv_qr(
+                &mut quo.integer as mpz_bindings::mpz_ptr, 
+                &mut lhs.integer as mpz_bindings::mpz_ptr, 
+                &lhs.integer as mpz_bindings::mpz_srcptr, 
+                &rhs.integer as mpz_bindings::mpz_srcptr
+            );
+            return (quo, lhs);
+        }
+    }
+
+    fn euclidean_rem(&self, lhs: Self::El, rhs: &Self::El) -> Self::El { 
+        unsafe {
+            let mut rem = MPZ::new();
+            mpz_bindings::__gmpz_tdiv_r(
+                &mut rem.integer as mpz_bindings::mpz_ptr, 
+                &lhs.integer as mpz_bindings::mpz_srcptr, 
+                &rhs.integer as mpz_bindings::mpz_srcptr
+            );
+            return rem;
+        }
+    }
+
+    fn euclidean_div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
+        unsafe {
+            let mut rem = MPZ::new();
+            mpz_bindings::__gmpz_tdiv_q(
+                &mut rem.integer as mpz_bindings::mpz_ptr, 
+                &lhs.integer as mpz_bindings::mpz_srcptr, 
+                &rhs.integer as mpz_bindings::mpz_srcptr
+            );
+            return rem;
+        }
+    }
+
+    fn euclidean_deg(&self, el: Self::El) -> StdInt {
+        StdInt::RING.wrap(self.preimage(&BigIntSOO::RING, self.abs(el)))
+    }
+}
+
+impl IntegerRing for MPZRing {
+    
+    fn to_float_approx(&self, el: &Self::El) -> f64 {
+        unsafe {
+            mpz_bindings::__gmpz_get_d(&el.integer as mpz_bindings::mpz_srcptr)
+        }
+    }
+
+    fn from_float_approx(&self, el: f64) -> Option<Self::El> {
+        unsafe {
+            let mut result = MPZ::new();
+            mpz_bindings::__gmpz_set_d(&mut result.integer as mpz_bindings::mpz_ptr, el);
+            return Some(result);
+        }
+    }
+
+    fn mul_pow_2(&self, mut el: El<Self>, power: u64) -> El<Self> {
+        unsafe {
+            mpz_bindings::__gmpz_mul_2exp(&mut el.integer as mpz_bindings::mpz_ptr, &el.integer as mpz_bindings::mpz_srcptr, power);
+            return el;
+        }
+    }
+
+    fn euclidean_div_pow_2(&self, mut el: El<Self>, power: u64) -> El<Self> {
+        unsafe {
+            mpz_bindings::__gmpz_tdiv_q_2exp(&mut el.integer as mpz_bindings::mpz_ptr, &el.integer as mpz_bindings::mpz_srcptr, power);
+            return el;
+        }
+    }
+
+    fn is_odd(&self, el: &Self::El) -> bool {
+        unimplemented!()
+    }
+
+    fn abs_log2_floor(&self, el: &El<Self>) -> u64 {
+        unsafe {
+            mpz_bindings::__gmpz_sizeinbase(&el.integer as mpz_bindings::mpz_srcptr, 2) as u64
+        }
+    }
+
+    fn abs_is_bit_set(&self, el: &El<Self>, bit: u64) -> bool {
+        unsafe {
+            if mpz_bindings::mpz_is_neg(&el.integer as mpz_bindings::mpz_srcptr) {
+                let value = mpz_bindings::__gmpz_tstbit(&el.integer as mpz_bindings::mpz_srcptr, bit) == 1;
+                let least_significant_zero = mpz_bindings::__gmpz_scan1(&el.integer as mpz_bindings::mpz_srcptr, 0);
+                if bit <= least_significant_zero {
+                    value
+                } else {
+                    !value
+                }
+            } else {
+                mpz_bindings::__gmpz_tstbit(&el.integer as mpz_bindings::mpz_srcptr, bit) == 1
+            }
+        }
+    }
+
+    fn floor_div(&self, mut a: Self::El, b: &Self::El) -> Self::El {
+        unsafe {
+            mpz_bindings::__gmpz_fdiv_q(&mut a.integer as mpz_bindings::mpz_ptr, &a.integer as mpz_bindings::mpz_srcptr, &b.integer as mpz_bindings::mpz_srcptr);
+            return a;
+        }
+    }
+
+    fn abs_cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering {
+        unsafe {
+            let res = mpz_bindings::__gmpz_cmpabs(&lhs.integer as mpz_bindings::mpz_srcptr, &rhs.integer as mpz_bindings::mpz_srcptr);
+            if res < 0 {
+                return std::cmp::Ordering::Less;
+            } else if res > 0 {
+                return std::cmp::Ordering::Greater;
+            } else {
+                return std::cmp::Ordering::Equal;
+            }
+        }
+    }
+
+    fn root_floor(&self, el: &Self::El, n: u64) -> Self::El {
+        assert!(n > 0);
+        unsafe {
+            assert!(!mpz_bindings::mpz_is_neg(&el.integer as mpz_bindings::mpz_srcptr));
+            let mut result = MPZ::new();
+            mpz_bindings::__gmpz_nthroot(&mut result.integer as mpz_bindings::mpz_ptr, &el.integer as mpz_bindings::mpz_srcptr, n);
+            return result;
+        }
+    }
+
+    fn highest_dividing_power_of_two(&self, el: &El<Self>) -> usize {
+        unsafe {
+            mpz_bindings::__gmpz_scan1(&el.integer as mpz_bindings::mpz_srcptr, 0) as usize
+        }
+    }
+}
+
 #[test]
 fn test_mpz_to_stdint() {
     // testing for i64 value
@@ -435,4 +618,38 @@ fn test_mpz_to_stdint() {
     let b = MPZRing::RING.add(b1, b2);
     let a = a1 + a2;
     assert_eq!(a, mpz_to_stdint(&b));
+}
+
+#[test]
+fn test_abs_is_bit_set() {
+    let a = MPZRing::RING.from_z(1 << 15);
+    assert_eq!(true, MPZRing::RING.abs_is_bit_set(&a, 15));
+    assert_eq!(false, MPZRing::RING.abs_is_bit_set(&a, 16));
+    assert_eq!(false, MPZRing::RING.abs_is_bit_set(&a, 14));
+
+    let a = MPZRing::RING.from_z(-7);
+    assert_eq!(true, MPZRing::RING.abs_is_bit_set(&a, 0));
+    assert_eq!(true, MPZRing::RING.abs_is_bit_set(&a, 1));
+    assert_eq!(true, MPZRing::RING.abs_is_bit_set(&a, 2));
+    assert_eq!(false, MPZRing::RING.abs_is_bit_set(&a, 3));
+
+    let a = MPZRing::RING.from_z(-1 << 15);
+    assert_eq!(true, MPZRing::RING.abs_is_bit_set(&a, 15));
+    assert_eq!(false, MPZRing::RING.abs_is_bit_set(&a, 16));
+    assert_eq!(false, MPZRing::RING.abs_is_bit_set(&a, 14));
+}
+
+#[test]
+fn test_highest_dividing_power_of_two() {
+    let a = MPZRing::RING.from_z(1);
+    assert_eq!(0, MPZRing::RING.highest_dividing_power_of_two(&a));
+
+    let a = MPZRing::RING.from_z(83489 << 15);
+    assert_eq!(15, MPZRing::RING.highest_dividing_power_of_two(&a));
+
+    let a = MPZRing::RING.from_z(-83489 << 15);
+    assert_eq!(15, MPZRing::RING.highest_dividing_power_of_two(&a));
+
+    let a = MPZRing::RING.from_z(-1);
+    assert_eq!(0, MPZRing::RING.highest_dividing_power_of_two(&a));
 }

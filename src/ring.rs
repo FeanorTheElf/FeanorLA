@@ -437,6 +437,13 @@ pub trait EuclideanInfoRing: DivisibilityInfoRing {
     ///  `lhs == quo * rhs + rem`
     /// must always hold, and furthermore, we must have
     ///  `euclidean_deg(rem) < euclidean_deg(rhs)`
+    ///
+    /// # Uniqueness
+    ///
+    /// The euclidean division does not have to be unique. In the case of integers for
+    /// example, we have that `-5 = 2 (-3) + 1` and `-5 = 1(-3) + (-2)` are both valid
+    /// euclidean division identities. An implementation is allowed to return any of
+    /// those.
     /// 
     fn euclidean_div_rem(&self, lhs: Self::El, rhs: &Self::El) -> (Self::El, Self::El);
 

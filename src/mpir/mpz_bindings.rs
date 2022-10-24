@@ -65,25 +65,30 @@ extern "C" {
     pub fn __gmpz_mul_ui(dst: mpz_ptr, fst: mpz_srcptr, snd: mpir_ui);
     pub fn __gmpz_neg(dst: mpz_ptr, fst: mpz_srcptr);
     pub fn __gmpz_set(dst: mpz_ptr, fst: mpz_srcptr);
+    pub fn __gmpz_set_d(dst: mpz_ptr, val: libc::c_double);
     pub fn __gmpz_abs(dst: mpz_ptr, fst: mpz_srcptr);
     pub fn __gmpz_tdiv_q(q: mpz_ptr, n: mpz_srcptr, d: mpz_srcptr);
     pub fn __gmpz_tdiv_r(r: mpz_ptr, n: mpz_srcptr, d: mpz_srcptr);
     pub fn __gmpz_tdiv_qr(q: mpz_ptr, r: mpz_ptr, n: mpz_srcptr, d: mpz_srcptr);
     pub fn __gmpz_set_ui(dst: mpz_ptr, val: mpir_ui);
     pub fn __gmpz_set_si(dst: mpz_ptr, val: mpir_si);
-
+    pub fn __gmpz_tdiv_q_2exp(dst: mpz_ptr, val: mpz_srcptr, pow: mpir_ui);
     /// returns the least significant bits if the value is to large
     pub fn __gmpz_get_si(val: mpz_srcptr) -> mpir_si;
     /// returns only the least significant bits; works with abs(val)
     pub fn __gmpz_get_ui(val: mpz_srcptr) -> mpir_ui;
-    pub fn __gmpz_get_d(val: mpz_ptr) -> libc::c_double;
+    pub fn __gmpz_get_d(val: mpz_srcptr) -> libc::c_double;
     pub fn __gmpz_cmp(lhs: mpz_srcptr, rhs: mpz_srcptr) -> libc::c_int;
     pub fn __gmpz_cmp_si(lhs: mpz_srcptr, rhs: mpir_si) -> libc::c_int;
     pub fn __gmpz_cmpabs(lhs: mpz_srcptr, rhs: mpz_srcptr) -> libc::c_int;
     pub fn __gmpz_sizeinbase(val: mpz_srcptr, base: libc::c_int) -> libc::size_t;
-
+    pub fn __gmpz_tstbit(val: mpz_srcptr, bit_index: mpir_ui) -> libc::c_int;
+    pub fn __gmpz_fdiv_q(dst: mpz_ptr, lhs: mpz_srcptr, rhs: mpz_srcptr);
+    pub fn __gmpz_nthroot(dst: mpz_ptr, val: mpz_srcptr, n: mpir_ui);
     pub fn __gmpz_export(dst: *mut libc::c_void, countp: *mut libc::size_t, order: libc::c_int, size: libc::size_t, endian: libc::c_int, nails: libc::size_t, data: mpz_srcptr) -> *mut libc::c_void;
     pub fn __gmpz_import(dst: mpz_ptr, count: libc::size_t, order: libc::c_int, size: libc::size_t, endian: libc::c_int, nails: libc::size_t, data: *const libc::c_void);
+    pub fn __gmpz_scan1(val: mpz_srcptr, starting_bit: mpir_ui) -> mpir_ui;
+    pub fn __gmpz_scan0(val: mpz_srcptr, starting_bit: mpir_ui) -> mpir_ui;
 }
 
 #[test]
