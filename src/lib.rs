@@ -50,4 +50,5 @@ pub mod extension_wrapper;
 pub mod numerics;
 pub mod combinatorics;
 
+#[cfg(feature = "mpir")]
 pub mod mpir;
