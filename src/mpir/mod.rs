@@ -3,6 +3,7 @@ use libc;
 use super::prelude::*;
 use super::la::vec::*;
 use super::integer::bigint::*;
+use super::integer::bigint_soo::*;
 
 mod mpz_bindings;
 
@@ -322,7 +323,74 @@ impl RingBase for MPZRing {
         let x = mpz_to_stdint(el);
         StdInt::RING.format(&x, f, in_prod)
     }
+}
 
+impl CanonicalEmbeddingInfo<MPZRing> for MPZRing {
+
+    fn has_embedding(&self, _from: &MPZRing) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embed(&self, _from: &MPZRing, el: MPZ) -> MPZ {
+        el
+    }
+}
+
+impl CanonicalIsomorphismInfo<MPZRing> for MPZRing {
+
+    fn has_isomorphism(&self, _from: &MPZRing) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn preimage(&self, _from: &MPZRing, el: MPZ) -> MPZ {
+        el
+    }
+}
+
+impl CanonicalEmbeddingInfo<StaticRing<i64>> for MPZRing {
+
+    fn has_embedding(&self, _from: &StaticRing<i64>) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embed(&self, _from: &StaticRing<i64>, el: i64) -> MPZ {
+        MPZRing::RING.from_z(el)
+    }
+}
+
+impl CanonicalIsomorphismInfo<StaticRing<i64>> for MPZRing {
+
+    fn has_isomorphism(&self, _from: &StaticRing<i64>) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn preimage(&self, _from: &StaticRing<i64>, el: MPZ) -> i64 {
+        mpz_to_stdint(&el).to_i64()
+    }
+}
+
+impl CanonicalEmbeddingInfo<BigIntSOORing> for MPZRing {
+
+    fn has_embedding(&self, _from: &BigIntSOORing) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embed(&self, _from: &BigIntSOORing, el: BigIntSOO) -> MPZ {
+        let mut result = MPZ::new();
+        stdint_to_mpz(&mut result, StdInt::RING.wrap(el));
+        return result;
+    }
+}
+
+impl CanonicalIsomorphismInfo<BigIntSOORing> for MPZRing {
+
+    fn has_isomorphism(&self, _from: &BigIntSOORing) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn preimage(&self, _from: &BigIntSOORing, el: MPZ) -> BigIntSOO {
+        mpz_to_stdint(&el).into_val()
+    }
 }
 
 #[test]
