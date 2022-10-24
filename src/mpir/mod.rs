@@ -4,6 +4,7 @@ use super::prelude::*;
 use super::la::vec::*;
 use super::integer::bigint::*;
 use super::integer::bigint_soo::*;
+use super::wrapper::*;
 
 mod mpz_bindings;
 
@@ -40,7 +41,7 @@ impl Clone for MPZ {
 impl Debug for MPZ {
 
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        unimplemented!()
+        MPZ::RING.format(self, f, false)
     }
 }
 
@@ -165,12 +166,26 @@ fn mpz_to_stdint(src: &MPZ) -> StdInt {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MPZRing;
+pub type MPZInt = RingElWrapper<MPZRing>;
 
-impl MPZRing {
+impl RingEl for MPZInt {
+
+    type Axioms = RingAxiomsEuclidean;
+    type RingType = WrappingRing<MPZRing>;
+    const RING: Self::RingType = WrappingRing::new(MPZ::RING);
+    const WRAPPED_RING: WrappingRing<Self::RingType> = WrappingRing::new(Self::RING);
+
+    fn characteristic() -> StdInt {
+        StdInt::zero()
+    }
+}
+
+impl MPZ {
     pub const RING: MPZRing = MPZRing;
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MPZRing;
 
 impl RingBase for MPZRing {
     
@@ -299,7 +314,7 @@ impl RingBase for MPZRing {
         true
     }
 
-    fn div(&self, lhs: Self::El, rhs: &Self::El) -> Self::El {
+    fn div(&self, _lhs: Self::El, _rhs: &Self::El) -> Self::El {
         panic!("Not a field")
     }
 
@@ -345,6 +360,13 @@ impl CanonicalIsomorphismInfo<MPZRing> for MPZRing {
     }
 }
 
+impl SingletonRing for MPZRing {
+
+    fn singleton() -> Self {
+        MPZ::RING
+    }
+}
+
 impl CanonicalEmbeddingInfo<StaticRing<i64>> for MPZRing {
 
     fn has_embedding(&self, _from: &StaticRing<i64>) -> RingPropValue {
@@ -352,7 +374,7 @@ impl CanonicalEmbeddingInfo<StaticRing<i64>> for MPZRing {
     }
 
     fn embed(&self, _from: &StaticRing<i64>, el: i64) -> MPZ {
-        MPZRing::RING.from_z(el)
+        MPZ::RING.from_z(el)
     }
 }
 
@@ -514,7 +536,9 @@ impl IntegerRing for MPZRing {
     }
 
     fn is_odd(&self, el: &Self::El) -> bool {
-        unimplemented!()
+        unsafe {
+            mpz_bindings::__gmpz_get_ui(&el.integer as mpz_bindings::mpz_srcptr) % 2 == 1
+        }
     }
 
     fn abs_log2_floor(&self, el: &El<Self>) -> u64 {
@@ -615,41 +639,41 @@ fn test_mpz_to_stdint() {
     let mut b2 = MPZ::new();
     stdint_to_mpz(&mut b1, a1.clone());
     stdint_to_mpz(&mut b2, a2.clone());
-    let b = MPZRing::RING.add(b1, b2);
+    let b = MPZ::RING.add(b1, b2);
     let a = a1 + a2;
     assert_eq!(a, mpz_to_stdint(&b));
 }
 
 #[test]
 fn test_abs_is_bit_set() {
-    let a = MPZRing::RING.from_z(1 << 15);
-    assert_eq!(true, MPZRing::RING.abs_is_bit_set(&a, 15));
-    assert_eq!(false, MPZRing::RING.abs_is_bit_set(&a, 16));
-    assert_eq!(false, MPZRing::RING.abs_is_bit_set(&a, 14));
+    let a = MPZ::RING.from_z(1 << 15);
+    assert_eq!(true, MPZ::RING.abs_is_bit_set(&a, 15));
+    assert_eq!(false, MPZ::RING.abs_is_bit_set(&a, 16));
+    assert_eq!(false, MPZ::RING.abs_is_bit_set(&a, 14));
 
-    let a = MPZRing::RING.from_z(-7);
-    assert_eq!(true, MPZRing::RING.abs_is_bit_set(&a, 0));
-    assert_eq!(true, MPZRing::RING.abs_is_bit_set(&a, 1));
-    assert_eq!(true, MPZRing::RING.abs_is_bit_set(&a, 2));
-    assert_eq!(false, MPZRing::RING.abs_is_bit_set(&a, 3));
+    let a = MPZ::RING.from_z(-7);
+    assert_eq!(true, MPZ::RING.abs_is_bit_set(&a, 0));
+    assert_eq!(true, MPZ::RING.abs_is_bit_set(&a, 1));
+    assert_eq!(true, MPZ::RING.abs_is_bit_set(&a, 2));
+    assert_eq!(false, MPZ::RING.abs_is_bit_set(&a, 3));
 
-    let a = MPZRing::RING.from_z(-1 << 15);
-    assert_eq!(true, MPZRing::RING.abs_is_bit_set(&a, 15));
-    assert_eq!(false, MPZRing::RING.abs_is_bit_set(&a, 16));
-    assert_eq!(false, MPZRing::RING.abs_is_bit_set(&a, 14));
+    let a = MPZ::RING.from_z(-1 << 15);
+    assert_eq!(true, MPZ::RING.abs_is_bit_set(&a, 15));
+    assert_eq!(false, MPZ::RING.abs_is_bit_set(&a, 16));
+    assert_eq!(false, MPZ::RING.abs_is_bit_set(&a, 14));
 }
 
 #[test]
 fn test_highest_dividing_power_of_two() {
-    let a = MPZRing::RING.from_z(1);
-    assert_eq!(0, MPZRing::RING.highest_dividing_power_of_two(&a));
+    let a = MPZ::RING.from_z(1);
+    assert_eq!(0, MPZ::RING.highest_dividing_power_of_two(&a));
 
-    let a = MPZRing::RING.from_z(83489 << 15);
-    assert_eq!(15, MPZRing::RING.highest_dividing_power_of_two(&a));
+    let a = MPZ::RING.from_z(83489 << 15);
+    assert_eq!(15, MPZ::RING.highest_dividing_power_of_two(&a));
 
-    let a = MPZRing::RING.from_z(-83489 << 15);
-    assert_eq!(15, MPZRing::RING.highest_dividing_power_of_two(&a));
+    let a = MPZ::RING.from_z(-83489 << 15);
+    assert_eq!(15, MPZ::RING.highest_dividing_power_of_two(&a));
 
-    let a = MPZRing::RING.from_z(-1);
-    assert_eq!(0, MPZRing::RING.highest_dividing_power_of_two(&a));
+    let a = MPZ::RING.from_z(-1);
+    assert_eq!(0, MPZ::RING.highest_dividing_power_of_two(&a));
 }
