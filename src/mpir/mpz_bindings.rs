@@ -92,7 +92,7 @@ pub fn test___gmpz_mul() {
         let mut integer = UNINIT_MPZ;
         __gmpz_init(&mut integer as mpz_ptr);
         __gmpz_set_si(&mut integer as mpz_ptr, 14);
-        __gmpz_add(&mut integer as mpz_ptr, &integer as mpz_srcptr, &integer as mpz_srcptr);
+        __gmpz_mul(&mut integer as mpz_ptr, &integer as mpz_srcptr, &integer as mpz_srcptr);
         let result = __gmpz_get_si(&integer as mpz_srcptr);
         assert_eq!(14 * 14, result);
         __gmpz_clear(&mut integer as mpz_ptr);

@@ -114,6 +114,7 @@ fn mpz_to_stdint(src: &MPZ) -> StdInt {
         } else {
             let len = (size + u64::BITS as usize - 1) / u64::BITS as usize;
             let mut data = Vec::new();
+            data.resize(len, 0u64);
 
             unimplemented!()
         }
