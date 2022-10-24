@@ -677,3 +677,25 @@ fn test_highest_dividing_power_of_two() {
     let a = MPZ::RING.from_z(-1);
     assert_eq!(0, MPZ::RING.highest_dividing_power_of_two(&a));
 }
+
+#[bench]
+fn bench_mul(bencher: &mut test::Bencher) {
+    let x = MPZ::RING.from_z_gen(BigInt::from_str_radix("2382385687561872365981723456981723456987134659834659813491964132897159283746918732563498628754", 10).unwrap(), &BigInt::RING);
+    let y = MPZ::RING.from_z_gen(BigInt::from_str_radix("48937502893645789234569182735646324895723409587234", 10).unwrap(), &BigInt::RING);
+    let z = MPZ::RING.from_z_gen(BigInt::from_str_radix("116588006478839442056346504147013274749794691549803163727888681858469844569693215953808606899770104590589390919543097259495176008551856143726436", 10).unwrap(), &BigInt::RING);
+    bencher.iter(|| {
+        let p = MPZ::RING.mul_ref(&x, &y);
+        assert!(MPZ::RING.is_eq(&z, &p));
+    })
+}
+
+#[bench]
+fn bench_div(bencher: &mut test::Bencher) {
+    let x = MPZ::RING.from_z_gen(BigInt::from_str_radix("2382385687561872365981723456981723456987134659834659813491964132897159283746918732563498628754", 10).unwrap(), &BigInt::RING);
+    let y = MPZ::RING.from_z_gen(BigInt::from_str_radix("48937502893645789234569182735646324895723409587234", 10).unwrap(), &BigInt::RING);
+    let z = MPZ::RING.from_z_gen(BigInt::from_str_radix("48682207850683149082203680872586784064678018", 10).unwrap(), &BigInt::RING);
+    bencher.iter(|| {
+        let q = MPZ::RING.euclidean_div(x.clone(), &y);
+        assert!(MPZ::RING.is_eq(&z, &q));
+    })
+}
