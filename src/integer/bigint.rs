@@ -144,9 +144,9 @@ impl BigInt {
     /// `i128::MIN` (note that `|i128::MIN| = i128::MAX + 1`).
     /// 
     /// This decision was made, as the symmetry seems more useful in applications, in 
-    /// particular, we can now always compute `-x.to_int().unwrap()`.
+    /// particular, we can now always compute `-x.to_i128().unwrap()`.
     /// 
-    pub fn to_int(&self) -> Result<i128, ()> {
+    pub fn to_i128(&self) -> Result<i128, ()> {
         if let Some(d) = self.highest_set_block() {
             let result = if d == 1 && self.data[1] <= i64::MAX as u64 && self.negative {
                 -(((self.data[1] as i128) << BigInt::BLOCK_BITS) | (self.data[0] as i128))
@@ -714,7 +714,7 @@ impl CanonicalIsomorphismInfo<StaticRing<i64>> for BigIntRing {
     }
 
     fn preimage(&self, _from: &StaticRing<i64>, el: BigInt) -> i64 {
-        el.to_int().expect("Overflow when embedding BigInt into i128") as i64
+        el.to_i128().expect("Overflow when embedding BigInt into i128") as i64
     }
 }
 
@@ -763,18 +763,18 @@ fn test_from() {
 }
 
 #[test]
-fn test_to_int() {
-    assert_eq!(0, BigInt { negative: false, data: Vector::new(vec![]) }.to_int().unwrap());
-    assert_eq!(2138479, BigInt { negative: false, data: Vector::new(vec![2138479]) }.to_int().unwrap());
-    assert_eq!(-2138479, BigInt { negative: true, data: Vector::new(vec![2138479]) }.to_int().unwrap());
-    assert_eq!(0x138691a350bf12fca, BigInt { negative: false, data: Vector::new(vec![0x38691a350bf12fca, 0x1]) }.to_int().unwrap());
-    assert_eq!(Err(()), BigInt { negative: false, data: Vector::new(vec![0x38691a350bf12fca, 0x38691a350bf12fca, 0x1]) }.to_int());
-    assert_eq!(i128::MAX, BigInt { negative: false, data: Vector::new(vec![(i128::MAX & ((1 << 64) - 1)) as u64, (i128::MAX >> 64) as u64]) }.to_int().unwrap());
-    assert_eq!(i128::MIN + 1, BigInt { negative: true, data: Vector::new(vec![(i128::MAX & ((1 << 64) - 1)) as u64, (i128::MAX >> 64) as u64]) }.to_int().unwrap());
+fn test_to_i128() {
+    assert_eq!(0, BigInt { negative: false, data: Vector::new(vec![]) }.to_i128().unwrap());
+    assert_eq!(2138479, BigInt { negative: false, data: Vector::new(vec![2138479]) }.to_i128().unwrap());
+    assert_eq!(-2138479, BigInt { negative: true, data: Vector::new(vec![2138479]) }.to_i128().unwrap());
+    assert_eq!(0x138691a350bf12fca, BigInt { negative: false, data: Vector::new(vec![0x38691a350bf12fca, 0x1]) }.to_i128().unwrap());
+    assert_eq!(Err(()), BigInt { negative: false, data: Vector::new(vec![0x38691a350bf12fca, 0x38691a350bf12fca, 0x1]) }.to_i128());
+    assert_eq!(i128::MAX, BigInt { negative: false, data: Vector::new(vec![(i128::MAX & ((1 << 64) - 1)) as u64, (i128::MAX >> 64) as u64]) }.to_i128().unwrap());
+    assert_eq!(i128::MIN + 1, BigInt { negative: true, data: Vector::new(vec![(i128::MAX & ((1 << 64) - 1)) as u64, (i128::MAX >> 64) as u64]) }.to_i128().unwrap());
     // this is the possibly surprising, exceptional case
-    assert_eq!(Err(()), BigInt { negative: true, data: Vector::new(vec![0, (i128::MAX >> 64) as u64 + 1]) }.to_int());
-    assert_eq!(i64::MAX as i128 + 1, BigInt { negative: false, data: Vector::new(vec![i64::MAX as u64 + 1]) }.to_int().unwrap());
-    assert_eq!(u64::MAX as i128, BigInt { negative: false, data: Vector::new(vec![u64::MAX]) }.to_int().unwrap());
+    assert_eq!(Err(()), BigInt { negative: true, data: Vector::new(vec![0, (i128::MAX >> 64) as u64 + 1]) }.to_i128());
+    assert_eq!(i64::MAX as i128 + 1, BigInt { negative: false, data: Vector::new(vec![i64::MAX as u64 + 1]) }.to_i128().unwrap());
+    assert_eq!(u64::MAX as i128, BigInt { negative: false, data: Vector::new(vec![u64::MAX]) }.to_i128().unwrap());
 }
 
 #[test]

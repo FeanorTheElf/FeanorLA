@@ -1,6 +1,8 @@
 use std::fmt::{Debug};
 use libc;
 use super::prelude::*;
+use super::la::vec::*;
+use super::integer::bigint::*;
 
 mod mpz_bindings;
 
@@ -58,6 +60,10 @@ impl Drop for MPZ {
 /// 
 fn stdint_to_mpz(dst: &mut MPZ, src: StdInt) {
     unsafe {
+        // for performance reasons, we distinguish the three cases that the value
+        //  - fits into i64
+        //  - fits into i128
+        //  - needs BigInt
         match src.val().to_i128() {
             Ok(x) => {
                 if x.abs() <= i64::MAX as i128 {
@@ -68,9 +74,13 @@ fn stdint_to_mpz(dst: &mut MPZ, src: StdInt) {
                     mpz_bindings::__gmpz_set_ui(&mut dst.integer as mpz_bindings::mpz_ptr, upper);
                     mpz_bindings::__gmpz_mul_2exp(&mut dst.integer as mpz_bindings::mpz_ptr, &dst.integer as mpz_bindings::mpz_srcptr, u64::BITS as u64);
                     mpz_bindings::__gmpz_add_ui(&mut dst.integer as mpz_bindings::mpz_ptr, &dst.integer as mpz_bindings::mpz_srcptr, lower);
+                    if x < 0 {
+                        mpz_bindings::__gmpz_neg(&mut dst.integer as mpz_bindings::mpz_ptr, &dst.integer as mpz_bindings::mpz_srcptr);
+                    }
                 }
             },
             Err(()) => {
+                let is_neg = src < 0;
                 let data: Vec<mpz_bindings::mpir_ui> = src.into_val().to_bigint().base_u64_repr().into_owned().raw_data();
                 // should never happen (we would be in the first case), however, with c it pays off to be paranoid
                 assert!(data.len() > 0);
@@ -82,7 +92,10 @@ fn stdint_to_mpz(dst: &mut MPZ, src: StdInt) {
                     0, 
                     0, 
                     (data.as_ptr() as *const mpz_bindings::mpir_ui) as *const libc::c_void
-                )
+                );
+                if is_neg {
+                    mpz_bindings::__gmpz_neg(&mut dst.integer as mpz_bindings::mpz_ptr, &dst.integer as mpz_bindings::mpz_srcptr);
+                }
             }
         }
     }
@@ -90,6 +103,10 @@ fn stdint_to_mpz(dst: &mut MPZ, src: StdInt) {
 
 fn mpz_to_stdint(src: &MPZ) -> StdInt {
     unsafe {
+        // for performance reasons, we distinguish the three cases that the value
+        //  - fits into i64
+        //  - fits into i128
+        //  - needs BigInt
         let size = mpz_bindings::__gmpz_sizeinbase(&src.integer as mpz_bindings::mpz_srcptr, 2);
         if size < i64::BITS as usize - 1 {
             return StdInt::from(mpz_bindings::__gmpz_get_si(&src.integer as mpz_bindings::mpz_srcptr));
@@ -97,7 +114,7 @@ fn mpz_to_stdint(src: &MPZ) -> StdInt {
             let mut data = [0u64, 0u64];
             let mut size = 0;
             mpz_bindings::__gmpz_export(
-                (&mut data as *mut mpz_bindings::mpir_ui) as *mut libc::c_void, 
+                (data.as_mut_ptr() as *mut mpz_bindings::mpir_ui) as *mut libc::c_void, 
                 &mut size, 
                 -1, 
                 (u64::BITS / 8) as libc::size_t, 
@@ -105,24 +122,54 @@ fn mpz_to_stdint(src: &MPZ) -> StdInt {
                 0,
                 &src.integer as mpz_bindings::mpz_srcptr
             );
-            let mut abs_result = data[0] as i128 | ((data[1] as i128) << u64::BITS as i128);
-            let sign = mpz_bindings::__gmpz_sgn(&src.integer as mpz_bindings::mpz_srcptr);
-            return StdInt::RING.from_z_gen(
-                abs_result * sign as i128,
-                &i128::RING
-            );
+            assert_eq!(2, size);
+            let abs_result = data[0] as i128 | ((data[1] as i128) << u64::BITS as i128);
+            let is_neg: bool = mpz_bindings::mpz_is_neg(&src.integer as mpz_bindings::mpz_srcptr);
+            if is_neg {
+                return StdInt::RING.from_z_gen(
+                    -abs_result,
+                    &i128::RING
+                );
+            } else {
+                return StdInt::RING.from_z_gen(
+                    abs_result,
+                    &i128::RING
+                );
+            }
         } else {
             let len = (size + u64::BITS as usize - 1) / u64::BITS as usize;
             let mut data = Vec::new();
             data.resize(len, 0u64);
+            let mut size = 0;
 
-            unimplemented!()
+            mpz_bindings::__gmpz_export(
+                (data.as_mut_ptr() as *mut mpz_bindings::mpir_ui) as *mut libc::c_void,
+                &mut size,
+                -1,
+                (u64::BITS / 8) as libc::size_t,
+                0,
+                0,
+                &src.integer as mpz_bindings::mpz_srcptr
+            );
+            assert_eq!(len, size);
+            let mut result = BigInt::from_base_u64_repr(Vector::new(data));
+            if mpz_bindings::mpz_is_neg(&src.integer as mpz_bindings::mpz_srcptr) {
+                result = BigInt::RING.neg(result);
+            }
+            return StdInt::RING.from_z_gen(
+                result,
+                &BigInt::RING
+            );
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MPZRing;
+
+impl MPZRing {
+    pub const RING: MPZRing = MPZRing;
+}
 
 impl RingBase for MPZRing {
     
@@ -220,15 +267,21 @@ impl RingBase for MPZRing {
     }
 
     fn is_zero(&self, val: &Self::El) -> bool { 
-        unimplemented!()
+        unsafe {
+            mpz_bindings::__gmpz_cmp_si(&val.integer as mpz_bindings::mpz_srcptr, 0) == 0
+        }
     }
     
     fn is_one(&self, val: &Self::El) -> bool { 
-        unimplemented!()
+        unsafe {
+            mpz_bindings::__gmpz_cmp_si(&val.integer as mpz_bindings::mpz_srcptr, 1) == 0
+        }
     }
 
     fn is_neg_one(&self, val: &Self::El) -> bool {
-        unimplemented!()
+        unsafe {
+            mpz_bindings::__gmpz_cmp_si(&val.integer as mpz_bindings::mpz_srcptr, -1) == 0
+        }
     }
 
     fn characteristic(&self) -> StdInt {
@@ -252,7 +305,9 @@ impl RingBase for MPZRing {
     }
 
     fn from_z_big(&self, x: &StdInt) -> Self::El {
-        unimplemented!()
+        let mut result = MPZ::new();
+        stdint_to_mpz(&mut result, x.clone());
+        return result;
     }
 
     fn from_z(&self, x: i64) -> Self::El {
@@ -263,9 +318,53 @@ impl RingBase for MPZRing {
         }
     }
 
-    fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, _in_prod: bool) -> std::fmt::Result {
-        unimplemented!()
+    fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
+        let x = mpz_to_stdint(el);
+        StdInt::RING.format(&x, f, in_prod)
     }
 
 }
 
+#[test]
+fn test_mpz_to_stdint() {
+    // testing for i64 value
+    let a = StdInt::from(3684);
+    let mut b = MPZ::new();
+    stdint_to_mpz(&mut b, a.clone());
+    assert_eq!(a, mpz_to_stdint(&b));
+
+    // testing for i128 value
+    let a = StdInt::from(3684).mul_pow_2(64);
+    let mut b = MPZ::new();
+    stdint_to_mpz(&mut b, a.clone());
+    assert_eq!(a, mpz_to_stdint(&b));
+    
+    // testing for negative i128 value
+    let a = StdInt::from(-3684).mul_pow_2(64);
+    let mut b = MPZ::new();
+    stdint_to_mpz(&mut b, a.clone());
+    assert_eq!(a, mpz_to_stdint(&b));
+
+    // testing for larger values
+    let a = StdInt::from(3684).mul_pow_2(128);
+    let mut b = MPZ::new();
+    stdint_to_mpz(&mut b, a.clone());
+    assert_eq!(a, mpz_to_stdint(&b));
+
+    // testing for the special case i128::MIN
+    let a = StdInt::RING.from_z_gen(i128::MIN, &i128::RING);
+    let mut b = MPZ::new();
+    stdint_to_mpz(&mut b, a.clone());
+    assert_eq!(a, mpz_to_stdint(&b));
+
+    // testing for compatibility
+    let a1 = StdInt::from(384).mul_pow_2(64);
+    let a2 = StdInt::from(-1).mul_pow_2(128);
+    let mut b1 = MPZ::new();
+    let mut b2 = MPZ::new();
+    stdint_to_mpz(&mut b1, a1.clone());
+    stdint_to_mpz(&mut b2, a2.clone());
+    let b = MPZRing::RING.add(b1, b2);
+    let a = a1 + a2;
+    assert_eq!(a, mpz_to_stdint(&b));
+}

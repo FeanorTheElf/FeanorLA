@@ -27,7 +27,7 @@ impl BigIntSOO {
 
     pub fn to_i128(&self) -> Result<i128, ()> {
         match self {
-            BigIntSOO::BigInt(x) => x.to_int(),
+            BigIntSOO::BigInt(x) => x.to_i128(),
             BigIntSOO::SOO(x) => Ok(*x)
         }
     }
@@ -130,7 +130,7 @@ impl BigIntSOO {
 impl From<BigInt> for BigIntSOO {
     
     fn from(x: BigInt) -> BigIntSOO {
-        let result = match x.to_int() {
+        let result = match x.to_i128() {
             Ok(result) => {
                 BigIntSOO::from(result)
             },
@@ -575,10 +575,10 @@ impl IntegerRing for BigIntSOORing {
 #[test]
 fn test_bigint_assumption() {
     let max = BigInt::from(i128::MAX);
-    assert_eq!(Ok(i128::MAX), max.to_int());
-    assert_eq!(Ok(-i128::MAX), BigInt::RING.neg(max.clone()).to_int());
-    assert_eq!(Err(()), BigInt::RING.add_ref(BigInt::RING.one(), &max).to_int());
-    assert_eq!(Err(()), BigInt::RING.neg(BigInt::RING.add(max, BigInt::RING.one())).to_int());
+    assert_eq!(Ok(i128::MAX), max.to_i128());
+    assert_eq!(Ok(-i128::MAX), BigInt::RING.neg(max.clone()).to_i128());
+    assert_eq!(Err(()), BigInt::RING.add_ref(BigInt::RING.one(), &max).to_i128());
+    assert_eq!(Err(()), BigInt::RING.neg(BigInt::RING.add(max, BigInt::RING.one())).to_i128());
 }
 
 #[test]

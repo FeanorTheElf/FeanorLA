@@ -29,6 +29,19 @@ pub type mpir_ui = libc::c_ulonglong;
 #[cfg(not(windows))]
 pub type mpir_ui = libc::c_ulong;
 
+///
+/// Returns true if the value is negative, and false if it is positive.
+/// For 0, the result is arbitrary.
+///
+pub unsafe fn mpz_is_neg(val: mpz_srcptr) -> bool {
+    // sadly, the function mpz_sgn() is only a macro in mpir (with more or
+    // less this implementation), and so we have to break into the internals
+    // of mpir here.
+    // In particular, they indicate a negative value by having size to be
+    // negative (its absolute value is still the "real" size)
+    (*val)._mp_size < 0
+}
+
 #[link(name = "mpir", kind = "static")]
 extern "C" {
     //
@@ -65,9 +78,9 @@ extern "C" {
     pub fn __gmpz_get_ui(val: mpz_srcptr) -> mpir_ui;
     pub fn __gmpz_get_d(val: mpz_ptr) -> libc::c_double;
     pub fn __gmpz_cmp(lhs: mpz_srcptr, rhs: mpz_srcptr) -> libc::c_int;
+    pub fn __gmpz_cmp_si(lhs: mpz_srcptr, rhs: mpir_si) -> libc::c_int;
     pub fn __gmpz_cmpabs(lhs: mpz_srcptr, rhs: mpz_srcptr) -> libc::c_int;
     pub fn __gmpz_sizeinbase(val: mpz_srcptr, base: libc::c_int) -> libc::size_t;
-    pub fn __gmpz_sgn(val: mpz_srcptr) -> libc::c_int;
 
     pub fn __gmpz_export(dst: *mut libc::c_void, countp: *mut libc::size_t, order: libc::c_int, size: libc::size_t, endian: libc::c_int, nails: libc::size_t, data: mpz_srcptr) -> *mut libc::c_void;
     pub fn __gmpz_import(dst: mpz_ptr, count: libc::size_t, order: libc::c_int, size: libc::size_t, endian: libc::c_int, nails: libc::size_t, data: *const libc::c_void);

@@ -745,7 +745,7 @@ impl UfdInfoRing for StaticRing<i64> {
     }
 
     fn calc_factor(&self, el: &Self::El) -> Option<Self::El> {
-        BigInt::RING.calc_factor(&BigInt::from(*el as i128)).map(|x| x.to_int().unwrap() as i64)
+        BigInt::RING.calc_factor(&BigInt::from(*el as i128)).map(|x| x.to_i128().unwrap() as i64)
     }
 }
 
