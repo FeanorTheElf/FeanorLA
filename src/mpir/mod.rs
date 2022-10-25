@@ -184,7 +184,7 @@ impl MPZ {
     pub const RING: MPZRing = MPZRing;
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MPZRing;
 
 impl RingBase for MPZRing {
