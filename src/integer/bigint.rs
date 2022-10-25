@@ -296,7 +296,6 @@ impl RingBase for BigIntRing {
     }
 
     fn from_z_gen<I: IntegerRing>(&self, x: El<I>, ring: &I) -> BigInt {
-        println!("BigIntRing::from_z_gen()");
         self.embed(&BigIntSOO::RING, BigIntSOO::RING.from_z_gen(x, ring))
     }
 

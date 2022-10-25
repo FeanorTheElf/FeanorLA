@@ -788,7 +788,6 @@ impl CanonicalIsomorphismInfo<BigIntSOORing> for StaticRing<i128> {
     }
 
     fn preimage(&self, _from: &BigIntSOORing, el: i128) -> BigIntSOO {
-        println!("StaticRing<i128>::preimage(BigIntSOO)");
         BigIntSOO::RING.embed(self, el)
     }
 }

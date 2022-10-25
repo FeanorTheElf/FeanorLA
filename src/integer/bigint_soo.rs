@@ -294,7 +294,6 @@ impl RingBase for BigIntSOORing {
     fn from_z_gen<I>(&self, x: El<I>, ring: &I) -> Self::El
         where I: IntegerRing
     {
-        println!("BigIntSOORing::from_z_gen()");
         ring.preimage(&BigIntSOO::RING, x)
     }
 
@@ -375,7 +374,6 @@ impl CanonicalEmbeddingInfo<StaticRing<i128>> for BigIntSOORing {
     }
 
     fn embed(&self, _from: &StaticRing<i128>, el: i128) -> BigIntSOO {
-        println!("BigIntSOORing::embed(i128)");
         let result = if el == i128::MIN {
             BigIntSOO::BigInt(BigInt::RING.embed(&i128::RING, el))
         } else {
@@ -392,7 +390,6 @@ impl CanonicalIsomorphismInfo<StaticRing<i128>> for BigIntSOORing {
     }
 
     fn preimage(&self, _from: &StaticRing<i128>, el: BigIntSOO) -> i128 {
-        println!("BigIntSOORing::preimage(i128)");
         el.to_i128().expect("Overflow when embedding BigInt into i128")
     }
 }
@@ -424,7 +421,6 @@ impl CanonicalIsomorphismInfo<BigIntRing> for BigIntSOORing {
     }
 
     fn preimage(&self, _from: &BigIntRing, el: BigIntSOO) -> BigInt {
-        println!("BigIntSOORing::preimage(BigInt)");
         match el {
             BigIntSOO::BigInt(x) => x,
             BigIntSOO::SOO(x) => BigInt::RING.embed(&i128::RING, x)
@@ -435,7 +431,6 @@ impl CanonicalIsomorphismInfo<BigIntRing> for BigIntSOORing {
 impl OrderedRing for BigIntSOORing {
 
     fn cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering {
-        println!("comparing {:?}, {:?}", lhs, rhs);
         match (lhs, rhs) {
             (BigIntSOO::BigInt(lhs), BigIntSOO::BigInt(rhs)) => BigInt::RING.cmp(lhs, rhs),
             (BigIntSOO::SOO(lhs), BigIntSOO::SOO(rhs)) => lhs.cmp(rhs),
