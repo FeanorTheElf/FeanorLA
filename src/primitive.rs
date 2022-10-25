@@ -1,7 +1,6 @@
 use crate::integer::bigint_soo::{BigIntSOORing, BigIntSOO};
 use super::ring::*;
 use super::integer::*;
-use super::integer::bigint::*;
 use super::embedding::*;
 use super::ring_property::*;
 use super::wrapper::*;
@@ -408,7 +407,7 @@ impl EuclideanEl for i128 {
     }
 
     fn euclidean_deg(&self) -> StdInt {
-        return WrappingRing::<BigIntSOORing>::singleton().wrap(BigIntSOO::from(self.abs()));
+        return WrappingRing::<BigIntSOORing>::singleton().wrap(BigIntSOO::RING.from_z_gen(self.abs(), &i128::RING));
     }
 }
 
@@ -730,7 +729,7 @@ impl CanonicalIsomorphismInfo<BigIntSOORing> for StaticRing<i64> {
     }
 
     fn preimage(&self, _from: &BigIntSOORing, el: i64) -> BigIntSOO {
-        BigIntSOO::from(el as i128)
+        BigIntSOO::RING.from_z(el)
     }
 }
 
@@ -741,11 +740,11 @@ impl UfdInfoRing for StaticRing<i64> {
     }
     
     fn is_prime(&self, el: &Self::El) -> bool {
-        BigInt::RING.is_prime(&BigInt::from(*el as i128))
+        BigIntSOO::RING.is_prime(&BigIntSOO::RING.from_z(*el as i64))
     }
 
     fn calc_factor(&self, el: &Self::El) -> Option<Self::El> {
-        BigInt::RING.calc_factor(&BigInt::from(*el as i128)).map(|x| x.to_i128().unwrap() as i64)
+        BigIntSOO::RING.calc_factor(&BigIntSOO::RING.from_z(*el as i64)).map(|x| BigIntSOO::RING.preimage(&i128::RING, x) as i64)
     }
 }
 
@@ -789,6 +788,7 @@ impl CanonicalIsomorphismInfo<BigIntSOORing> for StaticRing<i128> {
     }
 
     fn preimage(&self, _from: &BigIntSOORing, el: i128) -> BigIntSOO {
-        BigIntSOO::from(el)
+        println!("StaticRing<i128>::preimage(BigIntSOO)");
+        BigIntSOO::RING.embed(self, el)
     }
 }

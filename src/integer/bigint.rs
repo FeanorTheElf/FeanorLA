@@ -122,8 +122,9 @@ impl BigInt {
     /// # Example
     /// 
     /// ```
+    /// # use feanor_la::prelude::*;
     /// # use feanor_la::integer::bigint::BigInt;
-    /// assert_eq!(BigInt::from(-1), BigInt::from(-1).floor_div_small(2));
+    /// assert_eq!(BigInt::RING.from_z(-1), BigInt::RING.from_z(-1).floor_div_small(2));
     /// ```
     /// 
     pub fn floor_div_small(self, rhs: i64) -> BigInt {
@@ -182,30 +183,6 @@ impl BigInt {
         BigInt { 
             data: data.into_owned(), 
             negative: false
-        }
-    }
-}
-
-impl From<i128> for BigInt {
-
-    fn from(val: i128) -> BigInt {
-        if val == i128::MIN {
-            BigInt {
-                negative: true,
-                data: Vector::new(vec![0, 1 << 63])
-            }
-        } else if val < 0 {
-            let val = (-val) as u128;
-            BigInt {
-                negative: true,
-                data: Vector::new(vec![(val & ((1 << BigInt::BLOCK_BITS) - 1)) as u64, (val >> BigInt::BLOCK_BITS) as u64])
-            }
-        } else {
-            let val = val as u128;
-            BigInt {
-                negative: false,
-                data: Vector::new(vec![(val & ((1 << BigInt::BLOCK_BITS) - 1)) as u64, (val >> BigInt::BLOCK_BITS) as u64])
-            }
         }
     }
 }
@@ -311,11 +288,16 @@ impl RingBase for BigIntRing {
     }
 
     fn from_z(&self, x: i64) -> BigInt {
-        BigInt::from(x as i128)
+        self.embed(&i64::RING, x)
     }
 
     fn from_z_big(&self, x: &StdInt) -> BigInt {
-        x.clone().into_val().to_bigint()
+        self.embed(&BigIntSOO::RING, BigIntSOO::RING.from_z_big(x))
+    }
+
+    fn from_z_gen<I: IntegerRing>(&self, x: El<I>, ring: &I) -> BigInt {
+        println!("BigIntRing::from_z_gen()");
+        self.embed(&BigIntSOO::RING, BigIntSOO::RING.from_z_gen(x, ring))
     }
 
     fn format(&self, el: &BigInt, f: &mut std::fmt::Formatter, _in_prod: bool) -> std::fmt::Result {
@@ -401,7 +383,7 @@ impl EuclideanInfoRing for BigIntRing {
     }
 
     fn euclidean_deg(&self, el: Self::El) -> StdInt {
-        StdInt::RING.wrap(BigIntSOO::from(el)).abs()
+        StdInt::RING.wrap(BigIntSOO::RING.embed(self, el)).abs()
     }
 }
 
@@ -475,12 +457,14 @@ pub enum BigIntParseError {
 }
 
 impl From<std::num::ParseIntError> for BigIntParseError {
+
     fn from(e: std::num::ParseIntError) -> BigIntParseError {
         BigIntParseError::ParseIntError(e)
     }
 }
 
 impl From<std::str::Utf8Error> for BigIntParseError {
+
     fn from(e: std::str::Utf8Error) -> BigIntParseError {
         BigIntParseError::Utf8Error(e)
     }
@@ -703,7 +687,10 @@ impl CanonicalEmbeddingInfo<StaticRing<i64>> for BigIntRing {
     }
 
     fn embed(&self, _from: &StaticRing<i64>, el: i64) -> BigInt {
-        BigInt::from(el as i128)
+        BigInt { 
+            data: Vector::new(vec![(el as i128).abs() as u64]), 
+            negative: el < 0 
+        }
     }
 }
 
@@ -718,6 +705,45 @@ impl CanonicalIsomorphismInfo<StaticRing<i64>> for BigIntRing {
     }
 }
 
+impl CanonicalEmbeddingInfo<StaticRing<i128>> for BigIntRing {
+
+    fn has_embedding(&self, _from: &StaticRing<i128>) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn embed(&self, _from: &StaticRing<i128>, val: i128) -> BigInt {
+        if val == i128::MIN {
+            BigInt {
+                negative: true,
+                data: Vector::new(vec![0, 1 << 63])
+            }
+        } else if val < 0 {
+            let val = (-val) as u128;
+            BigInt {
+                negative: true,
+                data: Vector::new(vec![(val & ((1 << BigInt::BLOCK_BITS) - 1)) as u64, (val >> BigInt::BLOCK_BITS) as u64])
+            }
+        } else {
+            let val = val as u128;
+            BigInt {
+                negative: false,
+                data: Vector::new(vec![(val & ((1 << BigInt::BLOCK_BITS) - 1)) as u64, (val >> BigInt::BLOCK_BITS) as u64])
+            }
+        }
+    }
+}
+
+impl CanonicalIsomorphismInfo<StaticRing<i128>> for BigIntRing {
+
+    fn has_isomorphism(&self, _from: &StaticRing<i128>) -> RingPropValue {
+        RingPropValue::True
+    }
+
+    fn preimage(&self, _from: &StaticRing<i128>, el: BigInt) -> i128 {
+        el.to_i128().expect("Overflow when embedding BigInt into i128")
+    }
+}
+
 impl CanonicalEmbeddingInfo<BigIntSOORing> for BigIntRing {
 
     fn has_embedding(&self, _from: &BigIntSOORing) -> RingPropValue {
@@ -725,7 +751,7 @@ impl CanonicalEmbeddingInfo<BigIntSOORing> for BigIntRing {
     }
 
     fn embed(&self, _from: &BigIntSOORing, el: BigIntSOO) -> BigInt {
-        el.to_bigint()
+        BigIntSOO::RING.preimage(self, el)
     }
 }
 
@@ -736,7 +762,7 @@ impl CanonicalIsomorphismInfo<BigIntSOORing> for BigIntRing {
     }
 
     fn preimage(&self, _from: &BigIntSOORing, el: BigInt) -> BigIntSOO {
-        BigIntSOO::from(el)
+        BigIntSOO::RING.embed(self, el)
     }
 }
 
@@ -756,10 +782,10 @@ fn test_print_power_2() {
 
 #[test]
 fn test_from() {
-    assert_eq!(BigInt { negative: false, data: Vector::new(vec![]) }, BigInt::from(0));
-    assert_eq!(BigInt { negative: false, data: Vector::new(vec![2138479]) }, BigInt::from(2138479));
-    assert_eq!(BigInt { negative: true, data: Vector::new(vec![2138479]) }, BigInt::from(-2138479));
-    assert_eq!(BigInt { negative: false, data: Vector::new(vec![0x38691a350bf12fca, 0x1]) }, BigInt::from(0x138691a350bf12fca));
+    assert_eq!(BigInt { negative: false, data: Vector::new(vec![]) }, BigInt::RING.from_z(0));
+    assert_eq!(BigInt { negative: false, data: Vector::new(vec![2138479]) }, BigInt::RING.from_z(2138479));
+    assert_eq!(BigInt { negative: true, data: Vector::new(vec![2138479]) }, BigInt::RING.from_z(-2138479));
+    assert_eq!(BigInt { negative: false, data: Vector::new(vec![0x38691a350bf12fca, 0x1]) }, BigInt::RING.from_z_gen(0x138691a350bf12fca, &i128::RING));
 }
 
 #[test]
@@ -936,7 +962,7 @@ fn test_eq() {
 
 #[test]
 fn test_is_zero() {
-    let zero = BigInt::from(0);
+    let zero = BigInt::RING.zero();
     let nonzero = BigInt::RING.mul_pow_2(BigInt::RING.one(), 83124);
     assert!(BigInt::RING.is_zero(&zero));
     assert!(BigInt::RING.is_zero(&BigInt::RING.neg(zero)));
@@ -953,38 +979,38 @@ fn test_cmp_small() {
 fn test_factor() {
     let ring = WrappingRing::new(&BigInt::RING);
     let mut expected = VecMap::new();
-    expected.insert(ring.wrap(BigInt::from(7)), 2);
-    expected.insert(ring.wrap(BigInt::from(2)), 1);
-    assert_eq!(expected, BigInt::RING.factor(BigInt::from(98)));
+    expected.insert(ring.wrap(BigInt::RING.from_z(7)), 2);
+    expected.insert(ring.wrap(BigInt::RING.from_z(2)), 1);
+    assert_eq!(expected, BigInt::RING.factor(BigInt::RING.from_z(98)));
     expected = VecMap::new();
-    expected.insert(ring.wrap(BigInt::from(3)), 5);
-    assert_eq!(expected, BigInt::RING.factor(BigInt::from(243)));
+    expected.insert(ring.wrap(BigInt::RING.from_z(3)), 5);
+    assert_eq!(expected, BigInt::RING.factor(BigInt::RING.from_z(243)));
 }
 
 #[test]
 fn test_is_prime() {
-    assert_eq!(false, BigInt::RING.is_prime(&BigInt::from(81)));
+    assert_eq!(false, BigInt::RING.is_prime(&BigInt::RING.from_z(81)));
 }
 
 #[test]
 fn test_cmp() {
-    assert_eq!(true, BigInt::RING.is_lt(&BigInt::from(-1), &BigInt::from(2)));
-    assert_eq!(true, BigInt::RING.is_lt(&BigInt::from(1), &BigInt::from(2)));
-    assert_eq!(false, BigInt::RING.is_lt(&BigInt::from(2), &BigInt::from(2)));
-    assert_eq!(false, BigInt::RING.is_lt(&BigInt::from(3), &BigInt::from(2)));
-    assert_eq!(true, BigInt::RING.is_gt(&BigInt::from(-1), &BigInt::from(-2)));
+    assert_eq!(true, BigInt::RING.is_lt(&BigInt::RING.from_z(-1), &BigInt::RING.from_z(2)));
+    assert_eq!(true, BigInt::RING.is_lt(&BigInt::RING.from_z(1), &BigInt::RING.from_z(2)));
+    assert_eq!(false, BigInt::RING.is_lt(&BigInt::RING.from_z(2), &BigInt::RING.from_z(2)));
+    assert_eq!(false, BigInt::RING.is_lt(&BigInt::RING.from_z(3), &BigInt::RING.from_z(2)));
+    assert_eq!(true, BigInt::RING.is_gt(&BigInt::RING.from_z(-1), &BigInt::RING.from_z(-2)));
 }
 
 #[test]
 fn test_mul_pow_2() {
-    assert_eq!(BigInt::from(2), BigInt::RING.mul_pow_2(BigInt::from(2), 0));
-    assert_eq!(BigInt::from(4829192 * 8), BigInt::RING.mul_pow_2(BigInt::from(4829192), 3));
-    assert_eq!(BigInt::RING.mul(BigInt::from(4829192), BigInt::RING.mul_pow_2(BigInt::RING.one(), 64)), BigInt::RING.mul_pow_2(BigInt::from(4829192), 64));
+    assert_eq!(BigInt::RING.from_z(2), BigInt::RING.mul_pow_2(BigInt::RING.from_z(2), 0));
+    assert_eq!(BigInt::RING.from_z(4829192 * 8), BigInt::RING.mul_pow_2(BigInt::RING.from_z(4829192), 3));
+    assert_eq!(BigInt::RING.mul(BigInt::RING.from_z(4829192), BigInt::RING.mul_pow_2(BigInt::RING.one(), 64)), BigInt::RING.mul_pow_2(BigInt::RING.from_z(4829192), 64));
 }
 
 #[test]
 fn test_get_uniformly_random() {
-    let end_exclusive = BigInt::from(3);
+    let end_exclusive = BigInt::RING.from_z(3);
     let mut rng = Rand32::new(0);
     let data: Vec<BigInt> = (0..100).map(|_| BigInt::RING.get_uniformly_random(|| rng.rand_u32(), &end_exclusive)).collect();
     assert!(data.iter().any(|x| *x == 0));
@@ -994,6 +1020,6 @@ fn test_get_uniformly_random() {
 
 #[test]
 fn test_from_overflow() {
-    assert_eq!(BigInt { data: Vector::new(vec![0, 1 << 63]), negative: true }, BigInt::from(i128::MIN));
-    assert_eq!(format!("{}", i128::MIN), format!("{}", BigInt::from(i128::MIN)));
+    assert_eq!(BigInt { data: Vector::new(vec![0, 1 << 63]), negative: true }, BigInt::RING.from_z_gen(i128::MIN, &i128::RING));
+    assert_eq!(format!("{}", i128::MIN), format!("{}", BigInt::RING.from_z_gen(i128::MIN, &i128::RING)));
 }

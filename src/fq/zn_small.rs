@@ -43,13 +43,6 @@ impl<const N: u64, const IS_FIELD: bool> ZnElImpl<N, IS_FIELD> {
     pub const ONE: ZnElImpl<N, IS_FIELD> = ZnElImpl::project(1);
 }
 
-impl<const N: u64, const IS_FIELD: bool> From<i8> for ZnElImpl<N, IS_FIELD> {
-
-    fn from(x: i8) -> Self {
-        Self::project(x as i64)
-    }
-}
-
 impl<const N: u64, const IS_FIELD: bool> AddAssign for ZnElImpl<N, IS_FIELD> {
 
     fn add_assign(&mut self, rhs: ZnElImpl<N, IS_FIELD>) {

@@ -1223,6 +1223,30 @@ impl<R> UfdInfoRing for WrappingRing<R>
     }
 }
 
+impl<R> WrappingRing<R>
+    where R: Ring
+{
+    pub fn map_from<S>(&self, a: RingElWrapper<S>) -> El<Self>
+        where S: Ring, R: CanonicalEmbeddingInfo<S>
+    {
+        assert!(self.has_embedding(a.ring()).can_use());
+        let (el, ring) = a.destruct();
+        self.wrap(<R as CanonicalEmbeddingInfo<S>>::embed(self.wrapped_ring(), &ring, el))
+    }
+}
+
+impl<R> RingElWrapper<R>
+    where R: Ring
+{
+    pub fn map_into<S>(self, target: &WrappingRing<S>) -> El<WrappingRing<S>>
+        where S: Ring, R: CanonicalIsomorphismInfo<S>
+    {
+        assert!(self.ring().has_isomorphism(&target).can_use());
+        let (el, ring) = self.destruct();
+        target.wrap(ring.preimage(target.wrapped_ring(), el))
+    }
+}
+
 impl<R, S> CanonicalEmbeddingInfo<WrappingRing<S>> for WrappingRing<R>
     where R: Ring + CanonicalEmbeddingInfo<S>, S: Ring
 {

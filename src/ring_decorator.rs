@@ -38,6 +38,7 @@ impl<R: RingDecorator> RingBase for R {
     default fn pow_big(&self, basis: &Self::El, exp: &StdInt) -> Self::El { self.decorated_ring().pow_big(basis, exp) }
     default fn from_z(&self, x: i64) -> Self::El { self.decorated_ring().from_z(x) }
     default fn from_z_big(&self, x: &StdInt) -> Self::El { self.decorated_ring().from_z_big(x) }
+    default fn from_z_gen<I: IntegerRing>(&self, x: El<I>, ring: &I) -> Self::El { self.decorated_ring().from_z_gen(x, ring) }
     default fn is_zero(&self, val: &Self::El) -> bool { self.decorated_ring().is_zero(val) }
     default fn is_one(&self, val: &Self::El) -> bool { self.decorated_ring().is_one(val) }
     default fn is_neg_one(&self, val: &Self::El) -> bool { self.decorated_ring().is_neg_one(val) }

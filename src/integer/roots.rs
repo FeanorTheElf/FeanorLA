@@ -158,8 +158,8 @@ pub fn bisect<R, F>(ring: &R, mut f: F, mut start: El<R>, mut end: El<R>) -> El<
 
 #[test]
 fn test_find_zero_floor() {
-    let f = |x: &BigInt| BigInt::RING.sub(BigInt::RING.mul_ref(x, x), BigInt::from(234867));
-    assert_eq!(BigInt::from(484), find_zero_floor(&BigInt::RING, f, BigInt::ZERO));
+    let f = |x: &BigInt| BigInt::RING.sub(BigInt::RING.mul_ref(x, x), BigInt::RING.from_z(234867));
+    assert_eq!(BigInt::RING.from_z(484), find_zero_floor(&BigInt::RING, f, BigInt::ZERO));
 
     let f = |x: &BigInt| x.clone();
     assert_eq!(BigInt::ZERO, find_zero_floor(&BigInt::RING, f, BigInt::ZERO));

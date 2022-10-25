@@ -375,18 +375,9 @@ impl<R: IntegerRing> RingElWrapper<R> {
         self.parent_ring().is_odd(self.val())
     }
 
-    pub fn to_i64(self) -> i64 {
+    pub fn to_i128(self) -> Result<i128, ()> {
         let (el, ring) = self.destruct();
-        ring.preimage(&i64::RING, el)
-    }
-
-    pub fn to_i128(self) -> i128 {
-        self.to_stdint().into_val().to_i128().unwrap()
-    }
-
-    pub fn to_stdint(self) -> StdInt {
-        let (el, ring) = self.destruct();
-        StdInt::RING.wrap(ring.preimage(&BigIntSOO::RING, el))
+        ring.preimage(&BigIntSOO::RING, el).to_i128()
     }
 
     pub fn mul_pow_2(self, power: u64) -> Self {
@@ -409,13 +400,13 @@ use bigint::*;
 
 #[test]
 fn test_root_floor() {
-    let n = BigInt::RING.pow(&BigInt::from(7681), 32);
-    assert_eq!(BigInt::from(7681), BigInt::RING.root_floor(&n, 32));
+    let n = BigInt::RING.pow(&BigInt::RING.from_z(7681), 32);
+    assert_eq!(BigInt::RING.from_z(7681), BigInt::RING.root_floor(&n, 32));
 }
 
 #[test]
 fn test_range_iter() {
-    let i = |x| BigInt::from(x);
+    let i = |x| BigInt::RING.from_z(x);
     assert_eq!(
         vec![i(1), i(2)],
         range_iter(i(1)..i(3), BigInt::RING).collect::<Vec<_>>()
@@ -432,7 +423,7 @@ use oorandom::Rand32;
 #[test]
 fn test_integer_ring_get_uniformly_random() {
     let ring = BigInt::RING;
-    let end_exclusive = BigInt::from(18897856102); // more than 34 bits
+    let end_exclusive = BigInt::RING.from_z(18897856102); // more than 34 bits
     let mut rng = Rand32::new(0);
     let data: Vec<BigInt> = (0..1000).map(|_| integer_ring_get_uniformly_random(&ring, || rng.rand_u32(), &end_exclusive)).collect();
     let limit = BigInt::RING.mul_pow_2(BigInt::RING.one(), 34);
@@ -444,10 +435,10 @@ fn test_integer_ring_get_uniformly_random() {
 #[test]
 fn test_integer_ring_get_uniformly_random_32_bit() {
     let ring = BigInt::RING;
-    let end_exclusive = BigInt::from((1 << 31) + 328423);
+    let end_exclusive = BigInt::RING.from_z((1 << 31) + 328423);
     let mut rng = Rand32::new(0);
     let data: Vec<BigInt> = (0..1000).map(|_| integer_ring_get_uniformly_random(&ring, || rng.rand_u32(), &end_exclusive)).collect();
-    let mid = BigInt::RING.euclidean_div(end_exclusive.clone(), &BigInt::from(2));
+    let mid = BigInt::RING.euclidean_div(end_exclusive.clone(), &BigInt::RING.from_z(2));
     assert!(data.iter().any(|x| BigInt::RING.is_lt(x, &mid)));
     assert!(data.iter().any(|x| BigInt::RING.is_gt(x, &mid)));
 }

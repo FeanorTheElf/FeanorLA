@@ -249,6 +249,12 @@ pub trait RingBase : std::fmt::Debug + std::clone::Clone {
     /// Maps an integer into the ring. This is analogeous to [`from_z()`], but
     /// supports custom implementations of the integer ring.
     /// 
+    /// # Relationship with [`CanonicalEmbeddingInfo<I>`]
+    /// 
+    /// There is a potential overlap with [`CanonicalEmbeddingInfo<I>`]. Consider
+    /// this function to be more high-level, i.e. there is no problem with implementing this by
+    /// `self.embed(ring, x)` or even `ring.preimage(self, x)` when appropriate.
+    /// 
     fn from_z_gen<I>(&self, x: El<I>, ring: &I) -> Self::El 
         where I: IntegerRing
     {

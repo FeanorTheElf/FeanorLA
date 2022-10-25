@@ -324,12 +324,14 @@ impl RingBase for MPZRing {
         return result;
     }
 
+    fn from_z_gen<I: IntegerRing>(&self, x: El<I>, ring: &I) -> Self::El {
+        let mut result = MPZ::new();
+        stdint_to_mpz(&mut result, MPZ::RING.from_z_gen(x, ring));
+        return result;
+    }
+
     fn from_z(&self, x: i64) -> Self::El {
-        unsafe {
-            let mut result = MPZ::new();
-            mpz_bindings::__gmpz_set_si(&mut result.integer as mpz_bindings::mpz_ptr, x);
-            return result;
-        }
+        self.embed(&i64::RING, x)
     }
 
     fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
@@ -374,7 +376,11 @@ impl CanonicalEmbeddingInfo<StaticRing<i64>> for MPZRing {
     }
 
     fn embed(&self, _from: &StaticRing<i64>, el: i64) -> MPZ {
-        MPZ::RING.from_z(el)
+        unsafe {
+            let mut result = MPZ::new();
+            mpz_bindings::__gmpz_set_si(&mut result.integer as mpz_bindings::mpz_ptr, el);
+            return result;
+        }
     }
 }
 

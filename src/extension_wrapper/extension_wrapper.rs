@@ -42,6 +42,7 @@ impl<R, S, F> RingBase for ExtensionWrapper<R, S, F>
     fn pow_big(&self, basis: &Self::El, exp: &StdInt) -> Self::El { self.ring.pow_big(basis, exp) }
     fn from_z(&self, x: i64) -> Self::El { self.ring.from_z(x) }
     fn from_z_big(&self, x: &StdInt) -> Self::El { self.ring.from_z_big(x) }
+    fn from_z_gen<I: IntegerRing>(&self, x: El<I>, ring: &I) -> Self::El { self.ring.from_z_gen(x, ring) }
     fn is_zero(&self, val: &Self::El) -> bool { self.ring.is_zero(val) }
     fn is_one(&self, val: &Self::El) -> bool { self.ring.is_one(val) }
     fn is_neg_one(&self, val: &Self::El) -> bool { self.ring.is_neg_one(val) }
@@ -223,8 +224,8 @@ use super::super::poly::*;
 #[allow(non_snake_case)]
 #[test]
 fn test_no_embedding() {
-    let R1 = Zn::new(BigInt::RING, BigInt::from(5));
-    let R2 = Zn::new(BigInt::RING, BigInt::from(7));
+    let R1 = Zn::new(BigInt::RING, BigInt::RING.from_z(5));
+    let R2 = Zn::new(BigInt::RING, BigInt::RING.from_z(7));
     let S1 = ExtensionWrapper::new(R1.clone(), R1.clone(), embedding(&R1, &R1));
     let S2 = ExtensionWrapper::new(R2.clone(), R2.clone(), embedding(&R1, &R1));
     assert!(S1.has_embedding(&S1).can_use());

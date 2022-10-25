@@ -127,19 +127,6 @@ impl<R, V, W> CanonicalEmbeddingInfo<R> for FiniteExtensionImpl<R, V, W>
     }
 }
 
-impl<R, V, W> CanonicalEmbeddingInfo<&R> for FiniteExtensionImpl<R, V, W>
-    where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
-{
-    fn has_embedding(&self, from: &&R) -> RingPropValue {
-        self.base_ring().has_embedding(*from)
-    }
-
-    fn embed(&self, from: &&R, el: R::El) -> Self::El {
-        assert!(self.has_embedding(from).can_use());
-        self.from(self.base_ring().embed(*from, el))
-    }
-}
-
 impl<R, V, W> CanonicalEmbeddingInfo<R> for FiniteExtensionImpl<&R, V, W>
     where R: Ring, V: VectorView<R::El> + Clone, W: VectorViewMut<R::El> + Clone + FromIterator<R::El> + std::fmt::Debug
 {

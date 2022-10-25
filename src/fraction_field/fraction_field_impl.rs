@@ -286,7 +286,7 @@ impl<R: IntegerRing> CanonicalEmbeddingInfo<StaticRing<r64>> for FractionFieldIm
     }
 
     fn embed(&self, _from: &StaticRing<r64>, el: r64) -> Self::El {
-        self.div(self.from(self.base_ring().from_z(el.num())), &self.from(self.base_ring().from_z(el.den())))
+        self.div(self.from(self.base_ring().embed(&i64::RING, el.num())), &self.from(self.base_ring().embed(&i64::RING, el.den())))
     }
 }
 

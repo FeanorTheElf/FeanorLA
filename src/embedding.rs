@@ -40,6 +40,20 @@ use std::marker::PhantomData;
 ///
 /// The same holds for `CanonicalIsomorphismInfo`.
 /// 
+/// # Note on the relationship with [`crate::ring::Ring::from_z()`]
+/// 
+/// In many cases, the functionality given by [`crate::ring::RingExtension::from()`] or the `from_z`-family
+/// [`crate::ring::Ring::from_z()`], [`crate::ring::Ring::from_z_big()`] and [`crate::ring::Ring::from_z_gen()`] is the
+/// same. In these cases, you should provide the actual implementation in `CanonicalEmbeddingInfo`, and then delegate
+/// from the appropriate functions. In particular, this helps to avoid infinite loops of the form
+/// ```text
+/// IntegerRing1::from_z_gen() -> IntegerRing2::preimage() -> IntegerRing1::from_z_gen() -> ...
+/// ```
+/// 
+/// I have made this decision mostly on the fact that `CanonicalEmbeddingInfo` is the "general" location
+/// for this kind of functionality, and the others are "special cases". Furthermore, the implementation
+/// as trait for `CanonicalEmbeddingInfo` is more flexible, e.g. w.r.t. specialization.
+/// 
 pub trait CanonicalEmbeddingInfo<R>: RingBase
     where R: RingBase
 {

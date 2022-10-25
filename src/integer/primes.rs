@@ -73,7 +73,7 @@ pub fn calc_factor(el: &StdInt) -> Option<StdInt> {
     let n = el.clone();
     
     if n < QUADRATIC_SIEVE_BOUND {
-        let n_int = n.to_i128() as i64;
+        let n_int = n.to_i128().unwrap() as i64;
         let potential_divisors = factoring_algorithms::gen_primes((n_int as f64).sqrt() as i64 + 1);
         for p in potential_divisors {
             if n_int % p == 0 {
