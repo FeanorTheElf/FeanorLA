@@ -83,7 +83,7 @@ fn stdint_to_mpz(dst: &mut MPZ, src: StdInt) {
             },
             Err(()) => {
                 let is_neg = src < 0;
-                let data: Vec<mpz_bindings::mpir_ui> = src.into_val().to_bigint().base_u64_repr().into_owned().raw_data();
+                let data: Vec<mpz_bindings::mpir_ui> = src.map_into(&BigInt::WRAPPED_RING).into_val().base_u64_repr().into_owned().raw_data();
                 // should never happen (we would be in the first case), however, with c it pays off to be paranoid
                 assert!(data.len() > 0);
                 mpz_bindings::__gmpz_import(
@@ -326,7 +326,7 @@ impl RingBase for MPZRing {
 
     fn from_z_gen<I: IntegerRing>(&self, x: El<I>, ring: &I) -> Self::El {
         let mut result = MPZ::new();
-        stdint_to_mpz(&mut result, MPZ::RING.from_z_gen(x, ring));
+        stdint_to_mpz(&mut result, StdInt::RING.from_z_gen(x, ring));
         return result;
     }
 
@@ -391,7 +391,7 @@ impl CanonicalIsomorphismInfo<StaticRing<i64>> for MPZRing {
     }
 
     fn preimage(&self, _from: &StaticRing<i64>, el: MPZ) -> i64 {
-        mpz_to_stdint(&el).to_i64()
+        mpz_to_stdint(&el).map_into(&i64::WRAPPED_RING).into_val()
     }
 }
 
