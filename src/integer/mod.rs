@@ -177,7 +177,7 @@ fn integer_ring_get_uniformly_random<G, I>(
     loop {
         let mut i = 0;
         let mut current = ring.zero();
-        while i + block_size < k {
+        while i + block_size <= k {
             i += block_size;
             current = ring.add(ring.mul_pow_2(current, block_size), ring.from_z(rng() as i64));
         }
@@ -439,6 +439,17 @@ fn test_integer_ring_get_uniformly_random() {
     assert!(data.iter().any(|x| BigInt::RING.is_geq(x, &limit))); // failure probability is less than 10^-37
     let bit_average = data.iter().map(|x| if ring.abs_is_bit_set(x, 33) { 0. } else { 1. }).sum::<f64>() / 1000.;
     assert!(0.3 < bit_average && bit_average < 0.7);  // failure probability is less than 10^-34
+}
+
+#[test]
+fn test_integer_ring_get_uniformly_random_32_bit() {
+    let ring = BigInt::RING;
+    let end_exclusive = BigInt::from((1 << 31) + 328423);
+    let mut rng = Rand32::new(0);
+    let data: Vec<BigInt> = (0..1000).map(|_| integer_ring_get_uniformly_random(&ring, || rng.rand_u32(), &end_exclusive)).collect();
+    let mid = BigInt::RING.euclidean_div(end_exclusive.clone(), &BigInt::from(2));
+    assert!(data.iter().any(|x| BigInt::RING.is_lt(x, &mid)));
+    assert!(data.iter().any(|x| BigInt::RING.is_gt(x, &mid)));
 }
 
 #[test]
