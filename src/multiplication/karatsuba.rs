@@ -1,5 +1,5 @@
-use super::prelude::*;
-use super::la::vec::*;
+use super::super::prelude::*;
+use super::super::la::vec::*;
 
 fn add_assign_intersect<R, U, V>(mut dst: Vector<U, R::El>, val: Vector<V, R::El>, ring: &R)
     where U: VectorViewMut<R::El>, V: VectorView<R::El>, R: Ring

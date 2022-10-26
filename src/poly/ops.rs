@@ -1,5 +1,5 @@
 use super::super::prelude::*;
-use super::super::karatsuba::*;
+use super::super::multiplication::karatsuba::*;
 use super::super::la::vec::*;
 
 pub fn poly_degree<V, R>(coeff_ring: &R, poly_coeffs: Vector<V, R::El>) -> Option<usize>

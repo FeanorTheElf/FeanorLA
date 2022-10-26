@@ -26,7 +26,7 @@ pub mod float;
 pub mod ring_decorator;
 
 pub mod square_multiply;
-pub mod karatsuba;
+pub mod multiplication;
 pub mod eea;
 pub mod lattice;
 
