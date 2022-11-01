@@ -1,6 +1,7 @@
 use super::super::ring::*;
 use super::super::primitive::*;
 use super::mat::*;
+use super::vector_view::mapped_access::*;
 
 pub use super::vector_view::*;
 pub use super::vector_view::compile_time_vector::*;
@@ -52,6 +53,12 @@ impl<V, T> Vector<V, T>
 
     pub fn as_ref<'a>(&'a self) -> Vector<&'a V, T> {
         Vector::new(&self.data)
+    }
+
+    pub fn access_by<F, S>(self, f: F) -> Vector<VectorViewMapped<T, S, V, F>, S>
+        where F: for<'a> Fn(&'a T) -> &'a S
+    {
+        Vector::new(VectorViewMapped::new(self.raw_data(), f))
     }
 
     pub fn into_subvector<R>(self, range: R) -> Vector<V::Subvector, T>

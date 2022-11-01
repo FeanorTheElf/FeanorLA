@@ -18,6 +18,13 @@ pub trait FiniteExtension: RingExtension {
     fn generator(&self) -> El<Self>;
     fn rank_as_module(&self) -> usize;
     fn as_module_el(&self, x: El<Self>) -> Vector<Self::ModuleVectorView, El<Self::BaseRing>>;
+
+    fn from_module_el<V>(&self, x: Vector<V, El<Self::BaseRing>>) -> El<Self>
+        where V: VectorView<El<Self::BaseRing>> 
+    {
+        let a = self.generator();
+        self.sum(x.iter().enumerate().map(|(i, x)| self.mul(self.from(x.clone()), self.pow(&a, i as u32))))
+    }
 }
 
 impl<R> FiniteExtension for R
@@ -36,6 +43,13 @@ impl<R> FiniteExtension for R
     fn as_module_el(&self, x: El<Self>) -> Vector<Self::ModuleVectorView, El<Self::BaseRing>> {
         self.decorated_ring().as_module_el(x)
     }
+
+    fn from_module_el<V>(&self, x: Vector<V, El<Self::BaseRing>>) -> El<Self>
+        where V: VectorView<El<Self::BaseRing>> 
+    {
+        self.decorated_ring().from_module_el(x)
+    }
+
 }
 
 impl<R> WrappingRing<R>
@@ -57,8 +71,7 @@ impl<R> WrappingRing<R>
     pub fn from_module_el<'a, V>(&self, data: Vector<V, RingElWrapper<&'a R::BaseRing>>) -> El<Self> 
         where V: VectorView<RingElWrapper<&'a R::BaseRing>>
     {
-        let x = self.generator();
-        (0..self.rank_as_module()).map(|i| self.embedding_ref()(data.at(i).clone()) * x.pow(i as u32)).sum()
+        self.wrap(self.wrapped_ring().from_module_el(data.access_by(|x| x.val())))
     }
 }
 

@@ -2,6 +2,7 @@ pub mod compile_time_vector;
 pub mod matrix_diagonal;
 pub mod matrix_row_col;
 pub mod constant_value_vector;
+pub mod mapped_access;
 
 use std::marker::PhantomData;
 
