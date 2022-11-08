@@ -250,6 +250,7 @@ impl<R: RangeBounds<usize>> From<R> for Bitset64 {
 }
 
 impl std::iter::FromIterator<usize> for Bitset64 {
+    
     fn from_iter<I: IntoIterator<Item = usize>>(iter: I) -> Self {
         let mut result = Bitset64::new();
         for c in iter {

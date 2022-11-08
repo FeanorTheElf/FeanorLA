@@ -64,7 +64,6 @@ impl<M, T> Matrix<M, T>
     fn solve_strict_triangular<N, R>(&self, rhs: &mut Matrix<N, T>, ring: &R)
         where N: MatrixViewMut<T>, R: Ring<El = T>
     {
-        assert!(ring.is_field().can_use());
         assert_eq!(self.row_count(), self.col_count());
         assert_eq!(self.row_count(), rhs.row_count());
 
@@ -89,7 +88,6 @@ impl<M, T> Matrix<M, T>
         }
     }
 }
-
 
 impl<M, T> Matrix<M, T>
     where M: MatrixViewMut<T>, T: std::fmt::Debug + Clone

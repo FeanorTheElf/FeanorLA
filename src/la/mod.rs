@@ -5,3 +5,4 @@ pub mod vec;
 pub mod mat;
 pub mod mat_fn;
 pub mod inversion;
+pub mod determinant;

@@ -455,6 +455,60 @@ impl<V, T> std::fmt::Display for Vector<V, T>
     }
 }
 
+pub struct ToVector<V, T>
+    where V: VectorView<T>
+{
+    element: PhantomData<T>,
+    vector_view: PhantomData<V>
+}
+
+impl<V, T> ToVector<V, T>
+    where V: VectorView<T>
+{
+    pub const INSTANCE: Self = Self {
+        element: PhantomData,
+        vector_view: PhantomData
+    };
+}
+
+impl<V, T> Copy for ToVector<V, T>
+    where V: VectorView<T>
+{}
+
+impl<V, T> Clone for ToVector<V, T>
+    where V: VectorView<T>
+{
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<V, T> FnOnce<(V,)> for ToVector<V, T>
+    where V: VectorView<T>
+{
+    type Output = Vector<V, T>;
+
+    extern "rust-call" fn call_once(mut self, args: (V,)) -> Self::Output {
+        self.call_mut(args)
+    }
+}
+
+impl<V, T> FnMut<(V,)> for ToVector<V, T>
+    where V: VectorView<T>
+{
+    extern "rust-call" fn call_mut(&mut self, args: (V,)) -> Self::Output {
+        self.call(args)
+    }
+}
+
+impl<V, T> Fn<(V,)> for ToVector<V, T>
+    where V: VectorView<T>
+{
+    extern "rust-call" fn call(&self, args: (V,)) -> Self::Output {
+        Vector::new(args.0)
+    }
+}
+
 #[test]
 fn test_subvector_subvector_same_type() {
     let v = Vector::from_array([1, 2]);

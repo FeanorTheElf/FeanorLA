@@ -6,7 +6,6 @@ use super::super::fq::*;
 use super::super::combinatorics::iters::*;
 use super::*;
 use super::super::la::vec::*;
-use super::super::la::mat::*;
 
 use std::marker::PhantomData;
 use std::iter::FromIterator;
