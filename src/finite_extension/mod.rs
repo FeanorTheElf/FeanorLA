@@ -172,7 +172,7 @@ impl<R> RingElWrapper<R>
     }
 
     pub fn trace<'a>(&'a self) -> RingElWrapper<&'a R::BaseRing> {
-        RingElWrapper::new(self.parent_ring().norm(self.val().clone()), self.parent_ring().base_ring())
+        RingElWrapper::new(self.parent_ring().trace(self.val().clone()), self.parent_ring().base_ring())
     }
 
     pub fn norm<'a>(&'a self) -> RingElWrapper<&'a R::BaseRing> {
@@ -184,6 +184,8 @@ impl<R> RingElWrapper<R>
 use super::rational::primitive_rational::*;
 #[cfg(test)]
 use finite_extension_impl::*;
+#[cfg(test)]
+use super::fq::fq_small::*;
 
 #[test]
 fn test_default_mipo() {
@@ -220,4 +222,14 @@ fn test_trace() {
     let i = extension_field.generator();
     let trace = extension_field.trace(extension_field.add(i, extension_field.one()));
     assert_eq!(r64::from(2), trace);
+}
+
+#[test]
+fn test_trace_finite_field() {
+    let base_field = F2;
+    let extension_field = F16;
+    let a = extension_field.generator();
+    let trace = extension_field.trace(extension_field.add(a, extension_field.one()));
+    assert_eq!(F2.from_z(0), trace);
+    assert!(false);
 }

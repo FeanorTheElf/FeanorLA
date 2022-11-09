@@ -18,6 +18,10 @@ mod internal_definitions {
     gen_const_vector!(ConstVector2F2; F2El; V0, V1);
     pub type F4MipoType = ConstVector2F2<{F2El::project(-1)}, {F2El::project(-1)}>;
     pub const F4_MIPO: Vector<F4MipoType, F2El> = Vector::new(F4MipoType {});
+    
+    gen_const_vector!(ConstVector4F2; F2El; V0, V1, V2, V3);
+    pub type F16MipoType = ConstVector4F2<{F2El::project(-1)}, {F2El::project(-1)}, {F2El::project(0)}, {F2El::project(0)}>;
+    pub const F16_MIPO: Vector<F16MipoType, F2El> = Vector::new(F16MipoType {});
 
     gen_const_vector!(ConstVector2F7; F7El; V0, V1);
     pub type F49MipoType = ConstVector2F7<{F7El::project(-1)}, {F7El::project(0)}>;
@@ -41,9 +45,11 @@ pub const F5: F5Type = ZnEl::<5>::RING;
 pub const F7: F7Type = ZnEl::<7>::RING;
 
 pub type F4Type = FiniteExtensionImpl<StaticRing::<ZnEl<2>>, F4MipoType, VectorArray<ZnEl<2>, 2>>;
+pub type F16Type = FiniteExtensionImpl<StaticRing<ZnEl<2>>, F16MipoType, VectorArray<ZnEl<2>, 4>>;
 pub type F49Type = FiniteExtensionImpl<StaticRing::<ZnEl<7>>, F49MipoType, VectorArray<ZnEl<7>, 2>>;
 pub type F1369Type = FiniteExtensionImpl<StaticRing<ZnEl<37>>, F1369MipoType, VectorArray<ZnEl<37>, 2>>;
 pub const F4: F4Type = FiniteExtensionImpl::new(F2, F4_MIPO, "α");
+pub const F16: F16Type = FiniteExtensionImpl::new(F2, F16_MIPO, "α");
 pub const F49: F49Type = FiniteExtensionImpl::new(F7, F49_MIPO, "α");
 pub const F1369: F1369Type = F1369Type::new(ZnEl::<37>::RING, F1369_MIPO, "α");
 
