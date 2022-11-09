@@ -41,7 +41,6 @@ pub trait FiniteExtension: RingExtension {
             m.col_mut(i).assign(self.as_module_el(current.clone()));
             self.mul_assign(&mut current, &self.generator());
         }
-        println!("{}", m.display(self.base_ring()));
         return m;
     }
 
