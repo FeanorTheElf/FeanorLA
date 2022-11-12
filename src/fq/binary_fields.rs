@@ -48,7 +48,7 @@ mod internal {
     pub const F4096_MIPO: Vector<F4096MipoType, F2El> = Vector::new(F4096MipoType {});
 
     gen_const_vector!(ConstVector16F2; F2El; V0, V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15);
-    pub type F65536MipoType = ConstVector16F2<{F2El::project(-1)}, {F2El::project(-1)}, {F2El::project(-1)}, {F2El::project(0)}, {F2El::project(-1)}, {F2El::project(0)}, {F2El::project(0)}, {F2El::project(0)}, {F2El::project(0)}, {F2El::project(0)}, {F2El::project(0)}, {F2El::project(0)}, {F2El::project(0)}, {F2El::project(0)}, {F2El::project(0)}, {F2El::project(0)}>;
+    pub type F65536MipoType = ConstVector16F2<{F2El::project(-1)}, {F2El::project(0)}, {F2El::project(-1)}, {F2El::project(-1)}, {F2El::project(0)}, {F2El::project(-1)}, {F2El::project(0)}, {F2El::project(0)}, {F2El::project(0)}, {F2El::project(0)}, {F2El::project(0)}, {F2El::project(0)}, {F2El::project(0)}, {F2El::project(0)}, {F2El::project(0)}, {F2El::project(0)}>;
     pub const F65536_MIPO: Vector<F65536MipoType, F2El> = Vector::new(F65536MipoType {});
 }
 
