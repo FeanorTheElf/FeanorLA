@@ -1,6 +1,5 @@
 use super::super::la::mat::*;
 use super::super::primitive::*;
-use std::ops::MulAssign;
 use std::vec::Vec;
 
 type BasicVars = Box<[usize]>;
@@ -106,7 +105,7 @@ fn eliminate<M, T>(mut table: Matrix<M, T>, row_index: usize, col_index: usize)
 {
     let pivot_value: T = table.at(row_index, col_index).clone();
     assert!(pivot_value != T::zero());
-    table.as_mut().into_row(row_index).mul_assign(T::one() / pivot_value);
+    table.as_mut().into_row(row_index).scale(&(T::one() / pivot_value), &T::RING);
     for target_row_index in 0..table.row_count() {
         if target_row_index < row_index {
             let factor = table.at(target_row_index, col_index).clone();
@@ -181,7 +180,7 @@ fn add_artificials<M, T>(table: Matrix<M, T>) -> (Matrix<MatrixOwned<T>, T>, Bas
             *result.at_mut(row_index, col_index) = table.at(row_index - 1, col_index).clone();
         }
         if *result.at(row_index, 0) < T::zero() {
-            result.as_mut().into_row(row_index).mul_assign(-T::one());
+            result.as_mut().into_row(row_index).scale(&-T::one(), &T::RING);
         }
         result.transform_two_dims_left(0, row_index, &[T::one(), T::one(), T::zero(), T::one()], &T::RING);
     }

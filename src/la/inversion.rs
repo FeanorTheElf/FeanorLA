@@ -391,3 +391,8 @@ fn test_kernel_base() {
                                 [0., -1.]]);
     assert_eq!(b, a.right_kernel_base(&f32::RING).unwrap());
 }
+
+#[test]
+fn test_rank() {
+    
+}

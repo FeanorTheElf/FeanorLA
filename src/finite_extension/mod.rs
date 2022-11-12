@@ -2,9 +2,9 @@ use crate::la::vec::VectorView;
 
 use super::prelude::*;
 use super::la::vec::*;
+use super::la::vec_fn::*;
 use super::la::mat::*;
 use super::poly::*;
-use super::la::inversion::*;
 use super::la::determinant::MatrixDeterminant;
 use super::wrapper::*;
 use super::eea::gcd;
@@ -155,14 +155,9 @@ impl<R> WrappingRing<R>
 impl<R> RingElWrapper<R>
     where R: FiniteExtension
 {
-    pub fn as_module_el<'a>(&'a self) -> Vector<Vec<RingElWrapper<&'a R::BaseRing>>, RingElWrapper<&'a R::BaseRing>> {
-        let base_ring = self.parent_ring().base_ring();
-        let mut as_module_els = self.parent_ring().as_module_el(self.val().clone()).into_owned().raw_data().into_iter();
-        let result = Vector::from_fn(self.parent_ring().rank_as_module(), |_| WrappingRing::new(base_ring).wrap(
-            as_module_els.next().unwrap()
-        ));
-        assert!(as_module_els.next().is_none());
-        return result;
+    pub fn as_module_el<'a>(&'a self) -> impl VecFn<RingElWrapper<&'a R::BaseRing>> {
+        let result = self.parent_ring().as_module_el(self.val().clone());
+        return result.map(self.ring().base_ring().into_wrapping_embedding());
     }
 
     pub fn mipo(&self) -> RingElWrapper<PolyRingImpl<R::BaseRing>> {

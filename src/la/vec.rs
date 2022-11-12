@@ -1,6 +1,7 @@
 use super::super::ring::*;
 use super::super::primitive::*;
 use super::mat::*;
+use super::vec_fn::*;
 use super::vector_view::mapped_access::*;
 
 pub use super::vector_view::*;
@@ -11,7 +12,7 @@ pub use super::vector_view::matrix_row_col::*;
 use super::matrix_view::matrix_vector::*;
 
 use std::marker::PhantomData;
-use std::ops::{AddAssign, Add, SubAssign, Sub, MulAssign, RangeBounds, Bound, Index};
+use std::ops::{AddAssign, SubAssign, MulAssign, RangeBounds, Bound, Index};
 
 #[derive(Debug)]
 pub struct Vector<V, T>
@@ -154,10 +155,10 @@ impl<V, T> Vector<V, T>
 impl<V, T> Vector<V, T>
     where V: VectorViewMut<T>, T: Clone
 {
-    pub fn assign<W>(&mut self, rhs: Vector<W, T>) 
-        where W: VectorView<T>
+    pub fn assign<W>(&mut self, rhs: W) 
+        where W: VecFn<T>
     {
-        Matrix::new(ColumnVector::new(self.as_mut().data)).assign(Matrix::new(ColumnVector::new(rhs.as_ref().data)));
+        rhs.assign_to(self);
     }
 }
 
@@ -240,50 +241,26 @@ impl<V, T> Vector<V, T>
         Matrix::new(ColumnVector::new(self.as_mut().data)).scale(rhs, ring);
     }
 
-    pub fn add_assign<R, W>(&mut self, rhs: Vector<W, T>, ring: &R)
-        where R: Ring<El = T>, W: VectorView<T>
+    pub fn add_assign<R, W>(&mut self, rhs: W, ring: &R)
+        where R: Ring<El = T>, W: VecFn<T>
     {
-        Matrix::new(ColumnVector::new(self.as_mut().data)).add_assign(Matrix::new(ColumnVector::new(rhs.data)), ring);
+        rhs.add_to(self, ring);
     }
 
-    pub fn sub_assign<R, W>(&mut self, rhs: Vector<W, T>, ring: &R)
-        where R: Ring<El = T>, W: VectorView<T>
+    pub fn sub_assign<R, W>(&mut self, rhs: W, ring: &R)
+        where R: Ring<El = T>, W: VecFn<T>
     {
-        Matrix::new(ColumnVector::new(self.as_mut().data)).sub_assign(Matrix::new(ColumnVector::new(rhs.data)), ring);
+        rhs.neg_ring(ring).add_to(self, ring);
     }
 }
 
 impl<V, T> Vector<V, T>
     where V: VectorView<T>, T: Clone + std::fmt::Debug
 {
-    pub fn add<R, W>(self, rhs: Vector<W, T>, ring: &R) -> Vector<VectorOwned<T>, T>
-        where R: Ring<El = T>, W: VectorView<T>
-    {
-        let mut result = self.into_owned();
-        result.add_assign(rhs, ring);
-        return result;
-    }
-
     pub fn dot<R, W>(self, rhs: Vector<W, T>, ring: &R) -> T
         where R: Ring<El = T>, W: VectorView<T>
     {
         Matrix::new(RowVector::new(self.data)).mul(Matrix::new(ColumnVector::new(rhs.data)), ring).at(0, 0)
-    }
-
-    pub fn scaled<R>(self, rhs: &El<R>, ring: &R) -> Vector<VectorOwned<T>, T>
-        where R: Ring<El = T>
-    {
-        let mut result = self.into_owned();
-        result.scale(rhs, ring);
-        return result;
-    }
-
-    pub fn sub<R, W>(self, rhs: Vector<W, T>, ring: &R) -> Vector<VectorOwned<T>, T>
-        where R: Ring<El = T>, W: VectorView<T>
-    {
-        let mut result = self.into_owned();
-        result.sub_assign(rhs, ring);
-        return result;
     }
 
     pub fn eq<R, W>(self, rhs: Vector<W, T>, ring: &R) -> bool
@@ -355,39 +332,19 @@ impl<V, T> Vector<V, T>
     }
 }
 
-impl<V, T, W> AddAssign<Vector<W, T>> for Vector<V, T>
-    where V: VectorViewMut<T>, W: VectorView<T>, T: RingEl
+impl<V, T, W> AddAssign<W> for Vector<V, T>
+    where V: VectorViewMut<T>, W: VecFn<T>, T: RingEl
 {
-    fn add_assign(&mut self, rhs: Vector<W, T>) {
+    fn add_assign(&mut self, rhs: W) {
         self.add_assign(rhs, &T::RING)
     }
 }
 
-impl<V, T, W> SubAssign<Vector<W, T>> for Vector<V, T>
-    where V: VectorViewMut<T>, W: VectorView<T>, T: RingEl
+impl<V, T, W> SubAssign<W> for Vector<V, T>
+    where V: VectorViewMut<T>, W: VecFn<T>, T: RingEl
 {
-    fn sub_assign(&mut self, rhs: Vector<W, T>) {
+    fn sub_assign(&mut self, rhs: W) {
         self.sub_assign(rhs, &T::RING)
-    }
-}
-
-impl<V, T, W> Add<Vector<W, T>> for Vector<V, T>
-    where V: VectorView<T>, W: VectorView<T>, T: RingEl
-{
-    type Output = Vector<VectorOwned<T>, T>;
-
-    fn add(self, rhs: Vector<W, T>) -> Self::Output {
-        self.add(rhs, &T::RING)
-    }
-}
-
-impl<V, T, W> Sub<Vector<W, T>> for Vector<V, T>
-    where V: VectorView<T>, W: VectorView<T>, T: RingEl
-{
-    type Output = Vector<VectorOwned<T>, T>;
-
-    fn sub(self, rhs: Vector<W, T>) -> Self::Output {
-        self.sub(rhs, &T::RING)
     }
 }
 
@@ -520,5 +477,5 @@ fn test_subvector_subvector_same_type() {
 fn test_subvector_sub() {
     let a = Vector::from_array([2, 0, 2, 3, 7]);
     let b = Vector::from_array([-2, 0, -2]);
-    assert_eq!(Vector::from_array([2, 2, 5]), a.subvector(1..4) - b);
+    assert_eq!(Vector::from_array([2, 2, 5]), a.subvector(1..4).sub(b).compute());
 }

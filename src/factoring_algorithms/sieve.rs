@@ -1,6 +1,5 @@
 use super::super::ring::*;
 use super::super::la::mat::*;
-use super::super::la::inversion::*;
 use super::super::integer::*;
 use super::super::primitive::*;
 use super::super::fq::zn_small::*;
@@ -134,7 +133,7 @@ fn check_congruent_square<V>(
     for (i, rel) in relations.iter().enumerate() {
         if *sol.at(i) == F2::ONE {
             x = x * rel.0.clone();
-            y_powers += rel.1.as_ref();
+            y_powers.add_assign(rel.1.as_ref(), &i32::RING);
         }
     }
 

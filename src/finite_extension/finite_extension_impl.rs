@@ -1,6 +1,5 @@
 use super::super::prelude::*;
 use super::super::poly::*;
-use super::super::la::inversion::*;
 use super::super::poly::ops::poly_format;
 use super::super::fq::*;
 use super::super::combinatorics::iters::*;
