@@ -2,7 +2,6 @@ use crate::la::vec::VectorView;
 
 use super::prelude::*;
 use super::la::vec::*;
-use super::la::vec_fn::*;
 use super::la::mat::*;
 use super::poly::*;
 use super::la::determinant::MatrixDeterminant;

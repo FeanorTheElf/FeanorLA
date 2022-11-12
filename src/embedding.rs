@@ -191,7 +191,7 @@ pub fn isomorphism<R, S>(from: R, to: S) -> (impl Fn(R::El) -> S::El, impl Fn(S:
 /// Creates the natural, not necessarily injective homomorphism
 /// `Z -> R` that exists for every ring R.
 /// 
-pub fn z_hom<'a, R>(to: &'a R) -> impl 'a + Fn(i64) -> R::El 
+pub fn z_hom<'a, R>(to: &'a R) -> impl 'a + Copy + Fn(i64) -> R::El 
     where R: Ring
 {
     move |x| to.from_z(x)
