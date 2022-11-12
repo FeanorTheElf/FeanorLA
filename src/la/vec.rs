@@ -1,9 +1,9 @@
 use super::super::ring::*;
 use super::super::primitive::*;
 use super::mat::*;
-use super::vec_fn::*;
 use super::vector_view::mapped_access::*;
 
+pub use super::vec_fn::*;
 pub use super::vector_view::*;
 pub use super::vector_view::compile_time_vector::*;
 pub use super::vector_view::constant_value_vector::*;
