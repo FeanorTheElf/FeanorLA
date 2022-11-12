@@ -180,6 +180,8 @@ use super::rational::primitive_rational::*;
 use finite_extension_impl::*;
 #[cfg(test)]
 use super::fq::fq_small::*;
+#[cfg(test)]
+use super::fq::binary_fields;
 
 #[test]
 fn test_default_mipo() {
@@ -220,7 +222,7 @@ fn test_trace() {
 
 #[test]
 fn test_trace_finite_field() {
-    let extension_field = F16;
+    let extension_field = binary_fields::F16;
     let a = extension_field.generator();
     let trace = extension_field.trace(extension_field.add(a, extension_field.one()));
     assert_eq!(F2.from_z(0), trace);
