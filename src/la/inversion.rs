@@ -1,92 +1,195 @@
 use super::mat::*;
 use super::super::ring::*;
 
-pub trait MatrixSolve: Ring {
+pub trait MatrixSolve<M: MatrixViewMut<Self::El>>: Ring {
     ///
+    /// If you want to solve linear equations, prefer [`Matrix::solve_right_modifying()`].
+    /// This is an implemenation tool to use the correct specializations for 
+    /// different rings and matrix views.
+    /// 
     /// Solves the linear equation AX = B where A is an square matrix.
     /// This is done by transforming A and B, and after this function
     /// successfully terminated, A will be in strict upper triangle form and
     /// B will contain the solution.
     /// 
-    /// If A is not invertible, this function will terminate as soon
+    /// If A is not invertible, this function should terminate as soon
     /// as this has been detected. As part of the error object, the smallest
     /// integer i is returned for which the first i columns are linearly
-    /// dependent
+    /// dependent.
     /// 
     /// The default implementation has complexity O(n^2(n + m)) where 
     /// self is nxn and rhs is nxm.
     /// 
-    fn solve_linear_equation<M: MatrixView<Self::El>, N: MatrixViewMut<Self::El>>(&self, a: Matrix<M, Self::El>, b: &mut Matrix<N, Self::El>) -> Result<(), usize>;
+    fn solve_right_modifying<N: MatrixViewMut<Self::El>>(&self, a: Matrix<M, Self::El>, b: &mut Matrix<N, Self::El>) -> Result<(), usize>;
 
     ///
+    /// If you want to compute a kernel basis, prefer [`Matrix::right_kernel_base_modifying()`].
+    /// This is an implemenation tool to use the correct specializations for 
+    /// different rings and matrix views.
+    /// 
     /// Calculates a base of the (right)-kernel of this matrix, or returns None 
     /// if this kernel is trivial. These are all vectors x such that A * x = 0.
     /// 
     /// The default implementation has complexity O(n m min(n, m)) where self is nxm.
     /// 
-    fn calc_matrix_kernel_space<M: MatrixView<Self::El>>(&self, a: Matrix<M, Self::El>) -> Option<Matrix<MatrixOwned<Self::El>, Self::El>>;
+    fn right_kernel_base_modifying(&self, a: Matrix<M, Self::El>) -> Option<Matrix<MatrixOwned<Self::El>, Self::El>>;
 
     ///
+    /// If you want to compute a matrix rank, prefer [`Matrix::rank()`].
+    /// This is an implemenation tool to use the correct specializations for 
+    /// different rings and matrix views.
+    /// 
+    /// Calculates the rank of this matrix.
+    /// 
+    /// The default implementation has complexity O(n m min(n, m)) where self is nxm.
+    /// 
+    fn matrix_rank_modifying(&self, a: Matrix<M, Self::El>) -> usize;
+
+    ///
+    /// If you want to solve linear equations, prefer [`Matrix::find_any_solution_modifying()`].
+    /// This is an implemenation tool to use the correct specializations for 
+    /// different rings and matrix views.
+    /// 
     /// Finds a solution to the inhomogeneous linear equation AX = B and returns it,
     /// or None if no solution exists.
     /// The returned solution is not unique, but you can find all solutions to the system
     /// by considering the returned solution plus the kernel of A (use `calc_matrix_kernel_space`).
     /// 
-    fn find_any_solution<M: MatrixView<Self::El>, N: MatrixView<Self::El>>(&self, b: Matrix<N, Self::El>) -> Option<Matrix<MatrixOwned<Self::El>, Self::El>>;
+    fn find_any_solution_modifying<N: MatrixView<Self::El>>(&self, a: Matrix<M, Self::El>, b: Matrix<N, Self::El>) -> Option<Matrix<MatrixOwned<Self::El>, Self::El>>;
 }
 
-impl<R: Ring> MatrixSolve for R {
+impl<R: Ring, M: MatrixViewMut<Self::El>> MatrixSolve<M> for R {
 
-    default fn solve_linear_equation<M: MatrixView<Self::El>, N: MatrixViewMut<Self::El>>(&self, a: Matrix<M, Self::El>, b: &mut Matrix<N, Self::El>) -> Result<(), usize> {
+    default fn solve_right_modifying<N: MatrixViewMut<Self::El>>(&self, mut lhs: Matrix<M, Self::El>, rhs: &mut Matrix<N, Self::El>) -> Result<(), usize> {
         assert!(self.is_field().can_use());
-        a.into_owned().solve_modifying(b, self)
+        assert_eq!(lhs.row_count(), lhs.col_count());
+        assert_eq!(lhs.row_count(), rhs.row_count());
+        lhs.gaussion_elimination_half(
+            |row, a, rhs| rhs.submatrix_mut(row..=row, 0..).scale(&a, self), 
+            |i, j, rhs| rhs.swap_rows(i, j), 
+            |dst, a, src, rhs| rhs.transform_two_dims_left(
+                src, dst, &[self.one(), self.zero(), self.neg(a), self.one()], self
+            ), 
+            rhs, 
+            self)?;
+
+        lhs.solve_strict_triangular(rhs, self);
+
+        return Ok(());
     }
     
-    default fn calc_matrix_kernel_space<M: MatrixView<Self::El>>(&self, a: Matrix<M, Self::El>) -> Option<Matrix<MatrixOwned<Self::El>, Self::El>> {
+    default fn right_kernel_base_modifying(&self, mut a: Matrix<M, Self::El>) -> Option<Matrix<MatrixOwned<Self::El>, Self::El>> {
         assert!(self.is_field().can_use());
-        a.into_owned().kernel_base_modifying(self)
+
+        // the approach is to transform the matrix in upper triangle form, 
+        // so ( U | R ) with an upper triangle matrix U and a nonsquare 
+        // rest matrix R. Then the kernel base matrix
+        // is given by ( -inv(U)*R )
+        //             (     I     )
+        // we just have to watch out if the left side is singular, then swap cols
+
+        let mut col_swaps: Vec<(usize, usize)> = Vec::new();
+        let non_zero_row_count = upper_trapezoid_form(a.as_mut(), self, |c1, c2| col_swaps.push((c1, c2)));
+
+        // now a is in upper triangle form
+        let effective_matrix = a.submatrix_mut(0..non_zero_row_count, ..);
+        if effective_matrix.row_count() >= effective_matrix.col_count() {
+            return None;
+        }
+        let upper_part = effective_matrix.row_count();
+        let lower_part = effective_matrix.col_count() - effective_matrix.row_count();
+        let mut result = Matrix::zero_ring(upper_part + lower_part, lower_part, self).into_owned();
+
+        // set to identity in the lower part
+        for i in 0..lower_part {
+            *result.at_mut(upper_part + i, i) = self.neg(self.one());
+        }
+        
+        // set the interesting upper part
+        let mut result_upper_part = result.submatrix_mut(..upper_part, ..);
+        result_upper_part.add_assign(effective_matrix.submatrix(.., upper_part..), self);
+        effective_matrix.submatrix(.., ..upper_part).solve_strict_triangular(
+            &mut result_upper_part, self
+        );
+
+        // and now perform the swaps
+        for (row1, row2) in col_swaps.iter().rev() {
+            result.swap_rows(*row1, *row2);
+        }
+
+        return Some(result);
     }
 
-    default fn find_any_solution<M: MatrixView<Self::El>, N: MatrixView<Self::El>>(&self, b: Matrix<N, Self::El>) -> Option<Matrix<MatrixOwned<Self::El>, Self::El>> {
+    default fn matrix_rank_modifying(&self, a: Matrix<M, Self::El>) -> usize {
+        assert!(self.is_field().can_use());
+        upper_trapezoid_form(a, self, |_, _| {})
+    }
+
+    default fn find_any_solution_modifying<N: MatrixView<Self::El>>(&self, a: Matrix<M, Self::El>, b: Matrix<N, Self::El>) -> Option<Matrix<MatrixOwned<Self::El>, Self::El>>{
         unimplemented!()
     }
 }
 
-impl<M, T> Matrix<M, T> 
-    where M: MatrixView<T>, T: Clone + std::fmt::Debug
+///
+/// Using row operations and column swaps, transforms a matrix A into
+/// what we call "upper trapezoid form", which means that except for
+/// zero rows at the bottom, the matrix is in upper triangle form with
+/// non-zero entries on the diagonal. In other words, it looks like
+/// ```text
+/// [ + * * ... * ... * ]
+/// [   + * ... * ... * ]
+///   ...
+/// [           + ... * ]
+/// [                   ]
+///   ...
+/// [                   ]
+/// ```
+/// where `+` means a non-zero entry and `*` any entry.
+/// 
+/// Returns the number of non-zero rows after the transformation.
+/// 
+fn upper_trapezoid_form<R, M, F>(mut a: Matrix<M, El<R>>, ring: &R, mut col_swap: F) -> usize 
+    where F: FnMut(usize, usize), R: Ring, M: MatrixViewMut<El<R>>
 {
-    ///
-    /// Expects self to be a square, strict upper triangular matrix (i.e. 1 on the diagonal)
-    /// and assigns to rhs the solution of the equation self * X = rhs
-    /// 
-    /// Complexity O(n^2(n + m)) where self is nxn and rhs is nxm
-    /// 
-    fn solve_strict_triangular<N, R>(&self, rhs: &mut Matrix<N, T>, ring: &R)
-        where N: MatrixViewMut<T>, R: Ring<El = T>
-    {
-        assert_eq!(self.row_count(), self.col_count());
-        assert_eq!(self.row_count(), rhs.row_count());
-
-        // check upper triangle
-        #[cfg(debug)] {
-            for i in 0..self.row_count() {
-                assert!(ring.is_one(self.at(i, i)));
-                for j in (0..i) {
-                    assert!(ring.is_zero(self.at(i, j)));
-                }
+    assert!(ring.is_field().can_use());
+    let mut i = 0;
+    loop {
+        let mut current_submatrix = a.submatrix_mut(i.., i..);
+        let gaussian_elim_result = current_submatrix.gaussion_elimination_half(
+            |_, _, _| {}, |_, _, _| {}, |_, _, _, _| {}, &mut (), ring
+        );
+        let (col1, col2) = if let Err(null_col) = gaussian_elim_result {
+            if let Some(other_col) = find_non_null_column(
+                a.submatrix((null_col + i).., (null_col + i)..), ring
+            ) {
+                // swap columns
+                (null_col + i, null_col + i + other_col)
+            } else {
+                // we have a whole 0-rectangle in the lower right corner, 
+                // so we really are in upper triangle form
+                return null_col + i;
             }
-        }
+        } else {
+            // upper triangle form is reached
+            return a.row_count();
+        };
+        col_swap(col1, col2);
+        a.swap_cols(col1, col2);
+        i = col1;
+    }
+}
 
-        // now self is in upper triangle form
-        for col in 0..rhs.col_count() {
-            for row in (0..self.row_count()).rev() {
-                for i in (row + 1)..self.row_count() {
-                    let d = ring.mul_ref(self.at(row, i), rhs.at(i, col));
-                    ring.add_assign(rhs.at_mut(row, col), ring.neg(d));
-                }
+fn find_non_null_column<R, N, T>(matrix: Matrix<N, T>, ring: &R) -> Option<usize> 
+    where N: MatrixView<T>, T: std::fmt::Debug + Clone, R: Ring<El = T>
+{
+    for i in 0..matrix.col_count() {
+        for j in 0..matrix.row_count() {
+            if !ring.is_zero(matrix.at(j, i)) {
+                return Some(i);
             }
         }
     }
+    return None;
 }
 
 impl<M, T> Matrix<M, T>
@@ -158,15 +261,50 @@ impl<M, T> Matrix<M, T>
         }
         return Ok(());
     }
+}
+
+impl<M, T> Matrix<M, T>
+    where M: MatrixView<T>, T: std::fmt::Debug + Clone
+{
+    ///
+    /// Expects self to be a square, strict upper triangular matrix (i.e. 1 on the diagonal)
+    /// and assigns to rhs the solution of the equation self * X = rhs
+    /// 
+    /// Complexity O(n^2(n + m)) where self is nxn and rhs is nxm
+    /// 
+    pub fn solve_strict_triangular<N, R>(&self, rhs: &mut Matrix<N, T>, ring: &R)
+        where N: MatrixViewMut<T>, R: Ring<El = T>
+    {
+        assert!(ring.is_field().can_use());
+        assert_eq!(self.row_count(), self.col_count());
+        assert_eq!(self.row_count(), rhs.row_count());
+
+        // check upper triangle
+        #[cfg(debug)] {
+            for i in 0..self.row_count() {
+                assert!(ring.is_one(self.at(i, i)));
+                for j in (0..i) {
+                    assert!(ring.is_zero(self.at(i, j)));
+                }
+            }
+        }
+
+        // now self is in upper triangle form
+        for col in 0..rhs.col_count() {
+            for row in (0..self.row_count()).rev() {
+                for i in (row + 1)..self.row_count() {
+                    let d = ring.mul_ref(self.at(row, i), rhs.at(i, col));
+                    ring.add_assign(rhs.at_mut(row, col), ring.neg(d));
+                }
+            }
+        }
+    }
 
     ///
     /// Solves the linear equation AX = B where A is an square matrix.
     /// This is done by transforming A and B, and after this function
     /// successfully terminated, A will be in strict upper triangle form and
     /// B will contain the solution.
-    /// 
-    /// If you do not need that this function requires no copy of the
-    /// matrix, prefer solve() instead.
     /// 
     /// If A is not invertible, this function will terminate as soon
     /// as this has been detected. Then A will consist of a left part
@@ -181,24 +319,10 @@ impl<M, T> Matrix<M, T>
     /// 
     /// Complexity O(n^2(n + m)) where self is nxn and rhs is nxm
     /// 
-    fn solve_modifying<R, N>(&mut self, rhs: &mut Matrix<N, T>, ring: &R) -> Result<(), usize>
+    pub fn solve_right<R, N>(self, rhs: &mut Matrix<N, T>, ring: &R) -> Result<(), usize>
         where N: MatrixViewMut<T>, R: Ring<El = T>
     {
-        assert!(ring.is_field().can_use());
-        assert_eq!(self.row_count(), self.col_count());
-        assert_eq!(self.row_count(), rhs.row_count());
-        self.gaussion_elimination_half(
-            |row, a, rhs| rhs.submatrix_mut(row..=row, 0..).scale(&a, ring), 
-            |i, j, rhs| rhs.swap_rows(i, j), 
-            |dst, a, src, rhs| rhs.transform_two_dims_left(
-                src, dst, &[ring.one(), ring.zero(), ring.neg(a), ring.one()], ring
-            ), 
-            rhs, 
-            ring)?;
-
-        self.solve_strict_triangular(rhs, ring);
-
-        return Ok(());
+        <R as MatrixSolve<MatrixOwned<T>>>::solve_right_modifying(ring, self.into_owned(), rhs)
     }
 
     ///
@@ -207,90 +331,19 @@ impl<M, T> Matrix<M, T>
     /// so if you can life with an additional copy, prefer
     /// to use kernel_base() instead
     /// 
-    fn kernel_base_modifying<R>(&mut self, ring: &R) -> Option<Matrix<MatrixOwned<T>, T>> 
+    pub fn right_kernel_base<R>(self, ring: &R) -> Option<Matrix<MatrixOwned<T>, T>> 
         where R: Ring<El = T>
     {
-        assert!(ring.is_field().can_use());
-
-        // the approach is to transform the matrix in upper triangle form, 
-        // so ( U | R ) with an upper triangle matrix U and a nonsquare 
-        // rest matrix R. Then the kernel base matrix
-        // is given by ( -inv(U)*R )
-        //             (     I     )
-        // we just have to watch out if the left side is singular, then swap cols
-        let mut col_swaps: Vec<(usize, usize)> = Vec::new();
-
-        fn find_non_null_column<R, N, T>(matrix: Matrix<N, T>, ring: &R) -> Option<usize> 
-            where N: MatrixView<T>, T: std::fmt::Debug + Clone, R: Ring<El = T>
-        {
-            for i in 0..matrix.col_count() {
-                for j in 0..matrix.row_count() {
-                    if !ring.is_zero(matrix.at(j, i)) {
-                        return Some(i);
-                    }
-                }
-            }
-            return None;
-        }
-
-        let mut i = 0;
-        let mut non_zero_row_count = self.row_count();
-        loop {
-            let mut current_submatrix = self.submatrix_mut(i.., i..);
-            let gaussian_elim_result = current_submatrix.gaussion_elimination_half(
-                |_, _, _| {}, |_, _, _| {}, |_, _, _, _| {}, &mut (), ring
-            );
-            let (col1, col2) = if let Err(null_col) = gaussian_elim_result {
-                if let Some(other_col) = find_non_null_column(
-                    self.submatrix((null_col + i).., (null_col + i)..), ring
-                ) {
-                    // swap columns
-                    (null_col + i, null_col + i + other_col)
-                } else {
-                    // we have a whole 0-rectangle in the lower right corner, 
-                    // so we really are in upper triangle form
-                    non_zero_row_count = null_col + i;
-                    break;
-                }
-            } else {
-                // upper triangle form is reached
-                break;
-            };
-            col_swaps.push((col1, col2));
-            self.swap_cols(col1, col2);
-            i = col1;
-        }
-
-        // now self is in upper triangle form
-        let effective_matrix = self.submatrix_mut(0..non_zero_row_count, ..);
-        if effective_matrix.row_count() >= effective_matrix.col_count() {
-            return None;
-        }
-        let upper_part = effective_matrix.row_count();
-        let lower_part = effective_matrix.col_count() - effective_matrix.row_count();
-        let mut result = Matrix::zero_ring(upper_part + lower_part, lower_part, ring).into_owned();
-
-        // set to identity in the lower part
-        for i in 0..lower_part {
-            *result.at_mut(upper_part + i, i) = ring.neg(ring.one());
-        }
-        
-        // set the interesting upper part
-        let mut result_upper_part = result.submatrix_mut(..upper_part, ..);
-        result_upper_part.add_assign(effective_matrix.submatrix(.., upper_part..), ring);
-        effective_matrix.submatrix(.., ..upper_part).solve_strict_triangular(
-            &mut result_upper_part, ring
-        );
-
-        // and now perform the swaps
-        for (row1, row2) in col_swaps.iter().rev() {
-            result.swap_rows(*row1, *row2);
-        }
-
-        return Some(result);
+        <R as MatrixSolve<MatrixOwned<T>>>::right_kernel_base_modifying(ring, self.into_owned())
     }
 
-    fn find_any_solution_modifying<R, N>(&mut self, rhs: &mut Matrix<N, T>, ring: &R)
+    pub fn rank<R>(self, ring: &R) -> usize 
+        where R: Ring<El = T>
+    {
+        <R as MatrixSolve<MatrixOwned<T>>>::matrix_rank_modifying(ring, self.into_owned())
+    }
+
+    pub fn find_any_solution<R, N>(self, rhs: &mut Matrix<N, T>, ring: &R)
         where N: MatrixViewMut<T>, R: Ring<El = T>
     {
         unimplemented!()
@@ -302,13 +355,13 @@ use super::super::primitive::RingEl;
 
 #[test]
 fn test_invert_matrix() {
-    let mut a = Matrix::from_array([[1., 2.], [4., 8.]]);
+    let a = Matrix::from_array([[1., 2.], [4., 8.]]);
     let mut a_inv = Matrix::identity(2, 2);
-    assert!(a.solve_modifying(&mut a_inv, &f32::RING).is_err());
+    assert!(a.solve_right(&mut a_inv, &f32::RING).is_err());
 
-    let mut b = Matrix::from_array([[1., 2.], [4., 4.]]);
+    let b = Matrix::from_array([[1., 2.], [4., 4.]]);
     let mut b_inv = Matrix::identity(2, 2);
-    b.solve_modifying(&mut b_inv, &f32::RING).unwrap();
+    b.solve_right(&mut b_inv, &f32::RING).unwrap();
 
     assert_eq!(1., *b_inv.at(1, 0));
     assert_eq!(-0.25, *b_inv.at(1, 1));
@@ -319,22 +372,22 @@ fn test_invert_matrix() {
 #[test]
 fn test_kernel_base() {
     #[rustfmt::skip]
-    let mut a = Matrix::from_array([[1., 3., 1., 3.], 
-                                    [2., 6., 1., 2.], 
-                                    [0., 0., 1., 1.]]);
+    let a = Matrix::from_array([[1., 3., 1., 3.], 
+                                [2., 6., 1., 2.], 
+                                [0., 0., 1., 1.]]);
 
     let b = Matrix::from_array([[3.], [-1.], [0.], [0.]]);
-    assert_eq!(b, a.kernel_base_modifying(&f32::RING).unwrap());
+    assert_eq!(b, a.right_kernel_base(&f32::RING).unwrap());
 
     #[rustfmt::skip]
-    let mut a = Matrix::from_array([[1., 3., 1., 3.], 
-                                    [2., 6., 1., 5.], 
-                                    [0., 0., 1., 1.]]);
+    let a = Matrix::from_array([[1., 3., 1., 3.], 
+                                [2., 6., 1., 5.], 
+                                [0., 0., 1., 1.]]);
                                     
     #[rustfmt::skip]
     let b = Matrix::from_array([[3.,  2.], 
                                 [-1., 0.], 
                                 [0.,  1.], 
                                 [0., -1.]]);
-    assert_eq!(b, a.kernel_base_modifying(&f32::RING).unwrap());
+    assert_eq!(b, a.right_kernel_base(&f32::RING).unwrap());
 }

@@ -73,7 +73,7 @@ fn compute_mipo<R, P>(extension_ring: &R, x: &El<R>, poly_ring: &P) -> El<P>
     let x = poly_ring.unknown();
     let mut result = None;
     let embed = embedding(extension_ring.base_ring(), poly_ring.base_ring());
-    for poly_vec in extension_ring.base_ring().calc_matrix_kernel_space(m).unwrap().cols() {
+    for poly_vec in m.right_kernel_base(extension_ring.base_ring()).unwrap().cols() {
         let poly = poly_ring.sum(poly_vec.iter().enumerate().map(
             |(i, a)| poly_ring.mul(poly_ring.from(embed(a.clone())), poly_ring.pow(&x, i as u32))
         ));
@@ -226,10 +226,8 @@ fn test_trace() {
 
 #[test]
 fn test_trace_finite_field() {
-    let base_field = F2;
     let extension_field = F16;
     let a = extension_field.generator();
     let trace = extension_field.trace(extension_field.add(a, extension_field.one()));
     assert_eq!(F2.from_z(0), trace);
-    assert!(false);
 }

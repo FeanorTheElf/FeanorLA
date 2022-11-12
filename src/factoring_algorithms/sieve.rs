@@ -225,7 +225,7 @@ pub fn quadratic_sieve(n: &Int) -> Int {
         let matrix = Matrix::from_fn(factor_base.len(), relations.len(), |r, c| 
             F2::project(*relations[c].1.at(r) as i64)
         );
-        let solutions = F2::RING.calc_matrix_kernel_space(matrix).unwrap();
+        let solutions = matrix.right_kernel_base(&F2::RING).unwrap();
 
         for i in 0..solutions.col_count() {
 
