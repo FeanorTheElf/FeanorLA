@@ -335,3 +335,10 @@ impl<P> WrappingRing<P>
         self.wrap(self.wrapped_ring().unknown())
     }
 }
+
+impl<R: Ring> WrappingRing<R> {
+
+    pub fn std_poly_ring(&self, var_name: &'static str) -> WrappingRing<PolyRingImpl<&R>> {
+        WrappingRing::new(PolyRingImpl::adjoint(self.wrapped_ring(), var_name))
+    }
+}

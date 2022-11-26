@@ -1,3 +1,5 @@
+use self::fraction_field_impl::FractionFieldImpl;
+
 use super::prelude::*;
 use super::eea::gcd;
 use super::wrapper::*;
@@ -56,13 +58,20 @@ impl<'a, R: FractionField> FractionField for &'a R {
     fn den<'b>(&self, el: &'b El<Self>) -> &'b El<Self::BaseRing> { (**self).den(el) }
 }
 
-impl<R: FractionField> RingElWrapper<R> 
-{
+impl<R: FractionField> RingElWrapper<R> {
+
     pub fn num(&self) -> RingElWrapper<&R::BaseRing> {
         RingElWrapper::new(self.parent_ring().num(self.val()).clone(), self.parent_ring().base_ring())
     }
 
     pub fn den(&self) -> RingElWrapper<&R::BaseRing> {
         RingElWrapper::new(self.parent_ring().den(self.val()).clone(), self.parent_ring().base_ring())
+    }
+}
+
+impl<R: Ring> WrappingRing<R> {
+
+    pub fn std_fraction_field(&self) -> WrappingRing<FractionFieldImpl<&R>> {
+        WrappingRing::new(FractionFieldImpl::new(self.wrapped_ring()))
     }
 }

@@ -103,7 +103,7 @@ fn karatsuba_impl<R, U, V, W>(
 /// considered. In other words, we really just compute out[n] += sum_{i+j = n} lhs[i] * rhs[j]
 /// for all n within out. Consider also this example:
 /// ```
-/// # use feanor_la::karatsuba::*;
+/// # use feanor_la::multiplication::karatsuba::*;
 /// # use feanor_la::prelude::*;
 /// # use feanor_la::la::vec::*;
 /// let mut out = Vector::from_array([0]);
@@ -114,7 +114,7 @@ fn karatsuba_impl<R, U, V, W>(
 /// # Example
 /// 
 /// ```
-/// # use feanor_la::karatsuba::*;
+/// # use feanor_la::multiplication::karatsuba::*;
 /// # use feanor_la::prelude::*;
 /// # use feanor_la::la::vec::*;
 /// let lhs = Vector::from_array([1, 2, 3]);
