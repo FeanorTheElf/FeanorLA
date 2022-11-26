@@ -102,8 +102,8 @@ impl<M, T> Matrix<M, T>
         self.as_ref().into_submatrix(rows, cols)
     }
 
-    pub fn rows(&self) -> MatrixRowIter<T, &M> {
-        MatrixRowIter::new(&self.data)
+    pub fn rows(&self) -> std::iter::Map<MatrixRowIter<T, &M>, ToVector<MatrixRow<T, &M>, T>> {
+        MatrixRowIter::new(&self.data).map(ToVector::INSTANCE)
     }
 
     pub fn into_row(self, row: usize) -> Vector<MatrixRow<T, M>, T> {
@@ -115,8 +115,8 @@ impl<M, T> Matrix<M, T>
         self.as_ref().into_row(row)
     }
 
-    pub fn cols(&self) -> MatrixColIter<T, &M> {
-        MatrixColIter::new(&self.data)
+    pub fn cols(&self) -> std::iter::Map<MatrixColIter<T, &M>, ToVector<MatrixCol<T, &M>, T>> {
+        MatrixColIter::new(&self.data).map(ToVector::INSTANCE)
     }
 
     pub fn into_col(self, col: usize) -> Vector<MatrixCol<T, M>, T> {

@@ -2,6 +2,8 @@ pub mod vector_view;
 pub mod matrix_view;
 pub mod ops;
 pub mod vec;
+pub mod vec_fn;
 pub mod mat;
 pub mod mat_fn;
 pub mod inversion;
+pub mod determinant;

@@ -85,6 +85,7 @@ pub fn finite_field_elements<R: FiniteRing>(ring: R) -> FiniteRingElementIter<R>
 pub mod zn_big;
 pub mod zn_small;
 pub mod fq_small;
+pub mod binary_fields;
 
 pub struct WrappingRingIterFn<R: FiniteRing> {
     base_fn: R::IterFn

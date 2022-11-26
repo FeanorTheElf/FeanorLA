@@ -854,6 +854,13 @@ pub struct LiftedHom<S, R, F>
     to: WrappingRing<R>
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct WrappingEmbedding<R>
+    where R: Ring
+{
+    ring: WrappingRing<R>
+}
+
 impl<R> WrappingRing<R>
     where R: Ring
 {
@@ -892,8 +899,16 @@ impl<R> WrappingRing<R>
         &mut self.ring
     }
 
-    pub fn wrapping_embedding<'a>(&'a self) -> impl 'a + Clone + Fn(R::El) -> <Self as RingBase>::El {
-        move |x| self.wrap(x)
+    pub fn wrapping_embedding<'a>(&'a self) -> WrappingEmbedding<&'a R> {
+        WrappingEmbedding {
+            ring: WrappingRing::new(&self.ring)
+        }
+    }
+
+    pub fn into_wrapping_embedding(self) -> WrappingEmbedding<R> {
+        WrappingEmbedding {
+            ring: WrappingRing::new(self.ring)
+        }
     }
 
     pub fn map_ring<F, S>(self, f: F) -> WrappingRing<S>
@@ -985,6 +1000,41 @@ impl<S, R, F> Fn<(RingElWrapper<S>,)> for LiftedHom<S, R, F>
         (x, ): (RingElWrapper<S>,)
     ) -> Self::Output {
         self.to.wrap((self.base)(x.el))
+    }
+}
+
+impl<R> FnOnce<(El<R>,)> for WrappingEmbedding<R> 
+    where R: Ring
+{
+    type Output = El<WrappingRing<R>>;
+
+    extern "rust-call" fn call_once(
+        mut self, 
+        (x, ): (El<R>,)
+    ) -> Self::Output {
+        self.call_mut((x,))
+    }
+}
+
+impl<R> FnMut<(El<R>,)> for WrappingEmbedding<R> 
+    where R: Ring
+{
+    extern "rust-call" fn call_mut(
+        &mut self, 
+        (x, ): (El<R>,)
+    ) -> Self::Output {
+        self.call((x,))
+    }
+}
+
+impl<R> Fn<(El<R>,)> for WrappingEmbedding<R> 
+    where R: Ring
+{
+    extern "rust-call" fn call(
+        &self, 
+        (x, ): (El<R>,)
+    ) -> Self::Output {
+        self.ring.wrap(x)
     }
 }
 

@@ -94,8 +94,8 @@ fn test_row_triangular() {
 #[test]
 fn test_row_hnf() {
     let ring = i64::WRAPPED_RING;
-    let A = Matrix::map(Matrix::from_array([[ 6, 5, 9 ], [ 4, 10, 11 ], [ 7, 5, 2 ]]), ring.wrapping_embedding());
-    let expected = Matrix::map(Matrix::from_array([[ 1, 0, 56 ], [ 0, 5, 51 ], [ 0, 0, 63 ]]), ring.wrapping_embedding());
+    let A = Matrix::map(Matrix::from_array([[ 6, 5, 9 ], [ 4, 10, 11 ], [ 7, 5, 2 ]]), ring.into_wrapping_embedding());
+    let expected = Matrix::map(Matrix::from_array([[ 1, 0, 56 ], [ 0, 5, 51 ], [ 0, 0, 63 ]]), ring.into_wrapping_embedding());
     let mut actual = A.clone();
     let Uinv = row_hnf(&mut actual);
     assert_eq!(expected, actual);

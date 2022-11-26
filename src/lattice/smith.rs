@@ -215,7 +215,7 @@ fn test_partial_smith_4x2() {
     let ring = i64::WRAPPED_RING;
     #[rustfmt::skip]
     let mut A = Matrix::map(Matrix::from_array([[ 1,  1, -1, -1],
-                                                [ 1,  0, -1,  0]]), ring.wrapping_embedding());
+                                                [ 1,  0, -1,  0]]), ring.into_wrapping_embedding());
     let A_copy = A.clone();
     let mut iL = Matrix::identity_ring(2, 2, &ring);
     let mut iR = Matrix::identity_ring(4, 4, &ring);

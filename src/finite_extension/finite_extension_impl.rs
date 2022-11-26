@@ -1,12 +1,10 @@
 use super::super::prelude::*;
 use super::super::poly::*;
-use super::super::la::inversion::*;
 use super::super::poly::ops::poly_format;
 use super::super::fq::*;
 use super::super::combinatorics::iters::*;
 use super::*;
 use super::super::la::vec::*;
-use super::super::la::mat::*;
 
 use std::marker::PhantomData;
 use std::iter::FromIterator;
@@ -286,7 +284,7 @@ impl<R, V, W> RingBase for FiniteExtensionImpl<R, V, W>
         assert!(!self.is_zero(rhs));
         if self.base_ring.is_field().can_use() {
             let multiplication_matrix = self.create_multiplication_matrix(rhs.clone());
-            <R as MatrixSolve>::solve_linear_equation(&self.base_ring, multiplication_matrix, &mut Matrix::col_vec(lhs.as_mut())).unwrap();
+            multiplication_matrix.solve_right(&mut Matrix::col_vec(lhs.as_mut()), &self.base_ring).unwrap();
             return lhs;
         } else {
             unimplemented!()

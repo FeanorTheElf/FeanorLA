@@ -1,6 +1,6 @@
 use super::super::ring::*;
 use super::super::la::mat::*;
-use super::super::algebra::fractions::*;
+use super::super::fraction_field::fraction_field_impl::*;
 use super::super::embedding::*;
 
 pub trait MatrixDeterminant<M>: Ring
@@ -16,14 +16,14 @@ fn compute_det<F>(field: F, mut work_matrix: Matrix<MatrixOwned<F::El>, F::El>) 
     let mut det_factor_inv = field.one();
     let mut negated = false;
     let result = work_matrix.gaussion_elimination_half(
-        |_, a, ()| { field.mul_assign(&mut det_factor_inv, a) },
+        |_, a, ()| { field.mul_assign(&mut det_factor_inv, &a) },
         |_, _, ()| { negated = !negated; },
         |_, _, _, ()| {},
         &mut (),
         &field
     );
     if let Ok(()) = result {
-        let value = work_matrix.into_nonmain_diag(0).into_owned().raw_data().into_vec().into_iter().fold(field.one(), |a, b| field.mul(a, b));
+        let value = work_matrix.into_nonmain_diag(0).into_owned().raw_data().into_iter().fold(field.one(), |a, b| field.mul(a, b));
         let scaled = field.div(value, &det_factor_inv);
         if negated {
             return field.neg(scaled);
@@ -36,14 +36,23 @@ fn compute_det<F>(field: F, mut work_matrix: Matrix<MatrixOwned<F::El>, F::El>) 
 }
 
 impl<R, M> MatrixDeterminant<M> for R
-    where R: DivisibilityInfoRing + CanonicalIsomorphismInfo<R>, M: MatrixView<R::El>
+    where R: Ring, M: MatrixView<R::El>
+{
+    default fn matrix_determinant(&self, matrix: Matrix<M, R::El>) -> R::El {
+        assert!(self.is_field().can_use());
+        return compute_det(self, matrix.into_owned());
+    }
+}
+
+impl<R, M> MatrixDeterminant<M> for R
+    where R: DivisibilityInfoRing, M: MatrixView<R::El>
 {
     default fn matrix_determinant(&self, matrix: Matrix<M, R::El>) -> R::El {
         if self.is_field().can_use() {
             compute_det(self, matrix.into_owned())
         } else if self.is_integral().can_use() {
-            assert!(self.is_divisibility_computable());
-            let field = FieldOfFractions::new(self);
+            assert!(self.is_divisibility_computable().can_use());
+            let field = FractionFieldImpl::new(self);
             let incl = embedding(self, field);
             let work_matrix = Matrix::from_fn(matrix.row_count(), matrix.col_count(), |i, j| incl(matrix.at(i, j).clone()));
             let result = compute_det(&field, work_matrix);

@@ -1,4 +1,7 @@
 
+use super::super::combinatorics::iters::*;
+use super::*;
+
 pub mod define_fq {
     pub use crate::finite_extension::finite_extension_impl::*;
     pub use crate::fq::zn_small::*;
@@ -47,6 +50,20 @@ pub const F4: F4Type = FiniteExtensionImpl::new(F2, F4_MIPO, "α");
 pub const F49: F49Type = FiniteExtensionImpl::new(F7, F49_MIPO, "α");
 pub const F1369: F1369Type = F1369Type::new(ZnEl::<37>::RING, F1369_MIPO, "α");
 
+pub fn galois_field<const P: u64, const N: usize>() -> FiniteExtensionImpl<StaticRing<ZnElImpl<P, true>>, VectorArray<ZnElImpl<P, true>, N>, VectorArray<ZnElImpl<P, true>, N>> {
+    assert!(is_prime(P));
+    assert!(P != 2); // currently, we have no irreducibility test over Z2
+
+    for mipo in multi_cartesian_product(std::iter::repeat(finite_field_elements(ZnElImpl::<P, true>::RING)).take(N), |slice| slice.iter().copied().collect::<VectorArray<ZnElImpl<P, true>, N>>()) {
+        let potential_result = FiniteExtensionImpl::new(ZnElImpl::<P, true>::RING, Vector::new(mipo), "α");
+        if potential_result.is_field().can_use() {
+            return potential_result;
+        }
+    }
+
+    unreachable!()
+}
+
 #[cfg(test)]
 use super::FiniteRing;
 #[cfg(test)]
@@ -87,6 +104,11 @@ fn test_is_finite_ring() {
         assert!(true);
     }
     as_ring(F49);
+}
+
+#[test]
+fn test_galois_field() {
+    assert!(galois_field::<3, 5>().is_field().can_use());
 }
 
 #[test]
