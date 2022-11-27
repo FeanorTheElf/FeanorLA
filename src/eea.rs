@@ -16,7 +16,6 @@ pub fn eea<R>(ring: &R, fst: R::El, snd: R::El) -> (R::El, R::El, R::El)
     where R::El: Clone, R: EuclideanInfoRing
 {
     assert!(ring.is_euclidean().can_use());
-
     let (mut a, mut b) = (fst, snd);
     let (mut sa, mut ta) = (ring.one(), ring.zero());
     let (mut sb, mut tb) = (ring.zero(), ring.one());

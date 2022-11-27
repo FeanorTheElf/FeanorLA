@@ -83,7 +83,7 @@ fn stdint_to_mpz(dst: &mut MPZ, src: StdInt) {
             },
             Err(()) => {
                 let is_neg = src < 0;
-                let data: Vec<mpz_bindings::mpir_ui> = src.map_into(&BigInt::WRAPPED_RING).into_val().base_u64_repr().into_owned().raw_data();
+                let data: Vec<mpz_bindings::mpir_ui> = src.map_into(&BigInt::WRAPPED_RING).into_val().base_u64_repr().into_owned().into_raw_data();
                 // should never happen (we would be in the first case), however, with c it pays off to be paranoid
                 assert!(data.len() > 0);
                 mpz_bindings::__gmpz_import(

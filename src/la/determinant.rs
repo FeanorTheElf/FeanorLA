@@ -23,7 +23,7 @@ fn compute_det<F>(field: F, mut work_matrix: Matrix<MatrixOwned<F::El>, F::El>) 
         &field
     );
     if let Ok(()) = result {
-        let value = work_matrix.into_nonmain_diag(0).into_owned().raw_data().into_iter().fold(field.one(), |a, b| field.mul(a, b));
+        let value = work_matrix.into_nonmain_diag(0).into_owned().into_raw_data().into_iter().fold(field.one(), |a, b| field.mul(a, b));
         let scaled = field.div(value, &det_factor_inv);
         if negated {
             return field.neg(scaled);

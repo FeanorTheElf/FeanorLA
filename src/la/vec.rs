@@ -59,7 +59,7 @@ impl<V, T> Vector<V, T>
     pub fn access_by<F, S>(self, f: F) -> Vector<VectorViewMapped<T, S, V, F>, S>
         where F: for<'a> Fn(&'a T) -> &'a S
     {
-        Vector::new(VectorViewMapped::new(self.raw_data(), f))
+        Vector::new(VectorViewMapped::new(self.into_raw_data(), f))
     }
 
     pub fn into_subvector<R>(self, range: R) -> Vector<V::Subvector, T>
@@ -139,8 +139,12 @@ impl<V, T> Vector<V, T>
         VectorIter::new(&self.data)
     }
 
-    pub fn raw_data(self) -> V {
+    pub fn into_raw_data(self) -> V {
         self.data
+    }
+
+    pub fn raw_data(&self) -> &V {
+        &self.data
     }
 
     pub fn get(&self, i: usize) -> Option<&T> {
@@ -320,7 +324,7 @@ impl<T> Vector<VectorOwned<T>, T> {
     pub fn map<U, S, F>(vector: Vector<U, S>, f: F) -> Self
         where U: VectorView<S>, F: FnMut(S) -> T, S: Clone
     {
-        Vector::new(vector.into_owned().raw_data().into_iter().map(f).collect())
+        Vector::new(vector.into_owned().into_raw_data().into_iter().map(f).collect())
     }
 }
 

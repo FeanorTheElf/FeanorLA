@@ -33,7 +33,7 @@ impl<R> PolyRingImpl<R>
         where S: Ring, F: Fn(S::El) -> R::El
     {
         move |poly| {
-            Vector::new(poly.raw_data().into_iter().map(&hom).collect())
+            Vector::new(poly.into_raw_data().into_iter().map(&hom).collect())
         }
     }
 
@@ -51,6 +51,10 @@ impl<R> PolyRingImpl<R>
         where F: FnMut(&R::El) -> Result<R::El, ()>
     {
         poly_division(&self.base_ring, lhs.as_mut(), rhs.as_ref(), div_lc)
+    }
+
+    pub fn borrow_ring<'a>(&'a self) -> PolyRingImpl<&'a R> {
+        PolyRingImpl::adjoint(self.base_ring(), self.var_name)
     }
 }
 
@@ -167,7 +171,7 @@ impl<R> CanonicalEmbeddingInfo<PolyRingImpl<R>> for PolyRingImpl<R>
 
     fn embed(&self, from: &PolyRingImpl<R>, el: Self::El) -> Self::El {
         assert!(self.has_embedding(from).can_use());
-        Vector::new(el.raw_data().into_iter().map(|x| self.base_ring().embed(from.base_ring(), x)).collect())
+        Vector::new(el.into_raw_data().into_iter().map(|x| self.base_ring().embed(from.base_ring(), x)).collect())
     }
 }
 
@@ -180,7 +184,7 @@ impl<R> CanonicalIsomorphismInfo<PolyRingImpl<R>> for PolyRingImpl<R>
 
     fn preimage(&self, from: &PolyRingImpl<R>, el: Self::El) -> Self::El {
         assert!(self.has_isomorphism(from).can_use());
-        Vector::new(el.raw_data().into_iter().map(|x| self.base_ring().preimage(from.base_ring(), x)).collect())
+        Vector::new(el.into_raw_data().into_iter().map(|x| self.base_ring().preimage(from.base_ring(), x)).collect())
     }
 }
 
@@ -629,5 +633,16 @@ fn bench_poly_multiplication(b: &mut Bencher) {
          + (0..100).map(|n| x.pow(200 - n) * &a * ((100 - n) * n * (n + 1) / 2 + n * (n + 1) * (2 * n + 1) / 6) as i64).sum::<RingElWrapper<&_>>();
     b.iter(|| {
         assert_eq!(h, &f * &g);
+    });
+}
+
+#[bench]
+fn bench_factor_lifted(bencher: &mut Bencher) {
+    let zt = WrappingRing::new(Zn::new(i64::RING, 127.pow(3)));
+    let poly_ring = zt.std_poly_ring("X");
+    let x = poly_ring.unknown();
+    bencher.iter(|| {
+        let factorization = (x.pow(2u32.pow(6)) + 1).factor();
+        assert_eq!(x.pow(2u32.pow(6)) + 1, factorization.into_iter().map(|(f, _)| f).product::<RingElWrapper<PolyRingImpl<_>>>());
     });
 }

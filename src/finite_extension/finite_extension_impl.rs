@@ -26,12 +26,13 @@ impl<R> FiniteExtensionImpl<R, VectorOwned<R::El>, VectorOwned<R::El>>
     pub fn adjoin_element<P>(base_ring: R, mipo: El<P>, poly_ring: &P, gen_name: &'static str) -> Self
         where P: PolyRing<BaseRing = R>
     {
+        assert!(poly_ring.deg(&mipo).is_some() && poly_ring.deg(&mipo).unwrap() >= 2);
         let ring = PolyRingImpl::adjoint(base_ring.clone(), "X");
         let mipo = poly_ring.preimage(&ring, mipo);
         assert!(base_ring.is_one(&ring.lc(&mipo).unwrap()), "Only adjoining monic polynomials is supported");
         let degree = mipo.iter().enumerate().filter(|(_, x)| !base_ring.is_zero(x)).map(|(i, _)| i).max().unwrap();
         let mipo_values = Vector::new(
-            mipo.raw_data()
+            mipo.into_raw_data()
                 .into_iter()
                 .map(|x| base_ring.neg(x))
                 .take(degree)
@@ -64,10 +65,10 @@ impl<R, V, W> FiniteExtensionImpl<R, V, W>
         assert_eq!(el.len(), self.rank_as_module());
     }
 
-    pub fn polynomial_repr(&self, poly_ring: &PolyRingImpl<&R>, el: El<Self>) -> El<PolyRingImpl<R>> {
-        el.into_owned().raw_data().into_iter().enumerate()
-            .map(|(i, x)| poly_ring.mul(poly_ring.pow(&poly_ring.unknown(), i as u32), poly_ring.from(x)))
-            .fold(poly_ring.zero(), |a, b| poly_ring.add(a, b))
+    pub fn polynomial_repr<P>(&self, poly_ring: &P, el: &El<Self>) -> El<P> 
+        where P: PolyRing<BaseRing = R>
+    {
+        poly_ring.from_coefficients(el.iter().cloned())
     }
 
     fn create_multiplication_matrix(&self, el: El<Self>) -> Matrix<MatrixOwned<R::El>, R::El> {
@@ -109,6 +110,10 @@ impl<R, V, W> FiniteExtensionImpl<R, V, W>
         } else {
             None
         }
+    }
+
+    pub fn borrow_ring<'a>(&'a self) -> FiniteExtensionImpl<&'a R, &'a V, W> {
+        FiniteExtensionImpl::new(self.base_ring(), Vector::new(self.mipo_values.raw_data()), self.gen_name)
     }
 }
 
@@ -293,7 +298,7 @@ impl<R, V, W> RingBase for FiniteExtensionImpl<R, V, W>
 
     fn format(&self, el: &Self::El, f: &mut std::fmt::Formatter, in_prod: bool) -> std::fmt::Result {
         let poly_ring = PolyRingImpl::adjoint(&self.base_ring, self.gen_name);
-        poly_ring.format(&self.polynomial_repr(&poly_ring, el.clone()), f, in_prod)
+        poly_ring.format(&self.borrow_ring().polynomial_repr(&poly_ring, &el), f, in_prod)
     }
 }
 

@@ -8,7 +8,7 @@ const BLOCK_BITS: u32 = u64::BITS;
 
 fn expand(x: &mut Vector<Vec<BlockInt>, BlockInt>, len: usize) {
 	if len > x.len() {
-		let mut base_vec = std::mem::replace(x, Vector::new(Vec::new())).raw_data();
+		let mut base_vec = std::mem::replace(x, Vector::new(Vec::new())).into_raw_data();
 		base_vec.resize(len, 0);
 		*x = Vector::new(base_vec);
 	}
@@ -16,7 +16,7 @@ fn expand(x: &mut Vector<Vec<BlockInt>, BlockInt>, len: usize) {
 
 #[cfg(test)]
 fn truncate_zeros(x: Vector<Vec<BlockInt>, BlockInt>) -> Vector<Vec<BlockInt>, BlockInt> {
-	let mut data = x.raw_data();
+	let mut data = x.into_raw_data();
 	data.truncate(data.len() - data.iter().rev().take_while(|a| **a == 0).count());
 	return Vector::new(data);
 }

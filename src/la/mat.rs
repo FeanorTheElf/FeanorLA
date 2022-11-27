@@ -173,7 +173,7 @@ impl<V, T> Matrix<ColumnVector<V, T>, T>
     where V: VectorView<T>
 {
     pub fn col_vec(vector: Vector<V, T>) -> Self {
-        Matrix::new(ColumnVector::new(vector.raw_data()))
+        Matrix::new(ColumnVector::new(vector.into_raw_data()))
     }
 }
 
@@ -181,7 +181,7 @@ impl<V, T> Matrix<RowVector<V, T>, T>
     where V: VectorView<T>
 {
     pub fn row_vec(vector: Vector<V, T>) -> Self {
-        Matrix::new(RowVector::new(vector.raw_data()))
+        Matrix::new(RowVector::new(vector.into_raw_data()))
     }
 }
 
@@ -193,7 +193,7 @@ impl<V, T> Matrix<DiagonalMatrix<V, T>, T>
     }
 
     pub fn nonmain_diag_matrix_ring<R: Ring<El = T>>(vector: Vector<V, T>, diag_index: i64, ring: &R) -> Self {
-        Matrix::new(DiagonalMatrix::new(vector.raw_data(), diag_index, ring.zero()))
+        Matrix::new(DiagonalMatrix::new(vector.into_raw_data(), diag_index, ring.zero()))
     }
 }
 

@@ -216,7 +216,7 @@ impl<R> MultiPolyRing for MultivariatePolyRing<R>
 
     fn de_elevate_var<'a>(&'a self, var: usize, x: El<PolyRingImpl<&'a Self>>) -> El<Self> {
         let mut result = BTreeMap::new();
-        for (pow, coeff) in x.raw_data().into_iter().enumerate() {
+        for (pow, coeff) in x.into_raw_data().into_iter().enumerate() {
             result.extend(coeff.into_iter().map(|(mut key, c)| {
                 if pow > 0 {
                     key.resize(key.len().max(var + 1), 0);

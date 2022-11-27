@@ -1,5 +1,7 @@
 use super::super::prelude::*;
 use super::super::eea::*;
+use super::super::finite_extension::finite_extension_impl::*;
+use super::super::finite_extension::*;
 use super::super::fq::*;
 use super::*;
 use super::super::square_multiply::abs_square_and_multiply;
@@ -239,25 +241,34 @@ pub fn is_prime<P>(poly_ring: &P, el: &El<P>) -> bool
     where P: PolyRing + DivisibilityInfoRing + EuclideanInfoRing, P::BaseRing: FiniteRing
 {
     assert!(poly_ring.base_ring().is_field().can_use());
-    if poly_ring.is_zero(el) {
+    let deg = poly_ring.deg(el);
+    if deg == None || deg == Some(0) {
         return false;
     }
-    let d = poly_ring.deg(el).unwrap();
-    let sqrfree_part = factoring::poly_squarefree_part(poly_ring, el.clone());
-    if poly_ring.deg(&sqrfree_part) != Some(d) {
-        return false;
+    if deg == Some(1) {
+        return true;
     }
-    let distinct_degree_factorization = factoring::distinct_degree_factorization(poly_ring, sqrfree_part);
-    if d >= distinct_degree_factorization.len() || poly_ring.is_unit(&distinct_degree_factorization[d]) {
-        return false;
+    let deg = deg.unwrap();
+    let modulus = poly_ring.normalize(el.clone()).0;
+    let ring = FiniteExtensionImpl::adjoin_element(poly_ring.base_ring().clone(), modulus, poly_ring, "X");
+    let q = poly_ring.base_ring().characteristic();
+    let mut current = ring.one();
+    let x = ring.generator();
+    let mut current_pow_x = x.clone();
+    for d in 1..deg {
+        current_pow_x = ring.pow_big(&current_pow_x, &q);
+        let factor = ring.sub_ref_snd(current_pow_x.clone(), &x);
+        ring.mul_assign(&mut current, &factor);
     }
-    return true;
+    return poly_ring.is_unit(&gcd(poly_ring, ring.polynomial_repr(poly_ring, &current), el.clone()));
 }
 
 #[cfg(test)]
 use super::super::rational::*;
 #[cfg(test)]
 use super::super::fq::zn_small::*;
+#[cfg(test)]
+use super::super::fq::zn_big::*;
 
 #[test]
 fn test_poly_squarefree_part() {
@@ -303,6 +314,20 @@ fn test_cantor_zassenhaus() {
     let mut factor = ring.wrap(cantor_zassenhaus(ring.wrapped_ring(), p.val().clone(), 2));
     factor.normalize();
     assert!(factor == f || factor == g);
+}
+
+#[test]
+fn test_is_prime() {
+    let coeff_ring = Zn::new(i64::RING, i64::RING.from_z(2));
+    let ring = WrappingRing::new(PolyRingImpl::adjoint(&coeff_ring, "X"));
+    let x = ring.unknown();
+
+    let p = x.pow(4) + &x + 1;
+    let q = x.pow(4) + x.pow(2) + 1;
+    let a = ring.from_z(1);
+    assert_eq!(true, ring.is_prime(&p));
+    assert_eq!(false, ring.is_prime(&q));
+    assert_eq!(false, ring.is_prime(&a));
 }
 
 #[test]

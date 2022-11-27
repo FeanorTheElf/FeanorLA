@@ -36,7 +36,7 @@ impl BigInt {
 
     pub fn assign(&mut self, rhs: &BigInt) {
         self.negative = rhs.negative;
-        let mut data_vec = std::mem::replace(&mut self.data, Vector::new(Vec::new())).raw_data();
+        let mut data_vec = std::mem::replace(&mut self.data, Vector::new(Vec::new())).into_raw_data();
         data_vec.clear();
         if let Some(d) = rhs.highest_set_block() {
             if data_vec.len() < d {
@@ -579,7 +579,7 @@ impl IntegerRing for BigIntRing {
         let keep_mask = (1u64.checked_shl(keep_bits as u32).unwrap_or(0).wrapping_sub(1)) << shift_amount;
         let carry_mask = (1 << shift_amount) - 1;
         let mut carry = 0;
-        let mut el_data = el.data.raw_data();
+        let mut el_data = el.data.into_raw_data();
         for i in 0..el_data.len() {
             let rotated = el_data[i].rotate_left(shift_amount as u32);
             el_data[i] = (rotated & keep_mask) | carry;
@@ -601,7 +601,7 @@ impl IntegerRing for BigIntRing {
         let drop_blocks = power as usize / BigInt::BLOCK_BITS;
         let shift_amount = power as usize % BigInt::BLOCK_BITS;
         let keep_bits = BigInt::BLOCK_BITS - shift_amount;
-        let mut el_data = el.data.raw_data();
+        let mut el_data = el.data.into_raw_data();
         if el_data.len() <= drop_blocks {
             return BigInt::ZERO;
         } else {
