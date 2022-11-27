@@ -568,9 +568,8 @@ pub trait UfdInfoRing : DivisibilityInfoRing {
     /// with the corresponding power dividing the number, and possibly one further unit.
     /// 
     /// Note that the prime factorization is only unique up to association, i.e. multiplication
-    /// by units.
-    /// 
-    /// This may panic if `is_ufd().can_use()` returns false.
+    /// by units, and only in a UFD. If the ring is not a UFD (`is_ufd().can_use() == false`), this can either panic, or return
+    /// an arbitrary factorization into irreducible elements.
     /// 
     fn factor<'a>(&'a self, el: Self::El) -> VecMap<RingElWrapper<&'a Self>, usize> {
         let mut result = VecMap::new();
@@ -639,9 +638,9 @@ pub trait HashableElRing: Ring {
 /// Trait for ordered rings, i.e. rings whose elements have a total order that is
 /// compatible with + and * in the following sense:
 /// 
-/// If a >= b and c >= d, then a + c >= b + d.
+/// If `a >= b` and `c >= d`, then `a + c >= b + d`.
 /// 
-/// If a >= 0 and b >= 0, then ab >= 0.
+/// If `a >= 0` and `b >= 0`, then `ab >= 0`.
 /// 
 pub trait OrderedRing: Ring {
     fn cmp(&self, lhs: &Self::El, rhs: &Self::El) -> std::cmp::Ordering;

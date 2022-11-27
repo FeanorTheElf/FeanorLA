@@ -3,7 +3,7 @@ use super::super::fq::*;
 use super::super::eea::*;
 use super::*;
 
-fn map_poly<P, S, F>(base_ring: &P, f: &El<P>, target_ring: &S, mut map_fn: F) -> El<S>
+pub fn map_poly<P, S, F>(base_ring: &P, f: &El<P>, target_ring: &S, mut map_fn: F) -> El<S>
     where P: PolyRing, S: PolyRing, F: FnMut(El<P::BaseRing>) -> El<S::BaseRing> 
 {
     if base_ring.is_zero(f) {

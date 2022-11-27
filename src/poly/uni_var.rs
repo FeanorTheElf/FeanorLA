@@ -3,6 +3,7 @@ use super::ops::*;
 use super::factoring;
 use super::super::la::vec::*;
 use super::super::fq::*;
+use super::super::fq::zn_big::*;
 use super::*;
 
 use vector_map::VecMap;
@@ -300,7 +301,7 @@ impl<R: Ring> RingExtension for PolyRingImpl<R> {
 }
 
 impl<R> DivisibilityInfoRing for PolyRingImpl<R> 
-    where R: Ring + CanonicalIsomorphismInfo<R>
+    where R: Ring
 {
     default fn is_divisibility_computable(&self) -> RingPropValue {
         self.base_ring.is_field()
@@ -331,7 +332,7 @@ impl<R> DivisibilityInfoRing for PolyRingImpl<R>
 }
 
 impl<R> DivisibilityInfoRing for PolyRingImpl<R> 
-    where R: DivisibilityInfoRing + CanonicalIsomorphismInfo<R>
+    where R: DivisibilityInfoRing
 {
     fn is_divisibility_computable(&self) -> RingPropValue {
         self.base_ring.is_divisibility_computable()
@@ -412,30 +413,12 @@ impl<R> UfdInfoRing for PolyRingImpl<R>
         }
     }
 
-    fn is_prime(&self, el: &Self::El) -> bool {
+    default fn is_prime(&self, el: &Self::El) -> bool {
         assert!(self.is_ufd().can_use());
-        if self.is_zero(el) {
-            return false;
-        }
-        let d = self.deg(el).unwrap();
-        let sqrfree_part = factoring::poly_squarefree_part(self, el.as_ref().into_owned());
-        if self.deg(&sqrfree_part) != Some(d) {
-            return false;
-        }
-        let distinct_degree_factorization = factoring::distinct_degree_factorization(
-            self, 
-            &self.base_ring().size(), 
-            sqrfree_part
-        );
-        if d >= distinct_degree_factorization.len() || self.is_unit(&distinct_degree_factorization[d]) {
-            return false;
-        }
-        return true;
+        return factoring::is_prime(self, el);
     }
 
-    fn calc_factor(&self, el: &Self::El) -> Option<Self::El> {
-        assert!(self.is_ufd().can_use());
-        assert!(!self.is_zero(el));
+    default fn calc_factor(&self, el: &Self::El) -> Option<Self::El> {
         let factorization = self.factor(el.clone());
         for (factor, _) in factorization.into_iter() {
             if self.deg(el) == self.deg(factor.val()) {
@@ -447,59 +430,46 @@ impl<R> UfdInfoRing for PolyRingImpl<R>
         return None;
     }
 
-    fn factor<'a>(&'a self, mut el: Self::El) -> VecMap<RingElWrapper<&'a Self>, usize> {
+    default fn factor<'a>(&'a self, el: Self::El) -> VecMap<RingElWrapper<&'a Self>, usize> {
         assert!(self.is_ufd().can_use());
         assert!(!self.is_zero(&el));
-        let mut result = VecMap::new();
-        let mut unit = self.base_ring().one();
-        let wrapped_ring = WrappingRing::new(self);
-        while !self.is_unit(&el) {
-            let sqrfree_part = factoring::poly_squarefree_part(self, el.clone());
-            for (d, el) in factoring::distinct_degree_factorization(
-                self, 
-                &self.base_ring().size(), 
-                sqrfree_part.clone()
-            ).into_iter().enumerate() {
-                let mut stack = Vec::new();
-                stack.push(el);
-                while let Some(el) = stack.pop() {
-                    let (el, scaling) = self.normalize(el);
-                    unit = self.base_ring().mul(unit, scaling);
-                    if self.is_one(&el) {
-                        continue;
-                    } else if self.deg(&el) == Some(d) {
-                        let wrapped_el = wrapped_ring.wrap(el);
-                        if let Some(power) = result.get_mut(&wrapped_el) {
-                            *power += 1;
-                        } else {
-                            debug_assert!(!self.is_unit(wrapped_el.val()));
-                            result.insert(wrapped_el, 1);
-                        }
-                    } else {
-                        let factor = factoring::cantor_zassenhaus(
-                            self, 
-                            &self.base_ring().size(), 
-                            el.clone(), 
-                            d
-                        );
-                        stack.push(self.quotient(&el, &factor).unwrap());
-                        stack.push(factor);
-                    }
-                }
-            }
-            el = self.quotient(&el, &sqrfree_part).unwrap();
-        }
-        unit = self.base_ring().mul_ref(&unit, el.at(0));
-        debug_assert!(self.base_ring().is_unit(&unit));
-        if !self.base_ring().is_one(&unit) {
-            result.insert(wrapped_ring.wrap(self.from(unit)), 1);
-        }
-        return result;
+        return factoring::factor_complete(self, el);
     }
 }
 
-#[cfg(test)]
-use super::super::fq::zn_big::*;
+impl<R> UfdInfoRing for PolyRingImpl<R>
+    where R: IntegerQuotientRing + DivisibilityInfoRing
+{
+    fn is_prime(&self, el: &Self::El) -> bool {
+        return factoring::is_prime(self, el);
+    }
+
+    ///
+    /// If the base ring is a field, this is just the normal factor routine. However,
+    /// this also tries to factor the polynomial if the polynomial ring is not a UFD,
+    /// but a polynomial ring over `Z/p^eZ`. In this case, there is not a unique factorization
+    /// anymore, but in some cases, there is a unique "canonical" factorization based on
+    /// Hensel's lemma. However, in such a situation, the function will fail on some inputs.
+    /// 
+    fn factor<'a>(&'a self, el: Self::El) -> VecMap<RingElWrapper<&'a Self>, usize> {
+        assert!(!self.is_zero(&el));
+        let base_ring_prime_power = self.base_ring().characteristic().is_prime_power();
+        if self.is_ufd().can_use() {
+            return factoring::factor_complete(self, el);
+        } else if let Some((p, _)) = base_ring_prime_power {
+            if p.is_odd() {
+                let integer_ring = self.base_ring().lifting_ring();
+                let prime_field = Zn::new(&integer_ring, integer_ring.from_z_big(&p));
+                return factoring::factor_lifted(self, el, &PolyRingImpl::adjoint(prime_field, "X")).unwrap();
+            } else {
+                unimplemented!()
+            }
+        } else {
+            unimplemented!()
+        }
+    }
+}
+
 #[cfg(test)]
 use super::super::fq::fq_small::*;
 #[cfg(test)]
