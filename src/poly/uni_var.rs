@@ -79,7 +79,7 @@ impl<R> PolyRing for PolyRingImpl<R>
         }
     }
 
-    fn unknwon_name(&self) -> &str {
+    fn unknown_name(&self) -> &str {
         self.var_name
     }
 

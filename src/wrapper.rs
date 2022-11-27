@@ -170,6 +170,19 @@ impl<R> RingElWrapper<R>
         let ring = self.ring.wrapped_ring();
         ring.factor(self.el).into_iter().map(|(k, v)| (RingElWrapper::new(k.into_val(), ring.clone()), v)).collect()
     }
+
+    pub fn is_prime(&self) -> bool {
+        self.parent_ring().is_prime(self.val())
+    }
+
+    pub fn is_prime_power(&self) -> Option<(Self, usize)> {
+        let factorization = self.parent_ring().factor(self.val().clone());
+        if factorization.len() <= 1 || (factorization.len() == 2 && factorization.keys().any(|x| self.parent_ring().is_unit(x.val()))) {
+            return factorization.into_iter().filter(|(p, _e)| !self.parent_ring().is_unit(p.val())).map(|(p, e)| (p.clone_ring(), e)).next();
+        } else {
+            return None;
+        }
+    }
 }
 
 impl<R> RingElWrapper<R>

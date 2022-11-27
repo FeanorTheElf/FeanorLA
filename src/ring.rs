@@ -565,7 +565,7 @@ pub trait UfdInfoRing : DivisibilityInfoRing {
     ///
     /// Factors the given element into all prime factors. The returned list contains pairwise
     /// non-associated primes (p, q are associated if there is a unit e with ep = q) together
-    /// with the corresponding power dividing the number, and possibly one furtyher unit.
+    /// with the corresponding power dividing the number, and possibly one further unit.
     /// 
     /// Note that the prime factorization is only unique up to association, i.e. multiplication
     /// by units.

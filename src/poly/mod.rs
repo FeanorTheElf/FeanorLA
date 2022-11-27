@@ -6,6 +6,7 @@ use super::fraction_field::ReducableElementRing;
 use std::borrow::Cow;
 
 pub mod ops;
+pub mod hensel;
 pub mod factoring;
 pub mod uni_var;
 pub mod multi_var;
@@ -198,7 +199,7 @@ impl<'a, R> RingElWrapper<PolyRingImpl<&'a R>>
 {
     pub fn de_elevate_var<'b>(&'b self) -> RingElWrapper<&'b R> {
         let ring = self.parent_ring().base_ring().decorated_ring();
-        RingElWrapper::new(ring.de_elevate_var(ring.get_var(self.parent_ring().unknwon_name()), self.val().clone()), ring)
+        RingElWrapper::new(ring.de_elevate_var(ring.get_var(self.parent_ring().unknown_name()), self.val().clone()), ring)
     }
 }
 
@@ -211,7 +212,21 @@ pub trait PolyRing: Ring + CanonicalIsomorphismInfo<PolyRingImpl<Self::BaseRing>
     fn evaluate_at<S: Ring + CanonicalEmbeddingInfo<Self::BaseRing>>(&self, f: &El<Self>, x: El<S>, ring: &S) -> El<S>;
     fn derive(&self, el: El<Self>) -> El<Self>;
     fn unknown(&self) -> El<Self>;
-    fn unknwon_name(&self) -> &str;
+    fn unknown_name(&self) -> &str;
+
+    fn scaled(&self, mut x: El<Self>, coeff: &El<Self::BaseRing>) -> El<Self> {
+        self.scale(&mut x, coeff);
+        return x;
+    }
+
+    fn from_coefficients<I>(&self, coeffs: I) -> El<Self>
+        where I: Iterator<Item = El<Self::BaseRing>>
+    {
+        let x = self.unknown();
+        self.sum(
+            coeffs.enumerate().map(|(i, a)| self.mul(self.pow(&x, i as u32), self.from(a)))
+        )
+    }
 
     fn normalize(&self, mut f: El<Self>) -> (El<Self>, El<Self::BaseRing>) {
         assert!(self.base_ring().is_field().can_use());
@@ -240,7 +255,7 @@ impl<P> PolyRing for P
     where P: RingDecorator, P::DecoratedRing: PolyRing
 {
     fn lc(&self, x: &El<Self>) -> Option<El<Self::BaseRing>> { self.decorated_ring().lc(x) }
-    fn unknwon_name(&self) -> &str { self.decorated_ring().unknwon_name() }
+    fn unknown_name(&self) -> &str { self.decorated_ring().unknown_name() }
     fn deg(&self, x: &El<Self>) -> Option<usize>  { self.decorated_ring().deg(x) }
     fn coefficient_at(&self, x: &El<Self>, i: usize) -> El<Self::BaseRing>  { self.decorated_ring().coefficient_at(x, i) }
     fn scale(&self, x: &mut El<Self>, coeff: &El<Self::BaseRing>) { self.decorated_ring().scale(x, coeff) }
@@ -248,6 +263,10 @@ impl<P> PolyRing for P
     fn derive(&self, el: El<Self>) -> El<Self> { self.decorated_ring().derive(el) }
     fn normalize(&self, f: El<Self>) -> (El<Self>, El<Self::BaseRing>) { self.decorated_ring().normalize(f) }
     fn unknown(&self) -> El<Self> { self.decorated_ring().unknown() }
+    fn scaled(&self, x: El<Self>, coeff: &El<Self::BaseRing>) -> El<Self> { self.decorated_ring().scaled(x, coeff) }
+    fn from_coefficients<I>(&self, coeffs: I) -> El<Self>
+        where I: Iterator<Item = El<Self::BaseRing>>
+    { self.decorated_ring().from_coefficients(coeffs) }
 }
 
 impl<S, P> FnOnce<(RingElWrapper<S>, )> for RingElWrapper<P>
