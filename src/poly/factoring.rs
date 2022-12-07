@@ -328,6 +328,10 @@ fn test_is_prime() {
     assert_eq!(true, ring.is_prime(&p));
     assert_eq!(false, ring.is_prime(&q));
     assert_eq!(false, ring.is_prime(&a));
+
+    let coeff_ring = Zn::new(i64::RING, i64::RING.from_z(2));
+    let ring = WrappingRing::new(PolyRingImpl::adjoint(&coeff_ring, "X"));
+    let x = ring.unknown();
 }
 
 #[test]

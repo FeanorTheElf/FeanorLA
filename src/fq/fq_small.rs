@@ -68,8 +68,6 @@ pub fn galois_field<const P: u64, const N: usize>() -> FiniteExtensionImpl<Stati
 use super::FiniteRing;
 #[cfg(test)]
 use super::super::finite_extension::*;
-#[cfg(test)]
-use test::Bencher;
 
 #[test]
 fn test_arithmetic() {

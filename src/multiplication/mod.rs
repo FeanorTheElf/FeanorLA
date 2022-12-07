@@ -4,23 +4,10 @@ use super::prelude::*;
 
 pub mod karatsuba;
 
-///
-/// Trait for rings to provide information on which convoluted multiplication algorithms
-/// will be most efficient.
-/// 
-pub trait MulAlgorithmLimit : Ring {
-
-    ///
-    /// Gives an approximate threshold at which naive convoluted nxn multiplication becomes
-    /// slower than karatsuba nxn multiplication.
-    /// 
-    fn karatsuba_threshold(&self) -> usize;
-}
-
 fn naive_convoluted_mul<R, U, V, W>(
+    mut out: Vector<W, R::El>,
     lhs: Vector<U, R::El>,
     rhs: Vector<V, R::El>,
-    mut out: Vector<W, R::El>,
     ring: &R
 )
     where R: Ring, U: VectorView<R::El>, V: VectorView<R::El>, W: VectorViewMut<R::El>
@@ -35,15 +22,17 @@ fn naive_convoluted_mul<R, U, V, W>(
 
 #[cfg(test)]
 pub fn bench_convoluted_mul_impl_i128<F>(bencher: &mut test::Bencher, mut f: F, n: usize) 
-    where F: FnMut(Vector<&Vec<i128>, i128>, Vector<&Vec<i128>, i128>, Vector<&mut Vec<i128>, i128>)
+    where F: FnMut(&Vec<i128>, &Vec<i128>, &mut Vec<i128>)
 {
-    let a = Vector::from_fn(n, |i| i as i128);
-    let b = Vector::from_fn(n, |i| 2 * i as i128);
-    let mut c = Vector::zero(2 * n).into_owned();
+    let a = (0..n).map(|i| i as i128).collect::<Vec<_>>();
+    let b = (0..n).map(|i| 2 * i as i128).collect::<Vec<_>>();
+    let mut c = Vec::new();
+    c.resize(2 * n, 0);
     let expected = (n * n * (n + 1) - n * (n + 1) * (2 * n + 1) / 3) as i128;
     bencher.iter(|| {
-        c.assign(Vector::zero(2 * n));
-        f(a.as_ref(), b.as_ref(), c.as_mut());
+        c.clear();
+        c.resize(2 * n, 0);
+        f(&a, &b, &mut c);
         assert_eq!(expected, *c.at(n));
     });
 }
@@ -52,7 +41,7 @@ pub fn bench_convoluted_mul_impl_i128<F>(bencher: &mut test::Bencher, mut f: F, 
 fn bench_karatsuba_i128_100(bencher: &mut test::Bencher) {
     bench_convoluted_mul_impl_i128(
         bencher, 
-        |l, r, out| karatsuba::karatsuba_mul(l, r, out, &i128::RING), 
+        |l, r, out| karatsuba::karatsuba::<_, 4>(&mut out[..], &l[..], &r[..], &i128::RING), 
         100
     );
 }
@@ -61,7 +50,7 @@ fn bench_karatsuba_i128_100(bencher: &mut test::Bencher) {
 fn bench_naive_i128_100(bencher: &mut test::Bencher) {
     bench_convoluted_mul_impl_i128(
         bencher, 
-        |l, r, out| naive_convoluted_mul(l, r, out, &i128::RING), 
+        |l, r, out| naive_convoluted_mul(Vector::new(out), Vector::new(l), Vector::new(r), &i128::RING), 
         100
     );
 }
@@ -70,7 +59,7 @@ fn bench_naive_i128_100(bencher: &mut test::Bencher) {
 fn bench_karatsuba_i128_1000(bencher: &mut test::Bencher) {
     bench_convoluted_mul_impl_i128(
         bencher, 
-        |l, r, out| karatsuba::karatsuba_mul(l, r, out, &i128::RING), 
+        |l, r, out| karatsuba::karatsuba::<_, 4>(&mut out[..], &l[..], &r[..], &i128::RING), 
         1000
     );
 }
@@ -79,25 +68,8 @@ fn bench_karatsuba_i128_1000(bencher: &mut test::Bencher) {
 fn bench_naive_i128_1000(bencher: &mut test::Bencher) {
     bench_convoluted_mul_impl_i128(
         bencher, 
-        |l, r, out| naive_convoluted_mul(l, r, out, &i128::RING), 
+        |l, r, out| naive_convoluted_mul(Vector::new(out), Vector::new(l), Vector::new(r), &i128::RING), 
         1000
     
-    );
-}
-#[bench]
-fn bench_karatsuba_i128_10000(bencher: &mut test::Bencher) {
-    bench_convoluted_mul_impl_i128(
-        bencher, 
-        |l, r, out| karatsuba::karatsuba_mul(l, r, out, &i128::RING), 
-        10000
-    );
-}
-
-#[bench]
-fn bench_naive_i128_10000(bencher: &mut test::Bencher) {
-    bench_convoluted_mul_impl_i128(
-        bencher, 
-        |l, r, out| naive_convoluted_mul(l, r, out, &i128::RING), 
-        10000
     );
 }

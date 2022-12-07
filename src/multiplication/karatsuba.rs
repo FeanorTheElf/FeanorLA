@@ -1,174 +1,206 @@
 use super::super::prelude::*;
 use super::super::la::vec::*;
 
-fn add_assign_intersect<R, U, V>(mut dst: Vector<U, R::El>, val: Vector<V, R::El>, ring: &R)
-    where U: VectorViewMut<R::El>, V: VectorView<R::El>, R: Ring
-{
-    let l = std::cmp::min(dst.len(), val.len());
-    dst.subvector_mut(..l).add_assign(val.subvector(..l), ring);
-}
+use std::cmp::{ max, min };
 
-fn sub_assign_intersect<R, U, V>(mut dst: Vector<U, R::El>, val: Vector<V, R::El>, ring: &R)
-    where U: VectorViewMut<R::El>, V: VectorView<R::El>, R: Ring
-{
-    let l = std::cmp::min(dst.len(), val.len());
-    dst.subvector_mut(..l).sub_assign(val.subvector(..l), ring);
-}
-
-fn karatsuba_impl<R, U, V, W>(
-    lhs: Vector<Subvector<U, R::El>, R::El>,
-    rhs: Vector<Subvector<V, R::El>, R::El>,
-    mut out: Vector<Subvector<W, R::El>, R::El>,
-    tmp: &mut [R::El],
-    ring: &R,
-    block_size: usize
-)
-    where R: Ring, U: VectorView<R::El> + Copy, V: VectorView<R::El> + Copy, W: VectorViewMut<R::El>
-{
-    assert!(tmp.len() == 4 * block_size - 4);
-    assert!(lhs.len() <= block_size);
-    assert!(rhs.len() <= block_size);
-
-    if lhs.len() == 0 || rhs.len() == 0 || out.len() == 0 {
-        return;
-    }
-
-    if block_size == 1 {
-        ring.add_assign(out.at_mut(0), ring.mul_ref(lhs.at(0), rhs.at(0)));
-        return;
-    }
-
-    let block_half = block_size/2;
-
-    let (lhs_combined, rest) = tmp.split_at_mut(block_half);
-    let (rhs_combined, rest) = rest.split_at_mut(block_half);
-    let (mul_result, rest) = rest.split_at_mut(block_size);
-    let mut lhs_combined = Vector::new(lhs_combined);
-    let mut rhs_combined = Vector::new(rhs_combined);
-    let mut mul_result = Vector::new(mul_result);
-
-    mul_result.assign(Vector::zero_ring(block_size, ring));
-
-    karatsuba_impl(
-        lhs.into_subvector_intersect(..block_half), 
-        rhs.into_subvector_intersect(..block_half), 
-        mul_result.subvector_mut(..), 
-        rest, 
-        ring, 
-        block_half
-    );
-
-    add_assign_intersect(out.subvector_mut_intersect(..block_size), mul_result.as_ref(), ring);
-    sub_assign_intersect(out.subvector_mut_intersect(block_half..(block_size + block_half)), mul_result.as_ref(), ring);
-
-    mul_result.assign(Vector::zero_ring(block_size, ring));
-
-    karatsuba_impl(
-        lhs.into_subvector_intersect(block_half..), 
-        rhs.into_subvector_intersect(block_half..), 
-        mul_result.subvector_mut(..), 
-        rest, 
-        ring, 
-        block_half
-    );
-
-    add_assign_intersect(out.subvector_mut_intersect(block_size..), mul_result.as_ref(), ring);
-    sub_assign_intersect(out.subvector_mut_intersect(block_half..(block_size + block_half)), mul_result.as_ref(), ring);
-
-    lhs_combined.assign(Vector::zero_ring(block_half, ring));
-    add_assign_intersect(lhs_combined.as_mut(), lhs.into_subvector_intersect(..block_half), ring);
-    add_assign_intersect(lhs_combined.as_mut(), lhs.into_subvector_intersect(block_half..), ring);
-
-    rhs_combined.assign(Vector::zero_ring(block_half, ring));
-    add_assign_intersect(rhs_combined.as_mut(), rhs.into_subvector_intersect(..block_half), ring);
-    add_assign_intersect(rhs_combined.as_mut(), rhs.into_subvector_intersect(block_half..), ring);
-
-    karatsuba_impl(
-        lhs_combined.subvector(..), 
-        rhs_combined.subvector(..),
-        out.into_subvector_mut_intersect(block_half..), 
-        rest, 
-        ring, 
-        block_half
-    );
-}
-
-///
-/// Computes the convoluted product out[n] += sum_{i+j = n} lhs[i] * rhs[j] using
-/// O(n^log2(3)) base ring multiplications.
-/// 
-/// # Warning
-/// 
-/// If out is not long enough to hold store all lhs[i] * rhs[j], then those are not
-/// considered. In other words, we really just compute out[n] += sum_{i+j = n} lhs[i] * rhs[j]
-/// for all n within out. Consider also this example:
-/// ```
-/// # use feanor_la::multiplication::karatsuba::*;
-/// # use feanor_la::prelude::*;
-/// # use feanor_la::la::vec::*;
-/// let mut out = Vector::from_array([0]);
-/// karatsuba_mul(Vector::from_array([1, 2]), Vector::from_array([3, 4]), out.as_mut(), &i64::RING);
-/// assert_eq!(Vector::from_array([3]), out);
-/// ```
-/// 
-/// # Example
-/// 
-/// ```
-/// # use feanor_la::multiplication::karatsuba::*;
-/// # use feanor_la::prelude::*;
-/// # use feanor_la::la::vec::*;
-/// let lhs = Vector::from_array([1, 2, 3]);
-/// let rhs = Vector::from_array([2, 1]);
-/// let mut out = Vector::from_array([0, 0, 0, 0]);
-/// karatsuba_mul(lhs, rhs, out.as_mut(), &i64::RING);
-/// assert_eq!(Vector::from_array([2, 5, 8, 3]), out);
-/// ```
-/// 
-pub fn karatsuba_mul<R, U, V, W>(
-    lhs: Vector<U, R::El>,
-    rhs: Vector<V, R::El>,
-    mut out: Vector<W, R::El>,
-    ring: &R
-)
-    where R: Ring, U: VectorView<R::El>, V: VectorView<R::El>, W: VectorViewMut<R::El>
-{
-    if lhs.len() < rhs.len() {
-        karatsuba_mul(rhs, lhs, out, ring);
-        return;
-    }
-    let block_size = 1 << (usize::BITS - (rhs.len()).leading_zeros());
-    let mut tmp = (0..(4 * block_size - 4)).map(|_| ring.unspecified_element()).collect::<Vec<_>>();
-    for i in 0..((lhs.len() - 1) / block_size + 1) {
-        karatsuba_impl(
-            lhs.subvector_intersect((i * block_size)..(i * block_size + block_size)), 
-            rhs.subvector(..), 
-            out.subvector_mut_intersect((i * block_size)..), 
-            &mut tmp[..],
-            ring,
-            block_size
+fn naive_assign_mul<R: Ring, const ADD_ASSIGN: bool>(dst: &mut [El<R>], lhs: &[El<R>], rhs: &[El<R>], ring: &R) {
+    let n = lhs.len();
+    assert_eq!(n, rhs.len());
+    assert_eq!(2 * n, dst.len());
+    for i in 0..(2 * n) {
+        let from = max(i as isize - n as isize + 1, 0) as usize;
+        let to = min(n, i + 1);
+        let value = ring.sum((from..to)
+            .map(|j| ring.mul_ref(&lhs[i - j], &rhs[j]))
         );
+        if ADD_ASSIGN {
+            ring.add_assign(&mut dst[i], value);
+        } else {
+            dst[i] = value;
+        }
     }
+}
+
+fn slice_add_assign<R: Ring>(dst: &mut [El<R>], src: &[El<R>], ring: &R) {
+    assert_eq!(dst.len(), src.len());
+    for i in 0..dst.len() {
+        ring.add_assign_ref(&mut dst[i], &src[i]);
+    }
+}
+
+fn slice_sub_assign<R: Ring>(dst: &mut [El<R>], src: &[El<R>], ring: &R) {
+    assert_eq!(dst.len(), src.len());
+    for i in 0..dst.len() {
+        let value = std::mem::replace(&mut dst[i], ring.unspecified_element());
+        dst[i] = ring.sub_ref_snd(value, &src[i]);
+    }
+}
+macro_rules! karatsuba_impl {
+    ($( ($num:literal, $fun:ident, $prev:ident) ),*) => {
+        fn dispatch_karatsuba_impl<R: Ring, const ADD_ASSIGN: bool, const THRESHOLD_SIZE_LOG2: usize>(
+            block_size_log2: usize, dst: &mut [El<R>], lhs: &[El<R>], rhs: &[El<R>], mem: &mut [El<R>], ring: &R
+        ) {
+            $(
+                fn $fun<R: Ring, const ADD_ASSIGN: bool, const THRESHOLD_SIZE_LOG2: usize>(dst: &mut [El<R>], lhs: &[El<R>], rhs: &[El<R>], mem: &mut [El<R>], ring: &R) {
+                    const BLOCK_SIZE_LOG2: usize = $num;
+                    const BLOCK_SIZE: usize = 1 << BLOCK_SIZE_LOG2;
+                    assert_eq!(BLOCK_SIZE, lhs.len());
+                    assert_eq!(BLOCK_SIZE, rhs.len());
+                    assert_eq!(2 * BLOCK_SIZE, dst.len());
+                
+                    if BLOCK_SIZE_LOG2 <= THRESHOLD_SIZE_LOG2 {
+                        naive_assign_mul::<R, ADD_ASSIGN>(dst, lhs, rhs, ring);
+                    } else {
+                        const N: usize = BLOCK_SIZE / 2;
+
+                        let (mut lower, rest) = mem.split_at_mut(2 * N);
+                        $prev::<R, false, THRESHOLD_SIZE_LOG2>(&mut lower, &lhs[..N], &rhs[..N], rest, ring);
+                        if ADD_ASSIGN {
+                            slice_add_assign(&mut dst[..(2 * N)], &lower, ring);
+                        } else {
+                            for i in 0..(2 * N) {
+                                dst[i] = lower[i].clone();
+                            }
+                            for i in (2 * N)..(4 * N) {
+                                dst[i] = ring.zero();
+                            }
+                        }
+                        slice_sub_assign(&mut dst[N..(3 * N)], &lower, ring);
+                
+                        let mut upper = lower;
+                        $prev::<R, false, THRESHOLD_SIZE_LOG2>(&mut upper, &lhs[N..(2 * N)], &rhs[N..(2 * N)], rest, ring);
+                        slice_add_assign(&mut dst[(2 * N)..(4 * N)], &upper, ring);
+                        slice_sub_assign(&mut dst[N..(3 * N)], &upper, ring);
+                
+                        let (lhs_combined, rhs_combined) = upper.split_at_mut(N);
+                        for i in 0..N {
+                            lhs_combined[i] = ring.add_ref(lhs[i].clone(), &lhs[i + N]);
+                            rhs_combined[i] = ring.add_ref(rhs[i].clone(), &rhs[i + N]);
+                        }
+                        $prev::<R, true, THRESHOLD_SIZE_LOG2>(&mut dst[N..(3 * N)], &lhs_combined, &rhs_combined, rest, ring);
+                    }
+                }
+            )*
+            match block_size_log2 {
+                $(
+                    $num => $fun::<R, true, THRESHOLD_SIZE_LOG2>(dst, lhs, rhs, mem, ring),
+                )*
+                _ => panic!()
+            }
+        }
+    };
+}
+
+karatsuba_impl!{
+    (0, karatsuba_impl_0, karatsuba_impl_0),
+    (1, karatsuba_impl_1, karatsuba_impl_0),
+    (2, karatsuba_impl_2, karatsuba_impl_1),
+    (3, karatsuba_impl_3, karatsuba_impl_2),
+    (4, karatsuba_impl_4, karatsuba_impl_3),
+    (5, karatsuba_impl_5, karatsuba_impl_4),
+    (6, karatsuba_impl_6, karatsuba_impl_5),
+    (7, karatsuba_impl_7, karatsuba_impl_6),
+    (8, karatsuba_impl_8, karatsuba_impl_7),
+    (9, karatsuba_impl_9, karatsuba_impl_8),
+    (10, karatsuba_impl_10, karatsuba_impl_9),
+    (11, karatsuba_impl_11, karatsuba_impl_10),
+    (12, karatsuba_impl_12, karatsuba_impl_11),
+    (13, karatsuba_impl_13, karatsuba_impl_12),
+    (14, karatsuba_impl_14, karatsuba_impl_13),
+    (15, karatsuba_impl_15, karatsuba_impl_14),
+    (16, karatsuba_impl_16, karatsuba_impl_15)
+}
+
+pub fn karatsuba<R: Ring, const THRESHOLD_SIZE_LOG2: usize>(dst: &mut [El<R>], lhs: &[El<R>], rhs: &[El<R>], ring: &R) {
+    if lhs.len() == 0 || rhs.len() == 0 {
+        return;
+    }
+    assert!(dst.len() >= rhs.len() + lhs.len());
+    let block_size_log2 = (usize::BITS - 1 - max(lhs.len().leading_zeros(), rhs.len().leading_zeros())) as usize;
+    let n = 1 << block_size_log2;
+    assert!(lhs.len() >= n);
+    assert!(rhs.len() >= n);
+    assert!(lhs.len() < 2 * n || rhs.len() < 2 * n);
+
+    let mut memory = Vec::new();
+    memory.resize(karatsuba_mem_size(block_size_log2, THRESHOLD_SIZE_LOG2), ring.unspecified_element());
+    for i in (0..=(lhs.len() - n)).step_by(n) {
+        for j in (0..=(rhs.len() - n)).step_by(n) {
+            dispatch_karatsuba_impl::<R, true, THRESHOLD_SIZE_LOG2>(
+                block_size_log2, 
+                &mut dst[(i + j)..(i + j + 2 * n)], 
+                &lhs[i..(i + n)], 
+                &rhs[j..(j + n)], 
+                &mut memory[..], 
+                ring
+            );
+        }
+    }
+
+    let mut lhs_rem = (lhs.len() / n) * n;
+    let mut rhs_rem = (rhs.len() / n) * n;
+    let mut rem_block_size_log2: isize = block_size_log2 as isize - 1;
+    let mut rem_n = n / 2;
+    while rem_block_size_log2 >= 0 {
+        let n = rem_n;
+        let block_size_log2: usize = rem_block_size_log2 as usize;
+        if lhs.len() >= lhs_rem + n {
+            for j in (0..=(rhs_rem - n)).step_by(n) {
+                dispatch_karatsuba_impl::<R, true, THRESHOLD_SIZE_LOG2>(
+                    block_size_log2, 
+                    &mut dst[(lhs_rem + j)..(lhs_rem + j + 2 * n)], 
+                    &lhs[lhs_rem..(lhs_rem + n)], 
+                    &rhs[j..(j + n)], 
+                    &mut memory[..], 
+                    ring
+                );
+            }
+            lhs_rem += n;
+        }
+        if rhs.len() >= rhs_rem + n {
+            for i in (0..=(lhs.len() - n)).step_by(n) {
+                dispatch_karatsuba_impl::<R, true, THRESHOLD_SIZE_LOG2>(
+                    rem_block_size_log2 as usize, 
+                    &mut dst[(rhs_rem + i)..(rhs_rem + i + 2 * n)], 
+                    &lhs[i..(i + n)], 
+                    &rhs[rhs_rem..(rhs_rem + n)], 
+                    &mut memory[..], 
+                    ring
+                );
+            }
+            rhs_rem += n;
+        }
+        rem_n = rem_n / 2;
+        rem_block_size_log2 = rem_block_size_log2 - 1;
+    }
+}
+
+fn karatsuba_mem_size(block_size_log2: usize, threshold_size_log2: usize) -> usize {
+    if block_size_log2 <= threshold_size_log2 {
+        return 0;
+    }
+    return (2 << block_size_log2) - (2 << threshold_size_log2);
 }
 
 #[test]
 fn test_karatsuba_impl() {
-    let a = Vector::from_array([1, 2, 3]);
-    let b = Vector::from_array([3, 4, 5]);
-    let mut c = Vector::from_array([0, 0, 0, 0, 0]);
-    let mut tmp = (0..12).collect::<Vec<_>>();
-    karatsuba_impl(a.subvector(..), b.subvector(..), c.subvector_mut(..), &mut tmp[..], &i64::RING, 4);
-    assert_eq!(Vector::from_array([3, 10, 22, 22, 15]), c);
+    let a = [1, 2, 3, 0];
+    let b = [3, 4, 5, 0];
+    let mut c = [0; 8];
+    let mut tmp = [0; 4];
+    dispatch_karatsuba_impl::<_, true, 1>(2, &mut c[..], &a[..], &b[..], &mut tmp[..], &i64::RING);
+    assert_eq!([3, 10, 22, 22, 15, 0, 0, 0], c);
 }
 
 #[test]
 fn test_karatsuba_mul() {
-    let mut c = Vector::new(vec![0]);
-    karatsuba_mul(Vector::new(vec![1, 0]), Vector::new(vec![-1, 0]), c.as_mut(), &i64::RING);
-    assert_eq!(Vector::from_array([-1]), c);
+    let mut c = vec![0, 0, 0, 0];
+    karatsuba::<_, 0>(&mut c[..], &[-1, 0], &[1, 0], &i64::RING);
+    assert_eq!(vec![-1, 0, 0, 0], c);
 
-    let a = Vector::from_array([1, 0, 1, 0, 1, 2, 3]);
-    let b = Vector::from_array([3, 4]);
-    let mut c = Vector::from_array([0, 0, 0, 0, 0, 0, 0, 0]);
-    karatsuba_mul(a, b, c.as_mut(), &i64::RING);
-    assert_eq!(Vector::from_array([3, 4, 3, 4, 3, 10, 17, 12]), c);
+    let a = vec![1, 0, 1, 0, 1, 2, 3];
+    let b = vec![3, 4];
+    let mut c = vec![0, 0, 0, 0, 0, 0, 0, 0, 0];
+    karatsuba::<_, 0>(&mut c[..], &a[..], &b[..], &i64::RING);
+    assert_eq!(vec![3, 4, 3, 4, 3, 10, 17, 12, 0], c);
 }

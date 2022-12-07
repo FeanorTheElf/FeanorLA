@@ -1,5 +1,5 @@
+use super::super::multiplication::karatsuba;
 use super::super::prelude::*;
-use super::super::multiplication::karatsuba::*;
 use super::super::la::vec::*;
 
 pub fn poly_degree<V, R>(coeff_ring: &R, poly_coeffs: Vector<V, R::El>) -> Option<usize>
@@ -88,7 +88,7 @@ pub fn poly_mul<R, U, V, W>(coeff_ring: &R, lhs: Vector<V, R::El>, rhs: Vector<W
     // the code works anyway
     let result_deg = lhs_deg + rhs_deg;
     assert!(out.len() >= result_deg);
-    karatsuba_mul(lhs, rhs, out.as_mut(), coeff_ring);
+    unimplemented!()
 }
 
 pub fn poly_format<R, V>(coeff_ring: &R, el: Vector<V, R::El>, f: &mut std::fmt::Formatter, var_name: &str) -> std::fmt::Result
