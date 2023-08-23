@@ -37,7 +37,7 @@ fn slice_sub_assign<R: Ring>(dst: &mut [El<R>], src: &[El<R>], ring: &R) {
 }
 macro_rules! karatsuba_impl {
     ($( ($num:literal, $fun:ident, $prev:ident) ),*) => {
-        fn dispatch_karatsuba_impl<R: Ring, const ADD_ASSIGN: bool, const THRESHOLD_SIZE_LOG2: usize>(
+        fn dispatch_karatsuba_impl<R: Ring, const ADD_ASSIGN: bool, const THRESHOLD_SIZE_LOG2: usize, V1, V2, V3>(
             block_size_log2: usize, dst: &mut [El<R>], lhs: &[El<R>], rhs: &[El<R>], mem: &mut [El<R>], ring: &R
         ) {
             $(
